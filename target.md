@@ -7,3 +7,4 @@ Want I want to do:
 5.Modularized n Extendable
 6.Simple Logic Gates
 7.Memories
+hello
