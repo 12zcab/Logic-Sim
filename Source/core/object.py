@@ -67,34 +67,34 @@ class CircuitIO:
 
 class Net:
     def __init__(self, name=None):  # Fixed: name defaults to None
-        self.ios = []
+        self.IOs = []
         self.name = name if name else f"Net_{id(self)}"
 
     def AddIO(self, io):
-        if io not in self.ios:
-            self.ios.append(io)
+        if io not in self.IOs:
+            self.IOs.append(io)
 
     def RemoveIO(self, io):
-        if io in self.ios:
-            self.ios.remove(io)
+        if io in self.IOs:
+            self.IOs.remove(io)
 
     def Clear(self):
-        for io in self.ios:
+        for io in self.IOs:
             io.ValIn = False
 
     def Update(self):
         self.Clear()
-        if any(io.ValOut for io in self.ios):
-            for io in self.ios:
+        if any(io.ValOut for io in self.IOs):
+            for io in self.IOs:
                 io.ValIn = True
 
     def PrepareDelete(self):
-        for io in self.ios:
+        for io in self.IOs:
             io.connected_net = None
-        self.ios.clear()
+        self.IOs.clear()
 
     def MergeNets(self, other_net):
-        for io in list(other_net.ios):
+        for io in list(other_net.IOs):
             self.AddIO(io)
             io.connected_net = self
         DestroyNet(other_net)
