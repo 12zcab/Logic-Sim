@@ -92,7 +92,6 @@ class Net:
         self.ios.clear()
 
     def MergeNets(self, other_net):
-        # Fixed: iterate over list(...) snapshot to prevent mid-loop deletion bugs
         for io in list(other_net.ios):
             self.AddIO(io)
             io.connected_net = self
