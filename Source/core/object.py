@@ -41,9 +41,7 @@ class CircuitIO:
         if len(self.connected_net.ios) > 2:
             self.DisconnectFromNet()
         elif len(self.connected_net.ios) == 2:
-            other_io.DisconnectFromNet()
-            self.DisconnectFromNet()
-            
+            DestroyNet(self.connected_net)
 
 class Net:
     def __init__(self,name):
@@ -64,7 +62,16 @@ class Net:
             if io.ValOut:
                 for io2 in self.ios:
                     io2.ValIn = True
-                    
-def Destroy(sth):
-    del sth
+    def PrepareDelete(self):
+        for io in self.ios:
+            io.connected_net = None
+        self.ios.clear()
+    def MergeNets(self, other_net):
+        for io in other_net.ios:
+            self.AddIO(io)
+            io.connected_net = self
+        DestroyNet(other_net)
+def DestroyNet(net_obj):
+    net_obj.PrepareDelete()
+    net_obj = None
     gc.collect()
