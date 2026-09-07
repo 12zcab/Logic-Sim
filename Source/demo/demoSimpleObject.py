@@ -1,10 +1,10 @@
 from core.object import *
 
 def generator_logic(self):
-    self.ios["OUT"].Output(True)
+    self.IOs["OUT"].Output(True)
 
 def inverter_logic(self):
-    self.ios["OUT"].Output(not self.ios["IN"].GetInput())
+    self.IOs["OUT"].Output(not self.IOs["IN"].GetInput())
 
 gen = CircuitObject("Gen", {"OUT": CircuitIO("OUT")}, generator_logic)
 inv = CircuitObject("Inv", {"IN": CircuitIO("IN"), "OUT": CircuitIO("OUT")}, inverter_logic)
