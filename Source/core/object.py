@@ -6,10 +6,12 @@
 import gc
 
 class CircuitObject:
-    def __init__(self, name, IOs, update_func):
+    def __init__(self, name, IOs, updateFunc):
         self.name = name
         self.IOs = IOs  # Dictionary: {"PinName": CircuitIO}
-        self.update_func = update_func
+        self.updater = updateFunc  # Function that defines the object's behavior
+    def update_func(self):
+        self.updater(self)
 
 
 class CircuitIO:
@@ -92,7 +94,6 @@ class Net:
         self.ios.clear()
 
     def MergeNets(self, other_net):
-        # Fixed: iterate over list(...) snapshot to prevent mid-loop deletion bugs
         for io in list(other_net.ios):
             self.AddIO(io)
             io.connected_net = self
@@ -112,10 +113,7 @@ class SimBox:
         self.Nets = Nets
 
     def update(self):
-        # Step 1: Objects evaluate inputs and set outputs
         for obj in self.Objects:
-            obj.update_func(obj.IOs)
-
-        # Step 2: Nets propagate signals across connected pins
+            obj.update_func()
         for net in self.Nets:
             net.Update()
