@@ -7,28 +7,21 @@ class Storer:
         self.table = table
 
     def DataStore(self, filename = "Data.json"):
-        self.file = open(filename, "w")
+        self.File
+        try:
+            with open(filename, "r") as f:
+                self.File = f
+        except FileNotFoundError:
+            self.File = open(filename, "x").close()
 
         try:
-            json.load(self.table)
             
-
-
-    
-
 
         
 
-       
 
 
-    
 
-    
-            
-
-    
-    
 
 
 
