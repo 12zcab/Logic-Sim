@@ -57,6 +57,16 @@ def demux12_logic(self):
     self.IOs["Y0"].Output(in_val if not s else False)
     self.IOs["Y1"].Output(in_val if s else False)
 
+def decoder24_logic(self):
+    a0 = self.IOs["A0"].GetInput()
+    a1 = self.IOs["A1"].GetInput()
+    en = self.IOs["EN"].GetInput()
+    
+    self.IOs["Y0"].Output(en and (not a1) and (not a0))
+    self.IOs["Y1"].Output(en and (not a1) and a0)
+    self.IOs["Y2"].Output(en and a1 and (not a0))
+    self.IOs["Y3"].Output(en and a1 and a0)
+
 def sr_latch_logic(self):
     # initial
     if not hasattr(self, "state"):
@@ -93,6 +103,7 @@ def full_adder(name):
     return CircuitObject(name,{
         "A": CircuitIO("A"),
         "B": CircuitIO("B"),
+        "C": CircuitIO("C"),
         "SUM": CircuitIO("SUM"),
         "CARRY": CircuitIO("CARRY")
     }, full_adder_logic)
@@ -117,3 +128,13 @@ def sr_latch(name):
             "Q": CircuitIO("Q"),
             "QN": CircuitIO("QN")
         }, sr_latch_logic)
+def decoder24(name):
+    return CircuitObject(name,{
+        "A0": CircuitIO("A0"),
+        "A1": CircuitIO("A1"),
+        "EN": CircuitIO("EN"),
+        "Y0": CircuitIO("Y0"),
+        "Y1": CircuitIO("Y1"),
+        "Y2": CircuitIO("Y2"),
+        "Y3": CircuitIO("Y3")
+    }, decoder24_logic)
