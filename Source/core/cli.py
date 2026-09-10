@@ -60,18 +60,3 @@ while True:
             
             
 
-"""
-create And ANDGate("AND")
-create Or ORGate("OR")
-create Xor XORGate("XOR")
-create a keyboard_button("ABT","a")
-create b keyboard_button("BBT","b")
-create log Logger("logger",["A","B","AND","OR","XOR"],[a.IOs["Out"],b.IOs["Out"],And.IOs["OUT"],Or.IOs["OUT"],Xor.IOs["OUT"]])
-a.IOs["Out"].ConnectToIO(And.IOs["A"])
-a.IOs["Out"].ConnectToIO(Or.IOs["A"])
-a.IOs["Out"].ConnectToIO(Xor.IOs["A"])
-b.IOs["Out"].ConnectToIO(And.IOs["B"])
-b.IOs["Out"].ConnectToIO(Or.IOs["B"])
-b.IOs["Out"].ConnectToIO(Xor.IOs["B"])
-run 0.05
-"""
