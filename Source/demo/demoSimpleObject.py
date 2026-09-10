@@ -1,17 +1,10 @@
-from Source.core.object import *
+from core.object import *
 
-def generator_logic(ios):
-    ios["OUT"].Output(True)
+def generator_logic(self):
+    self.IOs["OUT"].Output(True)
 
-def inverter_logic(ios):
-    ios["OUT"].Output(not ios["IN"].GetInput())
-
-# Function NewObj():
-#     obj = CircuitObject()
-#     blahblahblah
-#     return obj
-# Update():
-#     IOs["PinName2"].Output(IOs["PinName"].Input())
+def inverter_logic(self):
+    self.IOs["OUT"].Output(not self.IOs["IN"].GetInput())
 
 gen = CircuitObject("Gen", {"OUT": CircuitIO("OUT")}, generator_logic)
 inv = CircuitObject("Inv", {"IN": CircuitIO("IN"), "OUT": CircuitIO("OUT")}, inverter_logic)
