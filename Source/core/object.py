@@ -108,7 +108,7 @@ def DestroyNet(net_obj):
 
 
 class SimBox:
-    def __init__(self, Objects, Nets):
+    def __init__(self, Objects, Nets=[]):
         self.Objects = Objects
         self.Nets = Nets
 
@@ -117,3 +117,9 @@ class SimBox:
             obj.update_func()
         for net in self.Nets:
             net.Update()
+    def expandNet(self):
+        for obj in self.Objects:
+            for k,v in obj.IOs.items():
+                self.Nets.append(v.connected_net) if v.connected_net not in self.Nets else None
+    def addObject(self,obj):
+        self.Objects.append(obj)
