@@ -30,18 +30,41 @@ class Store:
             json.dump(self.File, file, indent=4)
 
 
-
+ 
 
 class Retreiver: 
-    def __init__(self, table, key):
+    def __init__(self, table, key, filename):
         self.table = table
         self.key = key
+        self.filename = filename
 
-    def RetreiveProcessing(self):
-        self.file = 
+    def WorkFlower(self):
+        return
 
+    def FileSearcher(self):
+        try:
+            with open(self.filename, "x") as file:
+                self.file = file
+
+                if self.file:
+                    self.TableSearcher
+            
+
+        except FileNotFoundError or json.JSONDecodeError:
+            self.ErrorHandle
+
+
+    def TableSearcher(self):
+        return
+
+    def DataProcess(self):
+        return
     
 
+    def ErrorHandle(self):
+        return
+
+    
 
     def DataRetrieve(self):
 
