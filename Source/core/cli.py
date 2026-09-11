@@ -34,7 +34,7 @@ while True:
     In = input(">")
     match In.split(maxsplit=1)[0].lower():
         case "create":
-            Value = eval(In.split(maxsplit=2)[-1])
+            Value = eval(safetyReplace(In.split(maxsplit=2)[-1],SafeVarVault))
             SafeVarVault[In.split(maxsplit=2)[-2]] = Value
             MagicBoxYay.addObject(SafeVarVault[In.split(maxsplit=2)[-2]])
         case "run":
@@ -57,3 +57,6 @@ while True:
             print(helptxt)
         case _:
             print(eval(safetyReplace(In,SafeVarVault)))
+            
+            
+

@@ -120,6 +120,6 @@ class SimBox:
     def expandNet(self):
         for obj in self.Objects:
             for k,v in obj.IOs.items():
-                self.Nets.append(v.connected_net) if v.connected_net not in self.Nets else None
+                self.Nets.append(v.connected_net) if (v.connected_net not in self.Nets) and not(v.connected_net == None) else None
     def addObject(self,obj):
         self.Objects.append(obj)
