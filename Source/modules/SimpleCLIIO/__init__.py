@@ -1,9 +1,12 @@
 from core.object import *
 import keyboard
-
-def keyboard_button(name, key):
-    IODict = {"Out": CircuitIO("Output")}
-    return CircuitObject(name,IODict,lambda self: self.IOs["Out"].Output(keyboard.is_pressed(key)))
-def print_output(name, out):
-    IODict = {"In": CircuitIO("Input")}
-    return CircuitObject(name,IODict,lambda self: print(f"{out}") if self.IOs["In"].GetInput() else None)
+def keyboardTrack(self):
+    self.IO["Out"].Value = keyboard.is_pressed(self.Key)
+def keyboard_button(Name, key):
+    IODict = {"Out": IO("Output")}
+    obj = Component(Name,IODict,keyboardTrack)
+    obj.Key = key
+    return obj
+def print_output(Name, out):
+    IODict = {"In": IO("Input")}
+    return Component(Name,IODict,lambda self: print(f"{out}") if self.IO["In"].Value else None)

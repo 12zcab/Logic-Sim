@@ -1,14 +1,10 @@
-# Object -> IO,Update Function -> RunTick Function to trigger the Update and also update
-# IO -> Connected to Net -> if self value is True, then pull the all net IO In to true   have IN and OUT function for Update.
-# Net -> Every Update will clear it first until any ppl pull it up
-# Net have: 1. Add IO 2.Remove IO 3. Clear all IO.In Value 4.Write 1 to all other IO.In Value if one.out is True (Net.update)
-
 import gc
-
+from core.library.BetterDict import *
 class Component:
     def __init__(self, Name, IOArray, updateFunction):
         self.Name = Name
-        self.IOArray = IOArray
+        self.isObserver = False
+        self.IO = BetterDict(IOArray) if isinstance(IOArray, dict) else BetterDict({io.Name: io for io in IOArray})
         self.updateFunction = updateFunction
     def update(self):
         self.updateFunction(self)
@@ -16,13 +12,27 @@ class Component:
 class IO:
     def __init__(self, Name):
         self.Name = Name
-        self.ValueOld = False
-        self.Value = False
+        self._Value = False
+        self.futureValue = False
         self.Net = None
-    def getValue(self):
-        return self.Value
-    def setValue(self, Value):
-        self.Value = Value
+    
+    @property
+    def Value(self):
+        return self._Value
+
+    @Value.setter
+    def Value(self, Value):
+        self.futureValue = Value
+    
+    def __rshift__(self, other):
+        if isinstance(other,IO):
+            self.connect(other)
+            return other
+        if isinstance(other,Net):
+            self.connectNet(other)
+            return None
+        raise TypeError(f"Cannot connect IO to {type(other)}")
+    
     def connectNet(self, net):
         if self.Net:
             self.disconnectNet()
@@ -37,7 +47,7 @@ class IO:
             if self.Net != subject.Net:
                 self.Net.mergeNets(subject.Net)
         elif self.Net:
-            subject.Net(self.Net)
+            subject.connectNet(self.Net)
         elif subject.Net:
             self.connectNet(subject.Net)
         else:
@@ -48,9 +58,9 @@ class IO:
     def disconnect(self, subject):
         if not self.Net:
             return
-        if len(self.Net.IOArray) > 2:
+        if len(self.Net.IO) > 2:
             self.disconnectNet()
-        elif len(self.Net.IOArray) <= 2:
+        elif len(self.Net.IO) <= 2:
             net_to_destroy = self.Net
             self.disconnectNet()
             subject.disconnectNet()
@@ -59,29 +69,24 @@ class IO:
 
 class Net:
     def __init__(self, Name=None):  # Fixed: name defaults to None
-        self.IOArray = []
+        self.IO = []
         self.Name = Name if Name else f"Net_{id(self)}"
     def add(self, io):
-        if io not in self.IOArray:
-            self.IOArray.append(io)
+        if io not in self.IO:
+            self.IO.append(io)
     def remove(self, io):
-        if io in self.IOArray:
-            self.IOArray.remove(io)
-    def clear(self):
-        for io in self.IOArray:
-            io.ValueOld = io.Value
-            io.Value = False
+        if io in self.IO:
+            self.IO.remove(io)
     def update(self):
-        self.Clear()
-        if any(io.ValueOld for io in self.IOArray):
-            for io in self.IOArray:
-                io.Value = True
+        if any(io.futureValue for io in self.IO):
+            for io in self.IO:
+                io.futureValue = True
     def prepareDelete(self):
-        for io in self.IOArray:
+        for io in self.IO:
             io.Net = None
-        self.IOArray.clear()
+        self.IO.clear()
     def mergeNets(self, subject):
-        for io in list(subject.IOArray):
+        for io in list(subject.IO):
             self.add(io)
             io.Net = self
         destroyNet(subject)
@@ -96,14 +101,26 @@ class SimBox:
     def __init__(self, Objects, Nets=[]):
         self.Objects = Objects
         self.Nets = Nets
+    def commitChange(self):
+        for Obj in self.Objects:
+            for io in Obj.IO.values():
+                io._Value = io.futureValue
+                io.futureValue = False
     def update(self):
+        pending = []
         for obj in self.Objects:
-            obj.update_func()
+            if obj.isObserver:
+                pending.append(obj)
+                continue
+            obj.update()
         for net in self.Nets:
-            net.Update()
+            net.update()
+        self.commitChange()
+        for pendingObj in pending:
+            pendingObj.update()
     def expandNet(self):
         for obj in self.Objects:
-            for k,v in obj.IOArray.items():
-                self.Nets.append(v.connected_net) if (v.connected_net not in self.Nets) and not(v.connected_net == None) else None
+            for k,v in obj.IO.items():
+                self.Nets.append(v.Net) if (v.Net not in self.Nets) and not(v.Net == None) else None
     def addObject(self,obj):
         self.Objects.append(obj)
