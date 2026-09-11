@@ -1,4 +1,3 @@
-
 import json
 import os
 
@@ -18,12 +17,9 @@ class Store:
         if not self.Table:
             ConditionHandle.TableNotFound(self.Table)
 
-
-
         
 
-
-
+        
 class ConditionHandle:
 
     def Checking(self):
@@ -37,7 +33,10 @@ class ConditionHandle:
         
 
 
-class Loader:    
+class Loader:
+
+    def __init__(self):
+        pass
 
     def FileSearcher(Filename):
         try:
@@ -46,6 +45,7 @@ class Loader:
 
         except FileNotFoundError or json.JSONDecodeError:
             return False
+        
 
     def TableSearcher(File, TableName):
         try:
@@ -53,7 +53,6 @@ class Loader:
                 return File.get(TableName)
         except not File.get(TableName):
             return False
-
 
 
     def ValueSearcher(Table, Keys):
@@ -67,8 +66,7 @@ class Loader:
                     if key1 == key2:
                         TotalData[key2] = value1
                     else:
-                        Success = False
-                        
+                        Success = False           
         except not Success:
             return False
 
@@ -82,7 +80,6 @@ class Retreiver:
 
     def WorkFlower(self):
         return
-    
 
 
     
