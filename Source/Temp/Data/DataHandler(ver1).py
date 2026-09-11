@@ -11,8 +11,14 @@ class Store:
 
     def DataStore(self):
         self.File = Loader.FileSearcher(self.Filename)
-        if self.File == False:
-            ConditionHandle.FileNotFound(self.File, self.tableName)
+        if not self.File:
+            ConditionHandle.FileNotFound(self.File)
+
+        self.Table = Loader.TableSearcher(self.File, self.tableName)
+        if not self.Table:
+            ConditionHandle.TableNotFound(self.Table)
+
+
 
         
 
@@ -41,39 +47,30 @@ class Loader:
         except FileNotFoundError or json.JSONDecodeError:
             return False
 
-    def TableSearcher(File, Table):
+    def TableSearcher(File, TableName):
         try:
-            if File.get(Table):
-                return File.get(Table)
-        except not File.get(Table):
+            if File.get(TableName):
+                return File.get(TableName)
+        except not File.get(TableName):
             return False
 
 
 
     def ValueSearcher(Table, Keys):
-
+        Success = True
         TotalData = {}
+
 
         try:
             for key1, value1 in Table:
                 for key2, _ in Keys:
                     if key1 == key2:
                         TotalData[key2] = value1
-                    else
+                    else:
+                        Success = False
                         
-
-        except
-
-
-
-
-
-    
-
-        
-
-
-
+        except not Success:
+            return False
 
  
 
