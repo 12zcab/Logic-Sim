@@ -1,14 +1,16 @@
 from core.object import *
 from tabulate import tabulate
 
-def Logger(name,IOArray,MonitoredIO):
+def Logger(Name,IOArray,MonitoredIO):
     DictIO = {}
     for i in range(len(IOArray)):
-        DictIO[IOArray[i]] = CircuitIO(IOArray[i])
-        DictIO[IOArray[i]].ConnectToIO(MonitoredIO[i])
-    return CircuitObject(name,DictIO,doLog)
+        DictIO[IOArray[i]] = IO(IOArray[i])
+        DictIO[IOArray[i]].connect(MonitoredIO[i])
+    obj = Component(Name,DictIO,doLog)
+    obj.isObserver = True
+    return obj
 def doLog(self):
     data = [[]]
-    for IO in self.IOs.values():
-        data[0].append(IO.GetInput())
-    print(tabulate(data, headers=self.IOs.keys(), tablefmt="grid"))
+    for IOObj in self.IO.values():
+        data[0].append(IOObj.Value)
+    print(tabulate(data, headers=self.IO.keys(), tablefmt="grid"))

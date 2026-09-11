@@ -1,4 +1,4 @@
-helptxt = r"""
+helpTxt = r"""
 ehhh
 create something PythonRepresentation
 PythonRepresentaion  (Print Result) direct execute 
@@ -10,6 +10,24 @@ from core.object import *
 from modules import *
 import time
 import re
+import sys
+
+def safeEval(expression, context=None):
+    try:
+        result = eval(expression, context)
+        return result
+    except Exception as e:
+        print(f"Eval Error in [{expression}]: \n{e}")
+        return None
+def clear_terminal_input_buffer():
+    try:
+        import msvcrt
+        while msvcrt.kbhit():
+            msvcrt.getch()
+    except ImportError:
+        import select
+        while select.select([sys.stdin], [], [], 0.0)[0]:
+            sys.stdin.read(1)
 def safetyReplace(text, Dict):
     if not Dict:
         return text
@@ -17,7 +35,7 @@ def safetyReplace(text, Dict):
     pattern = re.compile(r'\b(' + '|'.join(map(re.escape, sorted_keys)) + r')\b')
     def replace_fn(match):
         key = match.group(0)
-        return f'SafeVarVault["{key}"]'
+        return f'varVault["{key}"]'
     return pattern.sub(replace_fn, text)
 
 
@@ -27,36 +45,40 @@ title = r""".____                 .__         _________.__
 |    |__(  <_> ) /_/  >  \  \___ /        \|  |  Y Y  \
 |_______ \____/\___  /|__|\___  >_______  /|__|__|_|  /
         \/    /_____/         \/        \/          \/ """
-MagicBoxYay = SimBox([])
-SafeVarVault = {}
+mainBox = SimBox([])
+varVault = {}
 print(title)
 while True:
-    In = input(">")
-    match In.split(maxsplit=1)[0].lower():
+    inString = input(">")
+    match inString.split(maxsplit=1)[0].lower():
         case "create":
-            Value = eval(safetyReplace(In.split(maxsplit=2)[-1],SafeVarVault))
-            SafeVarVault[In.split(maxsplit=2)[-2]] = Value
-            MagicBoxYay.addObject(SafeVarVault[In.split(maxsplit=2)[-2]])
+            Value = safeEval(safetyReplace(inString.split(maxsplit=2)[-1],varVault))
+            varVault[inString.split(maxsplit=2)[-2]] = Value
+            mainBox.addObject(varVault[inString.split(maxsplit=2)[-2]])
         case "run":
-            MagicBoxYay.expandNet()
-            whileCond = len(In.split(' ')) >= 3
-            if whileCond:
-                RemainTick = In.split(' ')[2]
+            mainBox.expandNet()
+            tickFlag = len(inString.split(' ')) >= 3
+            if tickFlag:
+                remainTick = int(inString.split(' ')[2])
             else:
-                RemainTick = 1
-            SleepTick = In.split(' ', 1)[1]
+                remainTick = 1
+            sleepTick = inString.split(' ', 2)[1]
             try:
-                while RemainTick > 0:
-                    time.sleep(float(SleepTick))
-                    MagicBoxYay.update()
-                    if whileCond:
-                        RemainTick -= 1
+                while remainTick > 0:
+                    time.sleep(float(sleepTick))
+                    mainBox.update()
+                    if tickFlag:
+                        remainTick -= 1
             except KeyboardInterrupt:
                 print("[LOGICSIM] Run Loop Escaped")
+                clear_terminal_input_buffer()
         case "help":
-            print(helptxt)
+            print(helpTxt)
+        case "reset":
+            varVault = {}
+            mainBox = SimBox([])
         case _:
-            print(eval(safetyReplace(In,SafeVarVault)))
+            print(safeEval(safetyReplace(inString,varVault)))
             
             
 
