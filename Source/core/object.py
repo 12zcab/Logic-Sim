@@ -6,16 +6,21 @@ class Component:
         self.isObserver = False
         self.IO = BetterDict(IOArray) if isinstance(IOArray, dict) else BetterDict({io.Name: io for io in IOArray})
         self.updateFunction = updateFunction
+    def allNet(self):
+        arrayNet = []
+        for k,v in self.IO.items():
+            arrayNet.append(v.Net)
+        return arrayNet
     def update(self):
         self.updateFunction(self)
 
 class IO:
-    def __init__(self, Name):
+    def __init__(self, Name, InOut = "X"):
         self.Name = Name
         self._Value = False
         self.futureValue = False
         self.Net = None
-    
+        self.InOut = InOut
     @property
     def Value(self):
         return self._Value
@@ -102,10 +107,24 @@ class SimBox:
         self.Objects = Objects
         self.Nets = Nets
     def commitChange(self):
-        for Obj in self.Objects:
-            for io in Obj.IO.values():
-                io._Value = io.futureValue
-                io.futureValue = False
+        for Net in self.Nets:
+            for io in Net.IO:
+                io.__runtime_requireUpdate = True
+        for object in self.Objects:
+            for h,io in object.IO.items():
+                io.__runtime_requireUpdate = True
+        for Net in self.Nets:
+            for io in Net.IO:
+                if hasattr(io,"__runtime_requireUpdate"):
+                    io._Value = io.futureValue
+                    io.futureValue = False
+                    del io.__runtime_requireUpdate
+        for object in self.Objects:
+            for h,io in object.IO.items():
+                if hasattr(io,"__runtime_requireUpdate"):
+                    io._Value = io.futureValue
+                    io.futureValue = False
+                    del io.__runtime_requireUpdate
     def update(self):
         pending = []
         for obj in self.Objects:
@@ -120,7 +139,7 @@ class SimBox:
             pendingObj.update()
     def expandNet(self):
         for obj in self.Objects:
-            for k,v in obj.IO.items():
-                self.Nets.append(v.Net) if (v.Net not in self.Nets) and not(v.Net == None) else None
+            for net in obj.allNet():
+                self.Nets.append(net) if (net not in self.Nets) and not(net == None) else None
     def addObject(self,obj):
         self.Objects.append(obj)
