@@ -28,7 +28,7 @@ title = r""".____                 .__         _________.__
 |_______ \____/\___  /|__|\___  >_______  /|__|__|_|  /
         \/    /_____/         \/        \/          \/ """
 MagicBoxYay = SimBox([])
-SafeVarVault = {}
+SafeVarVault = {} 
 print(title)
 while True:
     In = input(">")
@@ -57,6 +57,3 @@ while True:
             print(helptxt)
         case _:
             print(eval(safetyReplace(In,SafeVarVault)))
-            
-            
-

@@ -2,8 +2,8 @@ import json
 import os
 
 class Store:
-    def __init__(self, tableName, filename, **kwargs):
-        self.data = kwargs
+    def __init__(self, tableName, filename, data):
+        self.data = data
         self.Filename = filename
         self.tableName = tableName
 
@@ -17,18 +17,15 @@ class Store:
 
         if not Loader.TableSearcher(self.Loaded, self.tableName):
             self.Table = ConditionHandle.TableNotFound(self.Table)
-
-        for key, value in self.data.items():
-            self.Table[key] = value
+        self.Table.update(self.data)
 
         if ConditionHandle.Checking(self.Table, self.Data):
             json.dump(self.Table, self.File, indent=4)
         else:
-            ConditionHandle.UnSatisfiedResult()
+            return print("Data unsuccessful")
 
         
 class ConditionHandle:
-
     def Checking(Ori, DataForChecking):
 
         for key1, value1 in Ori:
@@ -38,13 +35,10 @@ class ConditionHandle:
                             return False
                         else:
                             return True
-
-    def UnSatisfiedResult():
-        pass  
         
     def FileNotFound(Filename, type):
         if type == "Store":
-            return os.makedirs(os.path.join("Temp"/"Data", Filename), exist_ok=True)
+            return os.makedirs(os.path.join("Temp"/"Data", Filename), exist_ok=True) 
 
         if type == "Retrieve":
             for i in range(5):
@@ -71,7 +65,7 @@ class Loader:
 
         except FileNotFoundError or json.JSONDecodeError:
             return False
-        
+    
 
     def TableSearcher(Data, TableName):
         try:
@@ -90,7 +84,6 @@ class Loader:
                 else:
                     return False
 
- 
 
 class Retreiver: 
     def __init__(self, tableName, key, filename):
