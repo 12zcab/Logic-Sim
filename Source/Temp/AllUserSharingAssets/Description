@@ -1,0 +1,15 @@
+so i want to build a script which allow player to publish thier own variant of this application (not sure if it is too much control)
+
+1.
+We may need to build a website for it
+-- functions related should be placed over there deu to assumption of high control of this app??
+---- Search engine???!!!. more high end data store, and also limitation (unchanged overall application structure) to avoid exploit
+
+-- Maybe directly redirect (no pun intended) user to git repo
+-- Gui ofc
+
+Publish functions
+Publish assets
+........
+
+

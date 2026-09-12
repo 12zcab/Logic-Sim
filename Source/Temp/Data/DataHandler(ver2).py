@@ -40,8 +40,7 @@ class ConditionHandle:
                             return True
 
     def UnSatisfiedResult():
-        pass
-     
+        pass  
         
     def FileNotFound(Filename, type):
         if type == "Store":
@@ -54,18 +53,14 @@ class ConditionHandle:
                     return False
                 else:
                     return File + print("Error Solved")
-
-
        
-
-    def TableNotFound(TableName, type):
-        return 
+    def TableNotFound(File, TableName, type):
+        if type == "Store":
+            return {}
 
     def VarNotFound(TableName, type): 
-        if type == "Retrieve":
-
-        
-
+        pass
+                  
 
 class Loader:
 
@@ -88,16 +83,12 @@ class Loader:
 
     def ValueSearcher(Table, Keys):
         TotalData = {}
-        try:
-            for key1, value1 in Table:
-                for key2, _ in Keys:
-                    if key1 == key2:
-                        TotalData[key2] = value1
-                        Success = True
-                    else:
-                        Success = False
-        except not Success:
-            return False
+        for key1, value1 in Table:
+            for key2, _ in Keys:
+                if key1 == key2:
+                    return value1
+                else:
+                    return False
 
  
 
