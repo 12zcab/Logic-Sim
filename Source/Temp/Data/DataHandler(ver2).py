@@ -8,34 +8,62 @@ class Store:
         self.tableName = tableName
 
     def DataStore(self):
-        self.File = Loader.FileSearcher(self.Filename)
-        if not self.File:
-            ConditionHandle.FileNotFound(self.File)
-        self.data = json.load(self.File)
 
-        self.Table = Loader.TableSearcher(self.data, self.tableName)
-        if not self.Table:
-            ConditionHandle.TableNotFound(self.Table)
+        self.File = Loader.FileSearcher(self.Filename)
+
+        if not self.File:
+            self.File = ConditionHandle.FileNotFound(self.File)
+        self.Loaded= json.load(self.File)
+
+        if not Loader.TableSearcher(self.Loaded, self.tableName):
+            self.Table = ConditionHandle.TableNotFound(self.Table)
 
         for key, value in self.data.items():
             self.Table[key] = value
 
-        json.dump(self.Table, self.File, indent=4)
+        if ConditionHandle.Checking(self.Table, self.Data):
+            json.dump(self.Table, self.File, indent=4)
+        else:
+            ConditionHandle.UnSatisfiedResult()
 
         
 class ConditionHandle:
 
-    def Checking(self):
-        return
-        
-    def FileNotFound(self):
-        return
+    def Checking(Ori, DataForChecking):
 
-    def TableNotFound(self):
-        return
+        for key1, value1 in Ori:
+                for key2, value2 in DataForChecking:
+                    if key1 == key2:
+                        if not value1 == value2:
+                            return False
+                        else:
+                            return True
 
-    def VarNotFound(self):
+    def UnSatisfiedResult():
         pass
+     
+        
+    def FileNotFound(Filename, type):
+        if type == "Store":
+            return os.makedirs(os.path.join("Temp"/"Data", Filename), exist_ok=True)
+
+        if type == "Retrieve":
+            for i in range(5):
+                File = Loader.FileSearcher(Filename)
+                if not File:
+                    return False
+                else:
+                    return File + print("Error Solved")
+
+
+       
+
+    def TableNotFound(TableName, type):
+        return 
+
+    def VarNotFound(TableName, type): 
+        if type == "Retrieve":
+
         
 
 
@@ -80,17 +108,18 @@ class Retreiver:
         self.filename = filename 
 
     def DataRetrieve(self):
-
         self.RetrievedData = {}
 
         self.File = Loader.FileSearcher(self.filename)
         if not self.File:
-            ConditionHandle.FileNotFound
+            if not ConditionHandle.FileNotFound():
+                return print("Data Retrieve Failed")
         self.Data = json.load(self.File)
 
         self.Table = Loader.TableSearcher(self.Data, self.tableName)
         if not self.Table:
-            ConditionHandle.TableNotFound()
+            if not ConditionHandle.TableNotFound():
+                return print("Data Retrieve Failed")
 
         for key1, value in self.Table:
             for key2, _ in self.keys:
@@ -101,17 +130,3 @@ class Retreiver:
 
         return self.RetrievedData
                     
-                
-                    
-
-
-
-
-
-
-    
-        
-    
-
-
-
