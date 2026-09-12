@@ -104,7 +104,7 @@ def DestroyNet(net_obj):
     if net_obj:
         net_obj.PrepareDelete()
         del net_obj
-        gc.collect()
+        gc.collect() 
 
 
 class SimBox:

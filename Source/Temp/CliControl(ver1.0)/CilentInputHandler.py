@@ -20,6 +20,7 @@ class Importer:
     def Importer(self):
         self.Script = Loader.ScriptSearcher(self.scriptName)
         if not self.Script:
+            pass
             
 
 
@@ -34,10 +35,12 @@ class Loader:
 
 class Creator:
     # Allow user to import their assets
+    pass
     
 
 
 class Signal:
+    pass
 
 
 
