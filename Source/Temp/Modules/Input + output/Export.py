@@ -1,5 +1,6 @@
 from core.object import *
 from modules import *
+from Data import DataHandler
 import os
 import json
 
@@ -10,26 +11,29 @@ class Exporter:
         self.items = items
         self.filename = filename
  
-    def ExportObject(self, Simbox):
+    def ExportSimbox(self, ExportSimbox):
         SimBoxData = {
             "Conponets" : [],
             "Nets" : []
         }
+
+        for object in ExportSimbox.Objects:
+            objectData = {
+                "objectname" : object.name,
+                "IOs" : {pinData : ioData for pinData, ioData in object.IOs.item()},
+            }
+            SimBoxData["Conponets"].append(objectData)
+
+        for net in ExportSimbox.Nets:
+            netData = {
+                "Connected" : net.connected_net
+            }
+            SimBoxData["Nets"].append(netData)
+
         
-        try:
-            with open(self.filename, "x") as file:
-                self.file = file
-        except FileNotFoundError:
-            self.file = os.makedirs(self.filename, exist_ok=True)
+        DataHandler.Store("ExportedSimBox", "ExportedData.JSON", ExportSimbox)
+        
 
-
-        for key1, value1 in (SimBox.Objects):
-            SimBoxData["Conponets"][key1] = value1
-
-        for key2, value2 in (SimBox.Nets):
-            SimBoxData["Nets"][key2] = value2
-
-        json.dump(SimBoxData, self.file, indent=4)
     
 
 

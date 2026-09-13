@@ -39,7 +39,7 @@ class CircuitIO:
             self.connected_net = None
 
     def ConnectToIO(self, other_io):
-        if self.connected_net and other_io.connected_net:
+        if self.connected_net and other_io.connected_net: 
             if self.connected_net != other_io.connected_net:
                 self.connected_net.MergeNets(other_io.connected_net)
         elif self.connected_net:
