@@ -26,12 +26,12 @@ class Exporter:
 
         for net in ExportSimbox.Nets:
             netData = {
-                "Connected" : net.connected_net
+                "ConnectedNet" : net.connected_net,
             }
             SimBoxData["Nets"].append(netData)
 
-        
-        DataHandler.Store("ExportedSimBox", "ExportedData.JSON", ExportSimbox)
+
+        DataHandler.Store("ExportedSimBox", "ExportedData.JSON", SimBoxData)
         
 
     

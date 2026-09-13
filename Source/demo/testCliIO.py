@@ -9,4 +9,4 @@ button1.IOs["Out"].ConnectToIO(output1.IOs["In"])
 box = SimBox(Objects=[button1, output1], Nets=[button1.IOs["Out"].connected_net])
 while True:
     time.sleep(1)
-    box.update()
+    box.update()  

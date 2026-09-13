@@ -1,49 +1,13 @@
-Description = r"""
-Functions:
-
-Create commands
-Create functions
-Change/ add functions in other scripts
-
-"""
-
-import json
-import Data.DataHandler
 from core.object import *
-from modules import *
-
-class Importer:
-    def __init__(self, functions, scriptName):
-        self.functions = functions
-        self.scriptName = scriptName
-
-    def Importer(self):
-        self.Script = Loader.ScriptSearcher(self.scriptName)
-        if not self.Script:
-            pass
-            
+from Temp.Data import DataHandler
 
 
 
-class Loader:
-    def ScriptSearcher(scriptName):
-        try:
-            with open(scriptName, "x") as file:
-                return file
-        except FileNotFoundError or FileExistsError:
-            return False
+RefVar = {}
+CurSimBox = SimBox([])
 
-class Creator:
-    # Allow user to import their assets
+def Reconstruct():
     pass
-    
-
-
-class Signal:
-    pass
-
-
-
 
 
  
