@@ -1,4 +1,3 @@
-import gc
 from core.library.BetterDict import *
 class Component:
     def __init__(self, Name, IOArray, updateFunction):
@@ -8,6 +7,10 @@ class Component:
         self.updateFunction = updateFunction
     def update(self):
         self.updateFunction(self)
+    def commitChange(self):
+        for io in self.IO.values():
+            io._Value = io.futureValue
+            io.futureValue = False
     def getNet(self):
         NetArray = []
         for io in self.IO.values():
@@ -102,7 +105,6 @@ def destroyNet(Net):
     if Net:
         Net.prepareDelete()
         del Net
-        gc.collect()
 
 class SimBox:
     def __init__(self, Objects, Nets=[]):
@@ -110,9 +112,7 @@ class SimBox:
         self.Nets = Nets
     def commitChange(self):
         for Obj in self.Objects:
-            for io in Obj.IO.values():
-                io._Value = io.futureValue
-                io.futureValue = False
+            Obj.commitChange()
     def update(self):
         pending = []
         for obj in self.Objects:
@@ -156,9 +156,15 @@ class Module(Component):
         NetArray = []
         for io in self.IO.values():
             NetArray.append(io.Net) if (io.Net not in NetArray) and not (io.Net == None) else None
-        for block in self.child:
+        for block in self.child.values():
             NetArray.extend(block.getNet())
         return NetArray
+    def commitChange(self):
+        for Obj in self.child.values():
+            Obj.commitChange()
+        for io in self.IO.values():
+            io._Value = io.futureValue
+            io.futureValue = False
     def update(self):
-        for block in self.child:
+        for block in self.child.values():
             block.update()
