@@ -1,4 +1,3 @@
-import gc
 from core.library.BetterDict import *
 class Component:
     def __init__(self, Name, IOArray, updateFunction):
@@ -8,6 +7,15 @@ class Component:
         self.updateFunction = updateFunction
     def update(self):
         self.updateFunction(self)
+    def commitChange(self):
+        for io in self.IO.values():
+            io._Value = io.futureValue
+            io.futureValue = False
+    def getNet(self):
+        NetArray = []
+        for io in self.IO.values():
+            NetArray.append(io.Net) if (io.Net not in NetArray) and not (io.Net == None) else None
+        return NetArray
 
 class IO:
     def __init__(self, Name):
@@ -23,6 +31,8 @@ class IO:
     @Value.setter
     def Value(self, Value):
         self.futureValue = Value
+    def set(self, Value):
+            self.futureValue = Value
     
     def __rshift__(self, other):
         if isinstance(other,IO):
@@ -95,7 +105,6 @@ def destroyNet(Net):
     if Net:
         Net.prepareDelete()
         del Net
-        gc.collect()
 
 class SimBox:
     def __init__(self, Objects, Nets=[]):
@@ -103,9 +112,7 @@ class SimBox:
         self.Nets = Nets
     def commitChange(self):
         for Obj in self.Objects:
-            for io in Obj.IO.values():
-                io._Value = io.futureValue
-                io.futureValue = False
+            Obj.commitChange()
     def update(self):
         pending = []
         for obj in self.Objects:
@@ -120,7 +127,44 @@ class SimBox:
             pendingObj.update()
     def expandNet(self):
         for obj in self.Objects:
-            for k,v in obj.IO.items():
-                self.Nets.append(v.Net) if (v.Net not in self.Nets) and not(v.Net == None) else None
+            for net in obj.getNet():
+                self.Nets.append(net) if (net not in self.Nets) and not (net == None) else None
     def addObject(self,obj):
         self.Objects.append(obj)
+        
+class Bus(Component):
+    def __init__(self, Name, Width):
+        IOArray = []
+        for i in range(Width):
+            IOArray.append(IO(self.getIOName(i)))
+        super().__init__(Name, IOArray, None)
+        self.Width = Width
+    def getNet(self):
+        NetArray = []
+        for io in self.IO.values():
+            NetArray.append(io.Net) if (io.Net not in NetArray) and not (io.Net == None) else None
+        return NetArray
+    def getIOName(self,Index):
+        return self.Name + "_" + str(Index)
+
+class Module(Component):
+    def __init__(self, Name, ModuleIO, InnerBlock):
+        # can do Module("Module",[Block.IO.A >> IO("Pin")],[Block])
+        super().__init__(Name, ModuleIO, None)
+        self.child = BetterDict(InnerBlock) if isinstance(InnerBlock, dict) else BetterDict({block.Name: block for block in InnerBlock})
+    def getNet(self):
+        NetArray = []
+        for io in self.IO.values():
+            NetArray.append(io.Net) if (io.Net not in NetArray) and not (io.Net == None) else None
+        for block in self.child.values():
+            NetArray.extend(block.getNet())
+        return NetArray
+    def commitChange(self):
+        for Obj in self.child.values():
+            Obj.commitChange()
+        for io in self.IO.values():
+            io._Value = io.futureValue
+            io.futureValue = False
+    def update(self):
+        for block in self.child.values():
+            block.update()
