@@ -8,7 +8,7 @@
         \/    /_____/         \/        \/          \/ 
 </pre>
 ### An Easy to use Logic Simulation Software
-#### Made By 12zcab,MoonMinor and Walker
+#### Made By 12zcab, MoonMinor and Walker
 
 # What is Logic-Sim?
 Logic-Sim is a easy to use logic simulator written with pure python aiming for high modularization and Simple-to-use.
@@ -18,14 +18,14 @@ Logic-Sim is a easy to use logic simulator written with pure python aiming for h
     - cli.py
     - object.py
 - Demo
-    - demoSimpleObject.py  Testing Object Functions
-    - testCliIO.py  Testing CliIO Module
+    - demoSimpleObject.py - Testing Object Functions
+    - testCliIO.py - Testing CliIO Module
 - modules
-    - DataLogger  Basic DataLogger Module
-    - LogicGate  Basic LogicGate Module
-    - SimpleCLIIO Basic Command Line Interface Input Output Module
+    - DataLogger - Basic DataLogger Module
+    - LogicGate - Basic LogicGate Module
+    - SimpleCLIIO - Basic Command Line Interface Input Output Module
 - app.py currently empty, but later will for init.ing the app
-- target.md  a note written in day 1 :O
+- target.md, a note written in day 1 :O
 
 # Example:
 ### DataLogger and LogicGates in CLI Mode
@@ -40,7 +40,7 @@ a.IO.Out >> And.IO.A >> Or.IO.A >> Xor.IO.A
 b.IO.Out >> And.IO.B >> Or.IO.B >> Xor.IO.B
 run 0.05
 ```
-### Not Gate Pulse Signal,Error Handle.
+### Not Gate Pulse Signal, Error Handle
 ```
 asd
 create notgate NOTGate("Not")
@@ -91,5 +91,4 @@ None
 +------------+-------------+
 >
 ```
-Though it may seem not correct as Not Gate's Input and Output is the same,but it actually reflects the truth status of a logic gate.With output and input shorted,its output and input MUST BE THE SAME,so the Not Gate is experiencing a process delay between ticks
-So this actually simulate the real-world situation
+Though it may seem incorrect, as Not Gate's input and output are the same, it actually reflects the truth status of a logic gate. With output and input shorted, its output and input MUST BE THE SAME, so the Not Gate is experiencing a process delay between ticks, and this actually simulates a real-world situation.
