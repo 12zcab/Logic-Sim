@@ -11,14 +11,14 @@ from modules import *
 import time
 import re
 import sys
-
+import traceback
 def safeEval(expression, context=None):
     try:
         result = eval(expression, context)
         return result
     except Exception as e:
         print(f"Eval Error in [{expression}]: \n{e}")
-        return None
+        return "Error"
 def clear_terminal_input_buffer():
     try:
         import msvcrt
@@ -50,6 +50,8 @@ varVault = {}
 print(title)
 while True:
     inString = input(">")
+    if inString == "":
+        continue
     match inString.split(maxsplit=1)[0].lower():
         case "create":
             Value = safeEval(safetyReplace(inString.split(maxsplit=2)[-1],varVault))
@@ -58,13 +60,16 @@ while True:
         case "run":
             mainBox.expandNet()
             tickFlag = len(inString.split(' ')) >= 3
+            total_ticks = 0
             if tickFlag:
                 remainTick = int(inString.split(' ')[2])
             else:
                 remainTick = 1
             sleepTick = inString.split(' ', 2)[1]
+            start_time = time.perf_counter()
             try:
                 while remainTick > 0:
+                    total_ticks += 1
                     time.sleep(float(sleepTick))
                     mainBox.update()
                     if tickFlag:
@@ -72,6 +77,10 @@ while True:
             except KeyboardInterrupt:
                 print("[LOGICSIM] Run Loop Escaped")
                 clear_terminal_input_buffer()
+            end_time = time.perf_counter()
+            elapsed_time = end_time - start_time
+            average_tps = total_ticks / elapsed_time if elapsed_time > 0 else 0
+            print("Average Tick Per Second:" + str(average_tps))
         case "help":
             print(helpTxt)
         case "reset":
