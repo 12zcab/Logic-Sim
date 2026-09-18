@@ -106,3 +106,253 @@ state[OUT_PIN] = !(state[PIN_A] & state[PIN_B]);
 ```
 
 Because it is just basic arithmetic over contiguous arrays, a complete gate-level C simulator engine can be written in under **100 lines of clear C code**.
+
+
+
+
+Here’s a clean note version you can keep/save:
+
+Logic-Sim Design Note — 4-state simulation + vectorized static logic
+
+Core idea
+
+- We want to support a 4-state logic model:
+  - 0 = driven low
+  - 1 = driven high
+  - X = unknown/conflict
+  - Z = released / no active drive
+
+- Important separation:
+  - A pin can be “driven” or “released”
+  - A pin’s value is not enough by itself; the simulator must know whether it actively wrote during this update
+  - Therefore, assignment should mean “drive this value”
+  - No assignment during an update should mean “released / Z”
+
+Driving rule
+
+- If a component writes to a pin this tick:
+  - pin is considered actively driving
+  - e.g. pin.Value = False means active drive low
+  - pin.Value = True means active drive high
+- If a component does not write to a pin this tick:
+  - that pin is treated as Z / released
+  - not as “kept previous value”
+
+This is cleaner than trying to infer release from “unchanged value”.
+
+Net behavior
+
+- A normal net should resolve like:
+  - no active drivers + pull low → 0
+  - no active drivers + pull high → 1
+  - no active drivers + no pull → Z
+  - only 0 drivers → 0
+  - only 1 drivers → 1
+  - 0 + 1 drivers → X (conflict)
+  - X driver anywhere → X
+- Net should have a property such as Pull:
+  - Pull = None / no pull → floating
+  - Pull = False → pull-down
+  - Pull = True → pull-up
+
+This allows open-drain / tri-state / pull-up logic without forcing all nets to use the same rule.
+
+Gate behavior
+
+- Normal logic gates should always actively drive a result
+  - e.g. AND output = 0, 1, or X
+  - they should not silently become Z unless explicitly tri-stated
+- A tri-state buffer is different:
+  - if enable = 1, drive data
+  - if enable = 0, do not write → released/Z
+  - if enable = X/Z, output should usually go to X
+
+So:
+- “standard gate output” is always driven
+- “tri-state release” is explicit no-write
+
+4-state handling should not be written into every module manually
+
+- The framework/core should own:
+  - conflict detection
+  - pull resolution
+  - active-driver tracking
+  - unknown/conflict handling
+  - Z handling
+- Module writers should mostly define the intended behavior, not all the edge cases
+
+Example for a gate:
+- module code just says:
+  - OUT = A AND B
+- the logic library handles:
+  - 0 AND anything = 0
+  - 1 AND 1 = 1
+  - otherwise = X
+  - Z is treated as unknown for normal gates
+
+StaticLogic and TruthTable
+
+- A StaticLogic module is good for combinational logic gates
+- It can use a TruthTable as the definition
+- Example:
+  - AND_TABLE
+  - OR_TABLE
+  - NOT_TABLE
+  - XOR_TABLE
+- The table is declarative, but the simulator can compile it into:
+  - scalar evaluation
+  - packed/vector evaluation
+  - optional optimized backend usage
+
+This avoids writing custom logic for every gate by hand.
+
+TruthTable can be combined with a generic StaticLogic:
+- module writer defines the table
+- simulator handles runtime behavior
+- logic values can be evaluated with shared functions rather than per-module special cases
+
+Design structure
+
+- LogicValue class:
+  - ZERO
+  - ONE
+  - X
+  - Z
+
+- IO / Pin:
+  - stores resolved value
+  - stores whether it wrote this tick
+  - stores whether it is input/output/inout
+  - can be released explicitly
+
+- Net:
+  - stores pins on it
+  - stores pull
+  - resolves active drivers
+  - returns final net value
+
+- StaticLogic:
+  - combinational only
+  - can be truth-table driven
+  - easy to parallelize
+
+- Sequential modules:
+  - custom logic
+  - not purely truth-table based
+  - e.g. registers, clocks, latches, memories
+
+Parallel/vector processing
+
+- We should not encode 4-state values into one tiny integer and expect normal bitwise ops to work automatically
+- Instead, use masks / bit planes
+- For example:
+  - value mask
+  - unknown mask
+  - released mask
+
+Then:
+- a & b, a | b, a ^ b, ~a can be defined on a packed logic object
+- not Python’s and/or/not because those short-circuit and are not appropriate
+
+Packed representation idea:
+- value bits
+- unknown bits
+- released bits
+- each bit/lane represents one signal or one parallel simulation lane
+
+This allows:
+- bitwise vector logic
+- large bus processing
+- parallel simulation of many lanes
+- fast processing without forcing each gate to handle 4-state manually
+
+For example:
+- AND on packed values can be compiled from the truth table
+- OR, XOR, NOT can also be compiled
+- the packed logic object overloads:
+  - __and__
+  - __or__
+  - __xor__
+  - __invert__
+
+A parallelizable property
+
+- We can still have something like Parallelable
+- But better: it should be a capability metadata / execution hint, not a hard-coded hack
+- Example:
+  - a StaticLogic may be scalar-only
+  - or it may provide a packed/vector implementation
+  - the backend chooses the execution path
+
+TruthTable-based logic should usually be parallelizable if it is:
+- combinational
+- stateless
+- bitwise independent
+- no side effects
+
+Not parallelizable:
+- logs
+- keyboard input
+- GUI interaction
+- stateful sequential logic without special packed handling
+
+Best practical path
+
+- First implement correct scalar simulator:
+  - value tracking
+  - drive tracking
+  - release / Z
+  - net resolution
+  - pull behavior
+  - conflict detection
+- Then add generic StaticLogic for combinational gates
+- Then add TruthTable definitions for common gates
+- Then add packed bitmask/vector processing
+- Only then think about JIT / C / extreme optimization
+
+Key principle
+
+- Gate logic: “what should this component drive?”
+- Net logic: “what does the wire resolve to?”
+- Pull / X / Z handling: part of the net and framework
+- Module writer: mostly defines the function, not all simulator semantics
+
+This is the cleanest way to support:
+- 4-state logic
+- real release/tristate behavior
+- conflict handling
+- pull-up / pull-down
+- vectorized static logic
+- parallel execution
+- without making every module writer manually handle all edge cases
+
+This is the version I’d aim for in Logic-Sim.
+
+If you want, I can turn this into:
+- a shorter “project planning note”
+- a technical design doc format
+- or a minimal class skeleton for `LogicValue`, `IO`, `Net`, `StaticLogic`, and `TruthTable` in Python.
+
+
+
+
+
+
+
+
+So we need a new LogicValue Class that can return a proper LogicValue when it is calculated by operator like ^ & and |. the LogicValue will contain three status bit.
+1.Data
+2.Driven
+3.Conflict
+
+and the Net will handle the combined of it like:
+of it is not driven, ignore that pin, if all not driven, apply the pulled value.
+if it is conflicted, conflict the whole network.
+if it's all driven data is same,set that as value
+if driven data is conflicted, then X.
+
+also can combine this thing to the new Net entity.
+like for every time we set Value to IO it actually write it to net value
+and every time we clear as Z we apply that for the Net.
+every time the IO is readed we read the Old Net Value.
+we also propagate the Net's Value and futureValue.
