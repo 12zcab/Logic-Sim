@@ -22,6 +22,6 @@ for _, module_name, is_pkg in pkgutil.iter_modules(package_path):
     elif is_pkg:
         for attr in dir(module):
             if not attr.startswith('_'):
-                globals()[attr] = getattr(module, attr)
+                globals()[attr] = getattr(module, attr) 
                 if attr not in __all__:
-                    __all__.append(attr)
+                    __all__.append(attr) 
