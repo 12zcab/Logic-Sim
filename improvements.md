@@ -356,3 +356,27 @@ like for every time we set Value to IO it actually write it to net value
 and every time we clear as Z we apply that for the Net.
 every time the IO is readed we read the Old Net Value.
 we also propagate the Net's Value and futureValue.
+
+load all the IO value into 1 binary number
+and then batch apply AND OR XOR NOT sequentially within 1 frame...?
+like we can prepare Two number A and B that are the bits of A and B to be calculated for every logic gate
+then we can do the calculation together like A^B 
+to apply different Logic for different bit we can add a Mask for B.
+like for 1 AND 1,0 OR 1,1 XOR 1, 1 XNOR 0 , NOT 1
+we can set A = 10111
+B = 11100
+C = 10000(AND Filter)
+D = 01000(OR Filter)
+E = 00110(XOR Filter)
+F = 00011(NOT Filter)
+Apply logics like this:
+A & B -> H
+A | B -> I
+A ^ B -> J
+!A -> K
+Answer = H&C | I&D | J&E | K&F
+
+also can use NP array to do that
+
+
+# ERM ACTUALLY I FORGOT I SET SLEEP(0.01) to limit its speed :| so the theory max speed rn is 4k tps

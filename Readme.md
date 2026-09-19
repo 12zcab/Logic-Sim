@@ -30,20 +30,20 @@ Logic-Sim is a easy to use logic simulator written with pure python aiming for h
 # Example:
 ### DataLogger and LogicGates in CLI Mode
 ```
-create And ANDGate("AND")
-create Or ORGate("OR")
-create Xor XORGate("XOR")
+create And AndGate("AND")
+create Or OrGate("OR")
+create Xor XorGate("XOR")
 create a keyboard_button("ABT","a")
 create b keyboard_button("BBT","b")
-create log Logger("logger",["A","B","AND","OR","XOR"],[a.IO.Out,b.IO.Out,And.IO.OUT,Or.IO.OUT,Xor.IO.OUT])
-a.IO.Out >> And.IO.A >> Or.IO.A >> Xor.IO.A
-b.IO.Out >> And.IO.B >> Or.IO.B >> Xor.IO.B
+create log Logger("logger",["A","B","AND","OR","XOR"],[a.IO.OUT,b.IO.OUT,And.IO.OUT,Or.IO.OUT,Xor.IO.OUT])
+a.IO.OUT >> And.IO.A >> Or.IO.A >> Xor.IO.A
+b.IO.OUT >> And.IO.B >> Or.IO.B >> Xor.IO.B
 run 0.05
 ```
 ### Not Gate Pulse Signal,Error Handle.
 ```
 asd
-create notgate NOTGate("Not")
+create notgate NotGate("Not")
 create logger Logger("logger",["SignalIn","SignalOut"],[notgate.IO.A,notgate.IO.OUT])
 notgate.IO.A >> notgate.IO.B
 notgate.IO.A >> notgate.IO.OUT

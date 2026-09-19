@@ -36,4 +36,4 @@ def analyse_file(filename):
                 print("     ",netKey," ",*netValue["bits"])
     print("\n\n")
     
-analyse_file("register.v")
+#analyse_file("register.v")
