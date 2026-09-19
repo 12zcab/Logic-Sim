@@ -10,41 +10,50 @@ def SelfDeclare():
     Importer(Importer, all)
 
 class Importer:
+    def __init__(self, IM, ST, PATH):
+        self.TargetImport = IM
+        self.TargetScript = ST 
+        self.Path = PATH
 
-    def __init__(self, IM, ST, PATH): 
-        self.IM = IM
-        self.ST = ST 
-        self.Path = PATH 
-
-    def CreateImports(self):
+    def GetImport(self):
         try:
-            self.Import = importlib.import_module(self.IM) 
+            self.Import = importlib.import_module(self.TargetImport) 
         except ModuleNotFoundError: 
             TypeError("File is not found")  
-            return
+            return self.Import == None
 
-        self.Spec =  importlib.util.spec_from_file_location(self.ST, self.Path)
-        self.Script = importlib.util.module_from_spec(self.Spec)
-
-        TargetGlobal = sys.modules[self.IM].__dict__
-
-        if hasattr(self.Import, "__all__"):
-            Items = self.Import.__all__
+    def LoadImport(self):
+        if hasattr(self.Import, "__all__"): 
+            self.Items = self.Import.__all__
         else:
-            Items = [k for k in dir(self.Import) if not k.startswith("_")]
-            
-        for item in Items:
-            TargetGlobal[item] = getattr(self.Import, item)
-       
- 
-    def DeleteImports(): 
-        pass 
+            self.Items = [k for k in dir(self.Import) if not k.startswith("_")]
+        return self.Items
 
-class Conditions:
-    def __init__(self): 
-        pass  
+    def LoadScript(self):
+        pass
+ 
+class HandleNode:
+    def __init__(self, TargetScript, TargetArea):
+        self.TargetScript = TargetScript
+        self.TargetArea = TargetArea
+
+    def LoadTarget(self):
+        
+
+        
+
+class Conditions: 
+    def __init__(self, Cons, ST, TG):
+        self.Cons = Cons 
+        self.TargetScript = ST
+        self.Target = TG
+
+        self.TargetGlobal = sys.modules[self.TargetScript].__dict__
+    
 
     def CreateCon():
+
+        if not self.
         pass
 
     def DeleteCon():

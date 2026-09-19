@@ -17,11 +17,14 @@ class Component:
             NetArray.append(io.Net) if (io.Net not in NetArray) and not (io.Net == None) else None
         return NetArray
 
+
+
+
 class IO:
     def __init__(self, Name):
         self.Name = Name
         self._Value = False
-        self.futureValue = False
+        self.futureValue = False  
         self.Net = None
     
     @property
