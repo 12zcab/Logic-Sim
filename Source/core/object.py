@@ -16,9 +16,7 @@ class Component:
         for io in self.IO.values():
             NetArray.append(io.Net) if (io.Net not in NetArray) and not (io.Net == None) else None
         return NetArray
-
-
-
+     
 
 class IO:
     def __init__(self, Name):
@@ -103,7 +101,7 @@ class Net:
             self.add(io)
             io.Net = self
         destroyNet(subject)
-
+ 
 def destroyNet(Net):
     if Net:
         Net.prepareDelete()
@@ -111,14 +109,14 @@ def destroyNet(Net):
 
 class SimBox:
     def __init__(self, Objects, Nets=[]):
-        self.Objects = Objects
+        self.Objects = Objects 
         self.Nets = Nets
     def commitChange(self):
         for Obj in self.Objects:
             Obj.commitChange()
     def update(self):
         pending = []
-        for obj in self.Objects:
+        for obj in self.Objects: 
             if obj.isObserver:
                 pending.append(obj)
                 continue

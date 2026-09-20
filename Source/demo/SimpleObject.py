@@ -20,3 +20,5 @@ sim.update()
 print(f"Generator OUT: {gen.IO['OUT'].Value}")
 print(f"Inverter IN:   {inv.IO['IN'].Value}")
 print(f"Inverter OUT:  {inv.IO['OUT'].Value}")
+
+

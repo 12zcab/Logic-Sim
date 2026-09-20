@@ -29,7 +29,7 @@ def clear_terminal_input_buffer():
         while select.select([sys.stdin], [], [], 0.0)[0]:
             sys.stdin.read(1)
 def safetyReplace(text, Dict):
-    if not Dict:
+    if not Dict:     
         return text
     sorted_keys = sorted(Dict.keys(), key=len, reverse=True)
     pattern = re.compile(r'\b(' + '|'.join(map(re.escape, sorted_keys)) + r')\b')
@@ -68,7 +68,7 @@ while True:
             sleepTick = inString.split(' ', 2)[1]
             start_time = time.perf_counter()
             try:
-                while remainTick > 0:
+                while remainTick > 0: 
                     total_ticks += 1
                     time.sleep(float(sleepTick))
                     mainBox.update()
@@ -77,7 +77,7 @@ while True:
             except KeyboardInterrupt:
                 print("[LOGICSIM] Run Loop Escaped")
                 clear_terminal_input_buffer()
-            end_time = time.perf_counter()
+            end_time = time.perf_counter() 
             elapsed_time = end_time - start_time
             average_tps = total_ticks / elapsed_time if elapsed_time > 0 else 0
             print("Average Tick Per Second:" + str(average_tps))

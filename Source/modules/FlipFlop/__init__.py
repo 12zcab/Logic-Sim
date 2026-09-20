@@ -48,4 +48,7 @@ class BasicDFF(Module):
         Pin_CLK >> NandS.IO.A >> NandR.IO.A
         Pin_D >> NandS.IO.B >> NotD.IO.A
         NotD.IO.OUT >> NandR.IO.B
-        super().__init__(Name, ModuleIO, Blocks)
+        super().__init__(Name, ModuleIO, Blocks) 
+ 
+        
+    
