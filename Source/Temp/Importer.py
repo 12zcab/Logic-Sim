@@ -1,62 +1,82 @@
 # This acts as an importer mid scripts or provide a greater organization of imported items
-# Also create the conditions statement u wants for the imported
+# The ram version of the target script will be imported items from the script that get sent to target
 # Ad : it can reduce huge amount of code and save working memory
-import importlib
-import importlib.util
-import ast
-import sys
+# this also save the modified version of the script and easy to reverse or more changes in one single 
 
-def SelfDeclare():
-    Importer(Importer, all)
+# Notes: i dont know what to add now, but this script can self call to add things too
 
-class Importer:
-    def __init__(self, IM, ST, PATH):
+import ast, sys
+
+class Communciator:
+    def __init__(self, IM, ST):
+        self.Loader = Loader(IM, ST) 
+        self.Import = self.Loader.GetImport()
+        self.TargetScript = self.Loader.GetScript()
+
+    def Completion(self, Target=None):
+        if not self.Loader or not self.Import:
+            return print("Data is not enough for further execution")
+        
+        self.Importer = Importer(self.TargetScript, self.Import, Target)
+        return self.Importer.Compile()
+
+    def Deletion(self):
+        pass
+    
+
+class Loader:
+    def __init__(self, IM, ST):
         self.TargetImport = IM
         self.TargetScript = ST 
-        self.Path = PATH
 
     def GetImport(self):
         try:
-            self.Import = importlib.import_module(self.TargetImport) 
-        except ModuleNotFoundError: 
+            with open(self.TargetImport, "r") as file:
+                self.Import = file.read()
+        except (ModuleNotFoundError, FileNotFoundError): 
             TypeError("File is not found")  
-            return self.Import == None
+            self.Import = False
+        return ast.parse(self.Import)
 
-    def LoadImport(self):
-        if hasattr(self.Import, "__all__"): 
-            self.Items = self.Import.__all__
-        else:
-            self.Items = [k for k in dir(self.Import) if not k.startswith("_")]
-        return self.Items
-
-    def LoadScript(self):
-        pass
- 
-class HandleNode:
-    def __init__(self, TargetScript, TargetArea):
-        self.TargetScript = TargetScript
-        self.TargetArea = TargetArea
-
-    def LoadTarget(self):
-        
-
-        
-
-class Conditions: 
-    def __init__(self, Cons, ST, TG):
-        self.Cons = Cons 
-        self.TargetScript = ST
-        self.Target = TG
-
-        self.TargetGlobal = sys.modules[self.TargetScript].__dict__
+    def GetScript(self):
+        try:
+            self.TargetRam = sys.modules[self.TargetScript]
+        except ModuleNotFoundError: 
+            self.TargetRam = False 
+            raise TypeError("Module is not found in RAM")
     
+class Importer:
+    def __init__(self, TargetScript, ImportTree, WantedItems):
+        self.TargetScript = TargetScript
+        self.ImportTree = ImportTree
+        self.WantedItems = WantedItems
+ 
+    def Compile(self):
+        self.SelectedItems = []
+        for Item in self.ImportTree.body:
+            if isinstance(Item, ast.FunctionDef) or isinstance(Item, ast.ClassDef):
+                for Name in self.WantedItems:
+                    if Name == Item.name:
+                        self.SelectedItems.append(Item)
+                        
 
-    def CreateCon():
+        NewcodeInfo = ast.Module(body=self.SelectedItems, type_ignores=[])
+        Newcode = compile(NewcodeInfo, filename="<ast>", mode="exec")
 
-        if not self.
-        pass
+        exec(Newcode, self.TargetScript.__dict__)
+  
+        return self.TargetScript
 
-    def DeleteCon():
-        pass 
+
+
+                
+
+
+
+
+
+
+
+                 
  
         
