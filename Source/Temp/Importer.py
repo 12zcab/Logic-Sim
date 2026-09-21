@@ -1,71 +1,52 @@
 # This acts as an importer mid scripts or provide a greater organization of imported items
-# The ram version of the target script will be imported items from the script that get sent to target
-# Ad : it can reduce huge amount of code and save working memory
-# this also save the modified version of the script and easy to reverse or more changes in one single 
+# The ram version of the target script will be imported items from the script that get sent to RAM (Main WorkSpace)
+# Ad : it can reduce huge amount of code and save working memory ( even dy of pyth ?!?!)
+# this also save the modified version of the script and easy to reverse or more changes in one single (RAM VERSION ONLY)
 # Notes: i dont know what to add now, but this script can self call to add things too
 
+# Description about how the code, so first, only one "object" is in the hand of the communciator while containing other created "objects", 
+# this make things easy to reuse. Like processor for same script, import yet different purpose each time
+
 import ast, sys
+from Temp import Importer
 
-class Communciator:
-    def __init__(self, ST, IM):
-        self.Loader = Loader(IM, ST) 
-        self.Import = self.Loader.GetImport()
-        self.TargetScript = self.Loader.GetScript()
 
-    def Completion(self, Target=None):
-        if not self.Loader or not self.Import:
-            return print("Data is not enough for further execution")
+class ObjectInit():
+    def __init__(self, RAMScript, ImportFile, conditions=None):
+        self.Script = Loader.LoadScript(RAMScript)
+        self.Import = Loader.LoadImport(ImportFile)
+        self.conditions = conditions 
+    def Override(self, Required):
+        pass
         
-        self.Importer = Importer(self.TargetScript, self.Import, Target)
-        return self.Importer.Compile()
 
-    def Deletion(self, Target=None):
-        self.NameSpace = sys.modules[self.ST].__dict__
-        for name in Target:
-            self.NameSpace[name]
-            print (f"{self.NameSpace[name]}" " has been deleted") 
-
- 
-class Loader:
-    def __init__(self, IM, ST):
-        self.TargetImport = IM 
-        self.TargetScript = ST 
-
-    def GetImport(self):
+class Loader():
+    @staticmethod
+    def GetScript(TargetScript):
         try:
-            with open(self.TargetImport, "r") as file:
-                self.Import = file.read()
-        except (ModuleNotFoundError, FileNotFoundError): 
-            TypeError("File is not found")  
-            self.Import = False
-        return ast.parse(self.Import) 
+            return sys.modules[TargetScript]
+        except FileNotFoundError or ModuleNotFoundError:
+            print("Module/Script not found in RAM")
+            return None 
 
-    def GetScript(self): 
+    def GetImport(TargetImport):
         try:
-            self.TargetRam = sys.modules[self.TargetScript]
-        except ModuleNotFoundError: 
-            self.TargetRam = False 
-            raise TypeError("Module is not found in RAM")
-         
-    
-class Importer:
-    def __init__(self, TargetScript, ImportTree, WantedItems):
-        self.TargetScript = TargetScript
-        self.ImportTree = ImportTree
-        self.WantedItems = WantedItems
- 
-    def Compile(self):
-        self.SelectedItems = []
-        for Item in self.ImportTree.body:
-            if isinstance(Item, ast.FunctionDef) or isinstance(Item, ast.ClassDef):
-                for Name in self.WantedItems:
-                    if Name == Item.name:
-                        self.SelectedItems.append(Item)
-                        
+            with open(TargetImport, "r") as file:
+                return file
+        except FileNotFoundError:
+            print("Import not found")
+            return None 
 
-        NewcodeInfo = ast.Module(body=self.SelectedItems, type_ignores=[])
-        Newcode = compile(NewcodeInfo, filename="<ast>", mode="exec")
+    def LoadImporter(self):
+        pass
 
-        exec(Newcode, self.TargetScript.__dict__)  
-  
-        return self.TargetScript
+
+class Processor(): 
+    def __init__(self, ImportRam, ScriptRam, conditions):
+        self.ImportRam = ImportRam
+        self.ScriptRam = ScriptRam
+        self.conditions = conditions
+
+    def CreateConditions(self):
+        pass
+        
