@@ -1,0 +1,450 @@
+C:\Users\user\Documents\LogicSim\Source>python -m modules.Verilog
+[*] Parsing to pure gate netlist: C:/Users/user/Documents/LogicSim/Source/register.v
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.69 (git sha1 9f75ca1f9, Release, Clang /workspace/YoWASP/yosys/wasi-sdk-33.0-x86_64-linux/share/cmake/../..//bin/clang++ 22.1.0)
+
+-- Running command `read_verilog C:/Users/user/Documents/LogicSim/Source/register.v' --
+
+1. Executing Verilog-2005 frontend: C:/Users/user/Documents/LogicSim/Source/register.v
+Parsing Verilog input from `C:/Users/user/Documents/LogicSim/Source/register.v' to AST representation.
+Generating RTLIL representation for module `\reg8bit'.
+Successfully finished Verilog frontend.
+
+-- Running command `hierarchy -auto-top' --
+
+2. Executing HIERARCHY pass (managing design hierarchy).
+
+2.1. Finding top of design hierarchy..
+root of   0 design levels: reg8bit             
+Automatically selected reg8bit as design top module.
+
+2.2. Analyzing design hierarchy..
+Top module:  \reg8bit
+
+2.3. Analyzing design hierarchy..
+Top module:  \reg8bit
+Removed 0 unused modules.
+
+-- Running command `proc; opt; memory; pmuxtree; techmap; simplemap; splitcells; dfflegalize -cell $_DFF_P_ 0 -cell $_DFF_PP0_ 0; abc -g gates; opt; check' --
+
+3. Executing PROC pass (convert processes to netlists).
+
+3.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+3.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 1 switch rules as full_case in process $proc$C:/Users/user/Documents/LogicSim/Source/register.v:9$1 in module reg8bit.
+Removed a total of 0 dead cases.
+
+3.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 0 redundant assignments.
+Promoted 0 assignments to connections.
+
+3.4. Executing PROC_INIT pass (extract init attributes).
+
+3.5. Executing PROC_ARST pass (detect async resets in processes).
+Found async reset \rst in `\reg8bit.$proc$C:/Users/user/Documents/LogicSim/Source/register.v:9$1'.
+
+3.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~1 debug messages>
+
+3.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `\reg8bit.$proc$C:/Users/user/Documents/LogicSim/Source/register.v:9$1'.
+     1/1: $0\q[7:0]
+
+3.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+3.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `\reg8bit.\q' using process `\reg8bit.$proc$C:/Users/user/Documents/LogicSim/Source/register.v:9$1'.
+  created $adff cell `$procdff$6' with positive edge clock and positive level reset.
+
+3.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+3.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 1 empty switch in `\reg8bit.$proc$C:/Users/user/Documents/LogicSim/Source/register.v:9$1'.
+Removing empty process `reg8bit.$proc$C:/Users/user/Documents/LogicSim/Source/register.v:9$1'.
+Cleaned up 1 empty switch.
+
+3.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module reg8bit.
+<suppressed ~1 debug messages>
+
+4. Executing OPT pass (performing simple optimizations).
+
+4.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module reg8bit.
+
+4.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\reg8bit'.
+Computing hashes of 2 cells of `\reg8bit'.
+Finding duplicate cells in `\reg8bit'.
+Removed a total of 0 cells.
+
+4.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \reg8bit..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~2 debug messages>
+
+4.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \reg8bit.
+Performed a total of 0 changes.
+
+4.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\reg8bit'.
+Computing hashes of 2 cells of `\reg8bit'.
+Finding duplicate cells in `\reg8bit'.
+Removed a total of 0 cells.
+
+4.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $procdff$6 ($adff) from module reg8bit (D = \d, Q = \q).
+
+4.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \reg8bit..
+Removed 1 unused cells and 4 unused wires.
+<suppressed ~2 debug messages>
+
+4.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module reg8bit.
+
+4.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+4.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \reg8bit..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+4.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \reg8bit.
+Performed a total of 0 changes.
+
+4.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\reg8bit'.
+Computing hashes of 1 cells of `\reg8bit'.
+Finding duplicate cells in `\reg8bit'.
+Removed a total of 0 cells.
+
+4.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+4.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \reg8bit..
+
+4.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module reg8bit.
+
+4.16. Finished fast OPT passes. (There is nothing left to do.)
+
+5. Executing MEMORY pass.
+
+5.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+5.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+5.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+
+5.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+5.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+
+5.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \reg8bit..
+
+5.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+
+5.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+5.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \reg8bit..
+
+5.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+5.11. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+
+6. Executing PMUXTREE pass.
+
+7. Executing TECHMAP pass (map to technology primitives).
+
+7.1. Executing Verilog-2005 frontend: /share/techmap.v
+Parsing Verilog input from `/share/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+7.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $adffe.
+No more expansions possible.
+<suppressed ~78 debug messages>
+
+8. Executing SIMPLEMAP pass (map simple cells to gate primitives).
+
+9. Executing SPLITCELLS pass (splitting up multi-bit cells).
+
+10. Executing DFFLEGALIZE pass (convert FFs and LATCHes to types supported by the target).
+
+11. Executing ABC pass (technology mapping using ABC).
+
+11.1. Extracting gate netlist of module `\reg8bit' to `<abc-temp-dir>/input.blif'..
+
+
+Analyse Result:
+Creator:Yosys 0.69 (git sha1 9f75ca1f9, Release, Clang /workspace/YoWASP/yosys/wasi-sdk-33.0-x86_64-linux/share/cmake/../..//bin/clang++ 22.1.0)
+Module Number:1
+  Module Name:reg8bit
+  Module Src:C:/Users/user/Documents/LogicSim/Source/register.v:1.1-17.10
+  It Have 5 IO Ports.
+    Port:clk input, have 1 Bit(s)
+Connected to Net: 2
+    Port:rst input, have 1 Bit(s)
+Connected to Net: 3
+    Port:en input, have 1 Bit(s)
+Connected to Net: 4
+    Port:d input, have 8 Bit(s)
+Connected to Net: 5 6 7 8 9 10 11 12
+    Port:q output, have 8 Bit(s)
+Connected to Net: 13 14 15 16 17 18 19 20
+  It Have 32 Logic Cells.
+    Unamed Cell:
+      Cell Type: NAND
+         A input   11
+         B input   4
+         Y output   21
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   19
+         Y output   22
+    Unamed Cell:
+      Cell Type: NAND
+         A input   21
+         B input   22
+         Y output   23
+    Unamed Cell:
+      Cell Type: NAND
+         A input   4
+         B input   10
+         Y output   24
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   18
+         Y output   25
+    Unamed Cell:
+      Cell Type: NAND
+         A input   24
+         B input   25
+         Y output   26
+    Unamed Cell:
+      Cell Type: NAND
+         A input   4
+         B input   9
+         Y output   27
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   17
+         Y output   28
+    Unamed Cell:
+      Cell Type: NAND
+         A input   27
+         B input   28
+         Y output   29
+    Unamed Cell:
+      Cell Type: NAND
+         A input   4
+         B input   8
+         Y output   30
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   16
+         Y output   31
+    Unamed Cell:
+      Cell Type: NAND
+         A input   30
+         B input   31
+         Y output   32
+    Unamed Cell:
+      Cell Type: NAND
+         A input   4
+         B input   7
+         Y output   33
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   15
+         Y output   34
+    Unamed Cell:
+      Cell Type: NAND
+         A input   33
+         B input   34
+         Y output   35
+    Unamed Cell:
+      Cell Type: NAND
+         A input   4
+         B input   6
+         Y output   36
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   14
+         Y output   37
+    Unamed Cell:
+      Cell Type: NAND
+         A input   36
+         B input   37
+         Y output   38
+    Unamed Cell:
+      Cell Type: NAND
+         A input   4
+         B input   5
+         Y output   39
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   13
+         Y output   40
+    Unamed Cell:
+      Cell Type: NAND
+         A input   39
+         B input   40
+         Y output   41
+    Unamed Cell:
+      Cell Type: NAND
+         A input   4
+         B input   12
+         Y output   42
+    Unamed Cell:
+      Cell Type: ORNOT
+         A input   4
+         B input   20
+         Y output   43
+    Unamed Cell:
+      Cell Type: NAND
+         A input   42
+         B input   43
+         Y output   44
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   41
+         Q output   13
+         R input   3
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   38
+         Q output   14
+         R input   3
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   35
+         Q output   15
+         R input   3
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   32
+         Q output   16
+         R input   3
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   29
+         Q output   17
+         R input   3
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   26
+         Q output   18
+         R input   3
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   23
+         Q output   19
+         R input   3
+    Unamed Cell:
+      Cell Type: DFF PP0
+         C input   2
+         D input   44
+         Q output   20
+         R input   3
+    Named Nets:
+      clk   2
+      d   5 6 7 8 9 10 11 12
+      en   4
+      q   13 14 15 16 17 18 19 20
+      rst   3
+
+
+
+with:
+
+def analyse_file(filename):
+    data = parse_verilog_to_pure_gates(os.path.abspath(filename))
+    data = BetterDict(data)
+    print("\n\nAnalyse Result:")
+    print("Creator:" + str(data["creator"]))
+    print("Module Number:" + str(len(data["modules"].keys())))
+    for moduleKey,moduleValue in data["modules"].items():
+        print("  Module Name:" + str(moduleKey))
+        #print("    Module Top:" + str(moduleValue["attributes"]["top"]))
+        print("  Module Src:" + str(moduleValue["attributes"]["src"]))
+        print("  It Have " + str(len(moduleValue["ports"].keys())) + " IO Ports.")
+        for portKey,portValue in moduleValue["ports"].items():
+            print("    Port:" + str(portKey) + " " + str(portValue["direction"]) + ", have " + str(len(portValue["bits"])) + " Bit(s)")
+            print("Connected to Net:",*portValue["bits"])
+        print("  It Have " + str(len(moduleValue["cells"].keys())) + " Logic Cells.")
+        for cellKey,cellValue in moduleValue["cells"].items():
+            if cellValue["hide_name"] == 1:
+                print("    Unamed Cell:")
+            else:
+                print("    " + cellKey + ":")
+            cellType = re.findall(r"_(\w+?)(?=_)", cellValue["type"])
+            print("      Cell Type:" , *cellType)
+            for (PinName, pinDirection), (PinName2, pinConnection) in zip(cellValue["port_directions"].items(), cellValue["connections"].items()):
+                print("        ",PinName2, pinDirection, " " , *pinConnection)
+        print("    Named Nets:")
+        for netKey,netValue in moduleValue["netnames"].items():
+            if netValue["hide_name"] == 0:
+                print("     ",netKey," ",*netValue["bits"])
+    print("\n\n")
+    
+analyse_file("register.v")
