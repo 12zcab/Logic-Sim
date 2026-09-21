@@ -1,4 +1,4 @@
-from core.object import *
+from core import *
 from tabulate import tabulate
 
 def Logger(Name,IOArray,MonitoredIO):

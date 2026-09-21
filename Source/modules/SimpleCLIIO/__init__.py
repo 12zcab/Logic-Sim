@@ -1,4 +1,4 @@
-from core.object import *
+from core import *
 import keyboard
 def keyboardTrack(self):
     self.IO["OUT"].Value = keyboard.is_pressed(self.Key)

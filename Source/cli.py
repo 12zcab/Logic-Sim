@@ -6,7 +6,7 @@ run Speed [Tick]    Speed is must input but Tick is optional(Tick = how many tic
 Ctrl-C to Escape from Run Loop
 """
 
-from core.object import *
+from core import *
 from modules import *
 import time
 import re
@@ -59,6 +59,7 @@ while True:
             mainBox.addObject(varVault[inString.split(maxsplit=2)[-2]])
         case "run":
             mainBox.expandNet()
+            mainBox.init()
             tickFlag = len(inString.split(' ')) >= 3
             total_ticks = 0
             if tickFlag:
@@ -71,7 +72,7 @@ while True:
                 while remainTick > 0:
                     total_ticks += 1
                     time.sleep(float(sleepTick))
-                    mainBox.update()
+                    mainBox.stepDeltaLoop()
                     if tickFlag:
                         remainTick -= 1
             except KeyboardInterrupt:

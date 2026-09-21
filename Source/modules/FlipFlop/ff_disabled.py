@@ -25,7 +25,7 @@ keyc.IO.OUT >> dff.IO.CLK
 create logger Logger("logger",["IND","INC","D","C","Q"],[keyd.IO.OUT,keyc.IO.OUT,dff.IO.D,dff.IO.CLK,dff.IO.Q])
 """
 
-from core.object import *
+from core import *
 from modules.LogicGate import *
 
 class BasicDFF(Module):

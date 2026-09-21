@@ -1,4 +1,4 @@
-from core.object import *
+from core import *
 from modules.LogicGate import *
 from .parser import *
 import re

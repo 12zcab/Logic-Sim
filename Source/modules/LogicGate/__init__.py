@@ -1,4 +1,4 @@
-from core.object import *
+from core import *
 
 class NotGate(Component):
     def __init__(self, Name):

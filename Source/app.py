@@ -1,1 +1,1 @@
-import core.cli
+import cli
