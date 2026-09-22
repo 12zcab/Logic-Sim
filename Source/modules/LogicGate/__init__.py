@@ -1,5 +1,7 @@
 from core import *
 
+
+# NEED TO BECHANGED FOR 4 STATE Version
 class NotGate(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A"), IO("OUT")], lambda self: setattr(self.IO.OUT, "Value", not self.IO.A.Value))

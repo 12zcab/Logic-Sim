@@ -75,6 +75,8 @@ while True:
                     mainBox.stepDeltaLoop()
                     if tickFlag:
                         remainTick -= 1
+                    if not mainBox.scheduler.advanceToNext():
+                        break
             except KeyboardInterrupt:
                 print("[LOGICSIM] Run Loop Escaped")
                 clear_terminal_input_buffer()

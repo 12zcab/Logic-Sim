@@ -55,7 +55,7 @@ Output:
 Eval Error in [asd]: 
 name 'asd' is not defined
 None
->create notgate NOTGate("Not")
+>create notgate NotGate("Not")
 >create logger Logger("logger",["SignalIn","SignalOut"],[notgate.IO.A,notgate.IO.OUT])
 >notgate.IO.A >> notgate.IO.B
 Eval Error in [varVault["notgate"].IO.A >> varVault["notgate"].IO.B]: 
