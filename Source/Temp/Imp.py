@@ -46,7 +46,7 @@ class Loader:
         except ModuleNotFoundError: 
             self.TargetRam = False 
             raise TypeError("Module is not found in RAM")
-         
+               
     
 class Importer:
     def __init__(self, TargetScript, ImportTree, WantedItems):

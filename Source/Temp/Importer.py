@@ -57,7 +57,7 @@ class Loader():
         for Im in Import:
             if Target: 
                 for Tar in Target:
-                    if hasattr(Im, Tar):
+                    if Im.name == Tar:
                         FoundItems.append(Im)
             else:
                 FoundItems.append(Im)
@@ -67,20 +67,34 @@ class Loader():
 
 class Handler():
 
-    def __init__(self, Import=None, Receiver=None,  Modification=None):
+    def __init__(self, Import=None, Receiver=None):
         self.AllImport = Import
         self.Receiver = Receiver
-        self.Modification = Modification
         
     # Different Target for the same  
     def Connect(self, Yesno, Target=None):
         FoundImport = Loader.SearchingTarget(self.AllImport, Target)
-        for item in FoundImport:
-            for Receiver in self.Receiver: 
-                if hasattr(Receiver, f"{item}"):
-                    if not Yesno: 
-                       delattr(Receiver, f"{item}") 
-                    elif Yesno:
-                       setattr(Receiver, f"{item}", item) 
+        for Receiver in self.Receiver:
+            for Import in FoundImport:
+                if not hasattr(Receiver, f"{Import}"):
+                    setattr(Receiver, f"{Import}", Import)
+                elif not Yesno:
+                    if hasattr(Receiver, f"{Import}"):
+                        delattr(Receiver, f"{Import}")
+                        
+
+
+
+        
+
+
+            
+
+
+
+
+
+        
+                
     
 
