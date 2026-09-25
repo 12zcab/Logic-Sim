@@ -7,46 +7,80 @@
 # Description about how the code, so first, only one "object" is in the hand of the communciator while containing other created "objects", 
 # this make things easy to reuse. Like processor for same script, import yet different purpose each time
 
-import ast, sys
-from Temp import Importer
+import sys, pkgutil, builtins
+import types
 
+def Initize():
+    pass
 
-class ObjectInit():
-    def __init__(self, RAMScript, ImportFile, conditions=None):
-        self.Script = Loader.LoadScript(RAMScript)
-        self.Import = Loader.LoadImport(ImportFile)
-        self.conditions = conditions 
-    def Override(self, Required):
-        pass
+class Center():
+    def __init__(self, Import, Receiver=None, Modification=None):
+        self.Mod = Modification
+        if Receiver is __path__:
+            self.Script = Loader.RetreievFromPath(Receiver)
+        else:
+            self.Script = Loader.RetreiveScript(Receiver)
+
+        if Import is __path__:
+            self.Import = Loader.RetreievFromPath(Import)
+        else:
+            self.Import = Loader.RetreiveScript(Import)
+
+        self.Handler = Handler()
         
-
 class Loader():
+    
     @staticmethod
-    def GetScript(TargetScript):
-        try:
-            return sys.modules[TargetScript]
-        except FileNotFoundError or ModuleNotFoundError:
-            print("Module/Script not found in RAM")
-            return None 
+    def RetreiveScript(Target):
+        FoundModule = []
+        for Tar in Target:
+            try:
+                Found = sys.modules[Tar]
+            except ModuleNotFoundError:
+                Found = sys.modules[types.ModuleType(Tar)]
 
-    def GetImport(TargetImport):
-        try:
-            with open(TargetImport, "r") as file:
-                return file
-        except FileNotFoundError:
-            print("Import not found")
-            return None 
+            FoundModule.append(Found) 
 
-    def LoadImporter(self):
-        pass
+    def RetreievFromPath(Path):
+        FoundModule = []
+        for package, modname, _ in pkgutil.iter_importers(Path):
+            FullModName = f"{package}.{modname}"
+            try:
+                Mod = sys.modules[FullModName]
+            except ModuleNotFoundError:
+                Mod =  sys.modules[types.ModuleType(FullModName)]            
+            FoundModule.append(Mod)
+        return Loader.RetreiveScript(FoundModule)
+
+    def SearchingTarget(Import, Target=None):
+        FoundItems = []
+        for Im in Import:
+            if Target: 
+                for Tar in Target:
+                    if hasattr(Im, Tar):
+                        FoundItems.append(Im)
+            else:
+                FoundItems.append(Im)
+            
+        return FoundItems
 
 
-class Processor(): 
-    def __init__(self, ImportRam, ScriptRam, conditions):
-        self.ImportRam = ImportRam
-        self.ScriptRam = ScriptRam
-        self.conditions = conditions
+class Handler():
 
-    def CreateConditions(self):
-        pass
+    def __init__(self, Import=None, Receiver=None,  Modification=None):
+        self.AllImport = Import
+        self.Receiver = Receiver
+        self.Modification = Modification
         
+    # Different Target for the same  
+    def Connect(self, Yesno, Target=None):
+        FoundImport = Loader.SearchingTarget(self.AllImport, Target)
+        for item in FoundImport:
+            for Receiver in self.Receiver: 
+                if hasattr(Receiver, f"{item}"):
+                    if not Yesno: 
+                       delattr(Receiver, f"{item}") 
+                    elif Yesno:
+                       setattr(Receiver, f"{item}", item) 
+    
+

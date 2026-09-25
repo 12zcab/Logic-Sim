@@ -9,9 +9,9 @@ Ctrl-C to Escape from Run Loop
 from core.object import *
 from modules import *
 import time
-import re
+import re 
 import sys
-import traceback
+import traceback 
 def safeEval(expression, context=None):
     try:
         result = eval(expression, context)
@@ -19,7 +19,7 @@ def safeEval(expression, context=None):
     except Exception as e:
         print(f"Eval Error in [{expression}]: \n{e}")
         return "Error"
-def clear_terminal_input_buffer():
+def clear_terminal_input_buffer(): 
     try:
         import msvcrt
         while msvcrt.kbhit():
@@ -37,7 +37,7 @@ def safetyReplace(text, Dict):
         key = match.group(0)
         return f'varVault["{key}"]'
     return pattern.sub(replace_fn, text)
-
+ 
 
 title = r""".____                 .__         _________.__         
 |    |    ____   ____ |__| ____  /   _____/|__| _____  
@@ -47,13 +47,13 @@ title = r""".____                 .__         _________.__
         \/    /_____/         \/        \/          \/ """
 mainBox = SimBox([])
 varVault = {}
-print(title)
-while True:
-    inString = input(">")
-    if inString == "":
+print(title) 
+while True:  
+    inString = input(">") 
+    if inString == "":  
         continue
-    match inString.split(maxsplit=1)[0].lower():
-        case "create":
+    match inString.split(maxsplit=1)[0].lower(): 
+        case "create": 
             Value = safeEval(safetyReplace(inString.split(maxsplit=2)[-1],varVault))
             varVault[inString.split(maxsplit=2)[-2]] = Value
             mainBox.addObject(varVault[inString.split(maxsplit=2)[-2]])
@@ -65,7 +65,7 @@ while True:
                 remainTick = int(inString.split(' ')[2])
             else:
                 remainTick = 1
-            sleepTick = inString.split(' ', 2)[1]
+            sleepTick = inString.split(' ', 2)[1] 
             start_time = time.perf_counter()
             try:
                 while remainTick > 0: 
