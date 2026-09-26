@@ -7,15 +7,14 @@
 # Description about how the code, so first, only one "object" is in the hand of the communciator while containing other created "objects", 
 # this make things easy to reuse. Like processor for same script, import yet different purpose each time
 
-import sys, pkgutil, builtins
+import pkgutil, importlib,  ast
 import types
 
 def Initize():
     pass
 
 class Center():
-    def __init__(self, Import, Receiver=None, Modification=None):
-        self.Mod = Modification
+    def __init__(self, Import, Receiver):
         if Receiver is __path__:
             self.Script = Loader.RetreievFromPath(Receiver)
         else:
@@ -26,32 +25,33 @@ class Center():
         else:
             self.Import = Loader.RetreiveScript(Import)
 
-        self.Handler = Handler()
+        self.Handler = Handler(self.Import, self.Script)
         
 class Loader():
     
-    @staticmethod
+    @staticmethod 
     def RetreiveScript(Target):
-        FoundModule = []
+        FoundModule = [] 
         for Tar in Target:
-            try:
-                Found = sys.modules[Tar]
-            except ModuleNotFoundError:
-                Found = sys.modules[types.ModuleType(Tar)]
+            Found = importlib.import_module(Tar)
+            if not Found ==  None:
+               FoundModule.append(Found) 
 
-            FoundModule.append(Found) 
+        return FoundModule
+    
+    @staticmethod 
+    def RetreievFromPath(TargetPath, Prefix=None):
+        Target = []
+        Path = [TargetPath] if isinstance(TargetPath, str) else TargetPath
 
-    def RetreievFromPath(Path):
-        FoundModule = []
-        for package, modname, _ in pkgutil.iter_importers(Path):
-            FullModName = f"{package}.{modname}"
-            try:
-                Mod = sys.modules[FullModName]
-            except ModuleNotFoundError:
-                Mod =  sys.modules[types.ModuleType(FullModName)]            
-            FoundModule.append(Mod)
-        return Loader.RetreiveScript(FoundModule)
+        for _, ModName, _ in pkgutil.iter_modules(Path):
+            FullName = f"{Prefix}{ModName}" if not Prefix == None else ModName
 
+            Target.append(FullName)
+
+        Loader.RetreiveScript(Target)
+
+    @staticmethod 
     def SearchingTarget(Import, Target=None):
         FoundItems = []
         for Im in Import:
@@ -61,40 +61,47 @@ class Loader():
                         FoundItems.append(Im)
             else:
                 FoundItems.append(Im)
-            
+             
         return FoundItems
+
+
+
+class Modifier:
+    @staticmethod
+
+    def Applied(ModInfo):
+        ModInfo   
+
+    def Delete():
+        pass
 
 
 class Handler():
 
-    def __init__(self, Import=None, Receiver=None):
+    def __init__(self, Import, Receiver):
         self.AllImport = Import
         self.Receiver = Receiver
-        
+         
     # Different Target for the same  
-    def Connect(self, Yesno, Target=None):
-        FoundImport = Loader.SearchingTarget(self.AllImport, Target)
-        for Receiver in self.Receiver:
-            for Import in FoundImport:
-                if not hasattr(Receiver, f"{Import}"):
+    def TargetImport(self, Target):
+        self.FoundImport = Loader.SearchingTarget(self.AllImport, Target)
+
+    def Connection(self, Yesno, Target=None):
+        self.FoundImport = Loader.SearchingTarget(self.AllImport, Target)
+        for Receiver in self.Receiver: 
+            for Import in self.FoundImport:
+                if not hasattr(Receiver, f"{Import}"):  
                     setattr(Receiver, f"{Import}", Import)
                 elif not Yesno:
                     if hasattr(Receiver, f"{Import}"):
                         delattr(Receiver, f"{Import}")
-                        
-
-
-
-        
-
-
-            
-
-
-
-
-
-        
-                
-    
-
+       
+ 
+    def Modification(self, YesNo, TargetPart):
+        for Im in self.FoundImport:
+            for Tar, ModNeeded in TargetPart:
+                if Tar == Im.name:
+                    for Request in ModNeeded:
+                        for ModName, ModInfo in self.Modification: 
+                            if Request == ModName:
+                                Modifier.Applied(ModInfo, Im)
