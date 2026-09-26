@@ -76,18 +76,18 @@ def parseFileIntoObject(filename):
                 case "NAND":
                     IndividualComponent = NandGate(cellKey)
                 case "ORNOT":
-                    IndividualComponent = NorGate(cellKey)
+                    IndividualComponent = OrNotGate(cellKey)
                 case "DFF":
                     IndividualComponent = PP0_DFF(cellKey)
             for (PinName, pinConnection) in cellValue["connections"].items():
-                IndividualComponent.IO[PinName].connectNet(Nets[pinConnection[0]])
+                IndividualComponent.IO[PinName].connectNet(Nets[str(moduleKey) + "_" + pinConnection[0]])
             InnerBlocks.append(IndividualComponent)
         print("    Named Nets:")
         for netKey,netValue in moduleValue["netnames"].items():
             if netValue["hide_name"] == 0:
                 print("     ",netKey," ",*netValue["bits"])
             for id in netValue["bits"]:
-                Nets[id].Name = netKey
+                Nets[str(moduleKey) + "_" + str(id)].Name = netKey
         resultModules.append(Module(str(moduleKey),IOArray,InnerBlocks))
     print("\n\n")
     return resultModules[0]
@@ -96,17 +96,17 @@ def parseFileIntoObject(filename):
 
 """
 create register parseFileIntoObject("register.v")
-create clkbt keyboard_button("clk","c")
-create rstbt keyboard_button("rst","r")
-create enbt keyboard_button("en","e")
-create d0 keyboard_button("d0","a")
-create d1 keyboard_button("d1","s")
-create d2 keyboard_button("d2","d")
-create d3 keyboard_button("d3","f")
-create d4 keyboard_button("d4","g")
-create d5 keyboard_button("d5","h")
-create d6 keyboard_button("d6","j")
-create d7 keyboard_button("d7","k")
+create clkbt keyboard_button("clk","[")
+create rstbt keyboard_button("rst","]")
+create enbt keyboard_button("en",'\\')
+create d0 keyboard_button("d0","1")
+create d1 keyboard_button("d1","2")
+create d2 keyboard_button("d2","3")
+create d3 keyboard_button("d3","4")
+create d4 keyboard_button("d4","5")
+create d5 keyboard_button("d5","6")
+create d6 keyboard_button("d6","7")
+create d7 keyboard_button("d7","8")
 clkbt.IO.OUT >> register.IO.clk
 rstbt.IO.OUT >> register.IO.rst
 enbt.IO.OUT >> register.IO.en

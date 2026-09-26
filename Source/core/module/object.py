@@ -47,6 +47,8 @@ class IO:
 
     def connectNet(self, net):
         if self.Net == net:
+            if net and self not in net.IO:
+                net.add(self)
             return
         if self.Net:
             self.Net.remove(self)
@@ -59,25 +61,23 @@ class IO:
             newNet = Net()
             self.Net = newNet
             newNet.add(self)
-
     def connect(self, subject):
         if not isinstance(subject, IO):
             raise TypeError(f"Cannot connect IO to {type(subject)}")
-        if self.Net is None and subject.Net is None:
-            new_net = Net()
-            self.connectNet(new_net)
-            subject.connectNet(new_net)
+        if self is subject:
             return
-        if self.Net is not None and subject.Net is None:
-            subject.connectNet(self.Net)
-            return
-        if self.Net is None and subject.Net is not None:
-            self.connectNet(subject.Net)
-            return
+        if self.Net is None:
+            self.Net = Net()
+        if self not in self.Net.IO:
+            self.Net.add(self)
+        if subject.Net is None:
+            subject.Net = Net()
+        if subject not in subject.Net.IO:
+            subject.Net.add(subject)
         if self.Net != subject.Net:
-            self.Net.mergeNets(subject.Net)
-
-
+            target_net = subject.Net
+            self.Net.mergeNets(target_net)
+            subject.connectNet(self.Net)
 class Net:
     def __init__(self, Name=None):
         self.IO = []
@@ -130,7 +130,6 @@ class Net:
                 self.IO.append(io)
         target_net.IO.clear()
         self.resolve()
-
 
 class Component:
     def __init__(self, Name, IOArray, updateFunction=None):

@@ -106,3 +106,11 @@ class XnorGate(Component):
             [IO("A"), IO("B"), IO("Y")], 
             lambda self: setattr(self.IO.Y, "Value", NOT_LUT.get(XOR_LUT.get((self.IO.A.Value, self.IO.B.Value), Logic.X), Logic.X))
         )
+
+class OrNotGate(Component):
+    def __init__(self, Name):
+        super().__init__(
+            Name,
+            [IO("A"),IO("B"), IO("Y")],
+            lambda self: setattr(self.IO.Y, "Value", OR_LUT.get((self.IO.A.Value,NOT_LUT.get(self.IO.B.Value),Logic.X), Logic.X))
+        )
