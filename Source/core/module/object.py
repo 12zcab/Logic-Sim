@@ -46,11 +46,13 @@ class IO:
         raise TypeError(f"Cannot connect IO to {type(other)}")
 
     def connectNet(self, net):
+        if self.Net == net:
+            return
         if self.Net:
-            self.disconnectNet()
+            self.Net.remove(self)
         self.Net = net
-        net.add(self)
-
+        if net:
+            net.add(self)
     def disconnectNet(self):
         if self.Net:
             self.Net.remove(self)
@@ -59,17 +61,21 @@ class IO:
             newNet.add(self)
 
     def connect(self, subject):
-        if self.Net and subject.Net:
-            if self.Net != subject.Net:
-                self.Net.mergeNets(subject.Net)
-        elif self.Net:
+        if not isinstance(subject, IO):
+            raise TypeError(f"Cannot connect IO to {type(subject)}")
+        if self.Net is None and subject.Net is None:
+            new_net = Net()
+            self.connectNet(new_net)
+            subject.connectNet(new_net)
+            return
+        if self.Net is not None and subject.Net is None:
             subject.connectNet(self.Net)
-        elif subject.Net:
+            return
+        if self.Net is None and subject.Net is not None:
             self.connectNet(subject.Net)
-        else:
-            newNet = Net()
-            self.connectNet(newNet)
-            subject.connectNet(newNet)
+            return
+        if self.Net != subject.Net:
+            self.Net.mergeNets(subject.Net)
 
 
 class Net:
@@ -115,20 +121,15 @@ class Net:
         for io in list(self.IO):
             io.Net = None
         self.IO.clear()
-
-    def mergeNets(self, subject):
-        if subject == self:
+    def mergeNets(self, target_net):
+        if target_net is None or target_net == self:
             return
-        for io in list(subject.IO):
-            self.add(io)
+        for io in list(target_net.IO):
             io.Net = self
-        subject.IO.clear()
-        destroyNet(subject)
-
-
-def destroyNet(net):
-    if net:
-        net.prepareDelete()
+            if io not in self.IO:
+                self.IO.append(io)
+        target_net.IO.clear()
+        self.resolve()
 
 
 class Component:
