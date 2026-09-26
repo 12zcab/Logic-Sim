@@ -173,8 +173,7 @@ class Module(Component):
                     NetArray.append(net)
         return NetArray
     def update(self):
-        for block in self.child.values():
-            block.update()
+        pass
 
 class SimBox:
     def __init__(self, Objects, MAX_DELTA_CYCLES=30):
@@ -235,7 +234,7 @@ class SimBox:
             for net in affectedNets:
                 if net.resolve():
                     for io in net.IO:
-                        if io.parent:
+                        if io.parent and not isinstance(io.parent, Module):
                             affectedComponent.add(io.parent)
             for comp in affectedComponent:
                 comp.update()
