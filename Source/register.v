@@ -15,7 +15,3 @@ module reg8bit (
     end
 
 endmodule
-
-
-
-https://pypi.org/project/yowasp-yosys/
