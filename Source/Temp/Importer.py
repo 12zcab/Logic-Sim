@@ -69,9 +69,9 @@ class Loader():
 class Modifier:
     @staticmethod
 
-    def Applied(ModInfo):
-        ModInfo   
-
+    def Applied(FoundInfo, TargetMod):
+        pass
+           
     def Delete():
         pass
 
@@ -97,11 +97,7 @@ class Handler():
                         delattr(Receiver, f"{Import}")
        
  
-    def Modification(self, YesNo, TargetPart):
-        for Im in self.FoundImport:
-            for Tar, ModNeeded in TargetPart:
-                if Tar == Im.name:
-                    for Request in ModNeeded:
-                        for ModName, ModInfo in self.Modification: 
-                            if Request == ModName:
-                                Modifier.Applied(ModInfo, Im)
+    def Modification(self, YesNo, Target, TargetMod):
+        if not isinstance(Target, dict): return print("Incorrect PARAMET")
+
+                            
