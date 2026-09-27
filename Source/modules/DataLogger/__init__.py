@@ -1,8 +1,8 @@
 from core.object import *
-from tabulate import tabulate
+from tabulate import tabulate 
 
 def Logger(Name,IOArray,MonitoredIO):
-    DictIO = {}
+    DictIO = {}     
     for i in range(len(IOArray)):
         DictIO[IOArray[i]] = IO(IOArray[i])
         DictIO[IOArray[i]].connect(MonitoredIO[i])
@@ -14,3 +14,8 @@ def doLog(self):
     for IOObj in self.IO.values():
         data[0].append(IOObj.Value)
     print(tabulate(data, headers=self.IO.keys(), tablefmt="grid"))
+
+
+## SUMMARIZE CHANGES FOR GUI
+ 
+ 

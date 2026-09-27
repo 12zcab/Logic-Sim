@@ -18,14 +18,16 @@ class Component:
             if io.Net is not None and io.Net not in NetArray:
                 NetArray.append(io.Net)
         return NetArray
+     
 
 
 class IO:
     def __init__(self, Name):
         self.Name = Name
-        self.Net = Net()
-        self.Net.add(self)
-
+        self._Value = False
+        self.futureValue = False  
+        self.Net = None
+    
     @property
     def Value(self):
         return self.Net._Value if self.Net else False
@@ -118,22 +120,23 @@ class Net:
             io.Net = self
         subject.IO.clear()  # CLEAR subject.IO before destruction to protect io.Net assignments
         destroyNet(subject)
-
-
-def destroyNet(net):
-    if net:
-        net.prepareDelete()
-
+ 
+def destroyNet(Net):
+    if Net:
+        Net.prepareDelete()
+        del Net
 
 class SimBox:
-    def __init__(self, Objects, Nets=None):
-        self.Objects = Objects
-        self.Nets = Nets if Nets is not None else []
-
+    def __init__(self, Objects, Nets=[]):
+        self.Objects = Objects 
+        self.Nets = Nets
+    def commitChange(self):
+        for Obj in self.Objects:
+            Obj.commitChange()
     def update(self):
         pending = []
-        for obj in self.Objects:
-            if getattr(obj, "isObserver", False):
+        for obj in self.Objects: 
+            if obj.isObserver:
                 pending.append(obj)
                 continue
             obj.update()

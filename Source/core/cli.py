@@ -9,9 +9,9 @@ Ctrl-C to Escape from Run Loop
 from core.object import *
 from modules import *
 import time
-import re
+import re 
 import sys
-import traceback
+import traceback 
 def safeEval(expression, context=None):
     try:
         result = eval(expression, context)
@@ -19,7 +19,7 @@ def safeEval(expression, context=None):
     except Exception as e:
         print(f"Eval Error in [{expression}]: \n{e}")
         return "Error"
-def clear_terminal_input_buffer():
+def clear_terminal_input_buffer(): 
     try:
         import msvcrt
         while msvcrt.kbhit():
@@ -29,7 +29,7 @@ def clear_terminal_input_buffer():
         while select.select([sys.stdin], [], [], 0.0)[0]:
             sys.stdin.read(1)
 def safetyReplace(text, Dict):
-    if not Dict:
+    if not Dict:     
         return text
     sorted_keys = sorted(Dict.keys(), key=len, reverse=True)
     pattern = re.compile(r'\b(' + '|'.join(map(re.escape, sorted_keys)) + r')\b')
@@ -37,7 +37,7 @@ def safetyReplace(text, Dict):
         key = match.group(0)
         return f'varVault["{key}"]'
     return pattern.sub(replace_fn, text)
-
+ 
 
 title = r""".____                 .__         _________.__         
 |    |    ____   ____ |__| ____  /   _____/|__| _____  
@@ -47,13 +47,13 @@ title = r""".____                 .__         _________.__
         \/    /_____/         \/        \/          \/ """
 mainBox = SimBox([])
 varVault = {}
-print(title)
-while True:
-    inString = input(">")
-    if inString == "":
+print(title) 
+while True:  
+    inString = input(">") 
+    if inString == "":  
         continue
-    match inString.split(maxsplit=1)[0].lower():
-        case "create":
+    match inString.split(maxsplit=1)[0].lower(): 
+        case "create": 
             Value = safeEval(safetyReplace(inString.split(maxsplit=2)[-1],varVault))
             varVault[inString.split(maxsplit=2)[-2]] = Value
             mainBox.addObject(varVault[inString.split(maxsplit=2)[-2]])
@@ -65,10 +65,10 @@ while True:
                 remainTick = int(inString.split(' ')[2])
             else:
                 remainTick = 1
-            sleepTick = inString.split(' ', 2)[1]
+            sleepTick = inString.split(' ', 2)[1] 
             start_time = time.perf_counter()
             try:
-                while remainTick > 0:
+                while remainTick > 0: 
                     total_ticks += 1
                     time.sleep(float(sleepTick))
                     mainBox.update()
@@ -77,7 +77,7 @@ while True:
             except KeyboardInterrupt:
                 print("[LOGICSIM] Run Loop Escaped")
                 clear_terminal_input_buffer()
-            end_time = time.perf_counter()
+            end_time = time.perf_counter() 
             elapsed_time = end_time - start_time
             average_tps = total_ticks / elapsed_time if elapsed_time > 0 else 0
             print("Average Tick Per Second:" + str(average_tps))
