@@ -49,16 +49,14 @@ def parseFileIntoObject(filename):
         IOArray = []
         InnerBlocks = []
         Nets = {}
-
         def get_net(bit_id):
             net_key = f"{moduleKey}_{bit_id}"
             if net_key not in Nets:
                 Nets[net_key] = Net(net_key)
-            return Nets[net_key]
-
-        # -----------------------------------------------------------------
-        # 1. BUILD MODULE IO PORTS
-        # -----------------------------------------------------------------
+            net = Nets[net_key]
+            while hasattr(net, 'merged_into') and net.merged_into is not None:
+                net = net.merged_into
+            return net
         print("\n  --- [1/3] Module Boundary IO Ports ---")
         for portKey, portValue in moduleValue["ports"].items():
             direction = portValue["direction"]
@@ -80,9 +78,6 @@ def parseFileIntoObject(filename):
                     IOArray.append(ind_io)
                     print(f"    -> Pin '{io_name}' linked to Net '{net.Name}' [ID: {hex(id(net))}]")
 
-        # -----------------------------------------------------------------
-        # 2. INSTANTIATE LOGIC CELLS
-        # -----------------------------------------------------------------
         print("\n  --- [2/3] Instantiating Logic Cells ---")
         for cellKey, cellValue in moduleValue["cells"].items():
             raw_type = cellValue["type"]
@@ -111,10 +106,6 @@ def parseFileIntoObject(filename):
                     print(f"    [!] ERROR: Cell '{cellKey}' does NOT have pin '{pinName}'!")
 
             InnerBlocks.append(ind_comp)
-
-        # -----------------------------------------------------------------
-        # 3. APPLY NET NAMES
-        # -----------------------------------------------------------------
         print("\n  --- Net Naming ---")
         for netKey, netValue in moduleValue["netnames"].items():
             for bit_id in netValue["bits"]:
@@ -124,10 +115,6 @@ def parseFileIntoObject(filename):
 
         mod = Module(str(moduleKey), IOArray, InnerBlocks)
         resultModules.append(mod)
-
-        # -----------------------------------------------------------------
-        # 4. TOPOLOGY AUDIT REPORT
-        # -----------------------------------------------------------------
         print("\n  " + "=" * 70)
         print("  NETLIST TOPOLOGY AUDIT REPORT")
         print("  " + "=" * 70)
@@ -172,7 +159,6 @@ def parseFileIntoObject(filename):
 
 #analyse_file("register.v")
 
-
 """
 create register parseFileIntoObject("register.v")
 create clkbt keyboard_button("clk","[")
@@ -197,5 +183,5 @@ d4.IO.OUT >> register.IO.d_4
 d5.IO.OUT >> register.IO.d_5
 d6.IO.OUT >> register.IO.d_6
 d7.IO.OUT >> register.IO.d_7
-create log Logger("logger", ["CLK", "RST", "FF0_R", "R_PIN", "INV_A", "RST_N", "M_QY", "M_QMY", "S_SIn", "S_RIn", "S_QMY", "S_QY"], [clkbt.IO.OUT,rstbt.IO.OUT,register.child["$auto$ff.cc:337:slice$79"].IO.R,register.child["$auto$ff.cc:337:slice$79"].IO.R,register.child["$auto$ff.cc:337:slice$79"].child["RstInv"].IO.A,register.child["$auto$ff.cc:337:slice$79"].child["RstInv"].IO.Y,register.child["$auto$ff.cc:337:slice$79"].child["M_QY"].IO.Y,register.child["$auto$ff.cc:337:slice$79"].child["M_QMY"].IO.Y,register.child["$auto$ff.cc:337:slice$79"].child["S_SIn"].IO.Y,register.child["$auto$ff.cc:337:slice$79"].child["S_RIn"].IO.Y,register.child["$auto$ff.cc:337:slice$79"].child["S_QMY"].IO.Y,register.child["$auto$ff.cc:337:slice$79"].child["S_QY"].IO.Y])
+create log Logger("logger", ["CLK", "RST", "EN", "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "Q0", "Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7"], [register.IO.clk, register.IO.rst, register.IO.en, register.IO.d_0, register.IO.d_1, register.IO.d_2, register.IO.d_3, register.IO.d_4, register.IO.d_5, register.IO.d_6, register.IO.d_7, register.IO.q_0, register.IO.q_1, register.IO.q_2, register.IO.q_3, register.IO.q_4, register.IO.q_5, register.IO.q_6, register.IO.q_7])
 """

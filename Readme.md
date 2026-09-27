@@ -8,94 +8,41 @@
         \/    /_____/         \/        \/          \/ 
 </pre>
 ### An Easy to use Logic Simulation Software
-#### Made By 12zcab,MoonMinor and Walker
+#### Made By 12zcab and Walker
+#### Credit: MoonMinor for Pre3 week helping
 
 # What is Logic-Sim?
 Logic-Sim is a easy to use logic simulator written with pure python aiming for high modularization and Simple-to-use.
 
+# How to try it?
+Please download the whole Github Repo as Zip or clone it and execute the bootstrap.exe with internal_libs folder and Source folder together at the same time
+If you want to try Verilog Import than you can use the register.v (Verilog tests are all done with this specific file,we will test if other verilog works too later)
+For more Details of how to use Cli interface, please read Docs/Cli.md and Docs/App.md THANKYYOUUU
+
 # Functions Implemented Now:
 - Core
-    - cli.py
-    - object.py
-- Demo
-    - demoSimpleObject.py  Testing Object Functions
-    - testCliIO.py  Testing CliIO Module
+    - module
+        - BetterDict  convenient dictionary library
+        - chronos  event engine
+        - enum  err just some value enums
+        - object  Logic Objects
+    - '__init__'.py  Importer and some testing stuff
 - modules
     - DataLogger  Basic DataLogger Module
+    - FlipFlop  Basic FlipFlop Components made with LogicGate module
     - LogicGate  Basic LogicGate Module
     - SimpleCLIIO Basic Command Line Interface Input Output Module
-- app.py currently empty, but later will for init.ing the app
-- target.md  a note written in day 1 :O
+    - Verilog Basic Verilog Component Import (YES YOU DID NOT SAW IT WRONG IT NOW HV VERILOG SUPPORTTTT)
+    - '__init__'.py  Importer :D
 
-# Example:
-### DataLogger and LogicGates in CLI Mode
-```
-create And AndGate("AND")
-create Or OrGate("OR")
-create Xor XorGate("XOR")
-create a keyboard_button("ABT","a")
-create b keyboard_button("BBT","b")
-create log Logger("logger",["A","B","AND","OR","XOR"],[a.IO.OUT,b.IO.OUT,And.IO.Y,Or.IO.Y,Xor.IO.Y])
-a.IO.OUT >> And.IO.A >> Or.IO.A >> Xor.IO.A
-b.IO.OUT >> And.IO.B >> Or.IO.B >> Xor.IO.B
-run 0.05
-```
-### Not Gate Pulse Signal,Error Handle.
-```
-asd
-create notgate NotGate("Not")
-create logger Logger("logger",["SignalIn","SignalOut"],[notgate.IO.A,notgate.IO.Y])
-notgate.IO.A >> notgate.IO.B
-notgate.IO.A >> notgate.IO.Y
-run 0.01 5
-```
-Output:
-```
->asd
-Eval Error in [asd]: 
-name 'asd' is not defined
-Error
->create notgate NotGate("Not")
->create logger Logger("logger",["SignalIn","SignalOut"],[notgate.IO.A,notgate.IO.Y])
->notgate.IO.A >> notgate.IO.B
-Eval Error in [varVault["notgate"].IO.A >> varVault["notgate"].IO.B]: 
-'BetterDict' object has no attribute 'B'
-Error
->notgate.IO.A >> notgate.IO.Y
-<core.module.object.IO object at 0x0000023DB7E77250>
->run 0.01 5 
-logger===0
-+------------+-------------+
-|   SignalIn |   SignalOut |
-+============+=============+
-|          0 |           0 |
-+------------+-------------+
-logger===1
-+------------+-------------+
-|   SignalIn |   SignalOut |
-+============+=============+
-|          1 |           1 |
-+------------+-------------+
-logger===2
-+------------+-------------+
-|   SignalIn |   SignalOut |
-+============+=============+
-|          0 |           0 |
-+------------+-------------+
-logger===3
-+------------+-------------+
-|   SignalIn |   SignalOut |
-+============+=============+
-|          1 |           1 |
-+------------+-------------+
-logger===4
-+------------+-------------+
-|   SignalIn |   SignalOut |
-+============+=============+
-|          0 |           0 |
-+------------+-------------+
-Average Tick Per Second:92.26420038735863
->
-```
-Though it may seem not correct as Not Gate's Input and Output is the same,but it actually reflects the truth status of a logic gate.With output and input shorted,its output and input MUST BE THE SAME,so the Not Gate is experiencing a process delay between ticks
-So this actually simulate the real-world situation
+- cli.py the basic command line interface!
+- app.py currently empty, but later will for init.ing the app
+- cleanpycache.py a small script to clean all the caches before we upload stuff XD
+- register.v a small verilog thing for verilog test!
+
+- target.md  a note written in day 1 :O
+- bootstrap.py a loader for the exe file so that the exe can directly execute the code
+- improvements.md a record of brainstorm with Ai that contains some suggestions for us to try implement later
+- Readme.md  WELP U R READING ME RN
+- build.bat erm yah the script i use to build the project
+- bootstrap.exe  pyinstaller compiled directly executable exe! 

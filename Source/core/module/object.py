@@ -23,9 +23,9 @@ class IO:
     def Value(self):
         return self._Value
     @Value.setter
-    def Value(self,val, strength=Strength.STRONG, Delay=1):
+    def Value(self,val, strength=Strength.STRONG, Delay=0):
         self.setPower(val, strength, Delay)
-    def setPower(self, val, strength=Strength.STRONG, Delay=1):
+    def setPower(self, val, strength=Strength.STRONG, Delay=0):
         """Schedules events automatically on tracked SimBox without passing arguments."""
         sim = self.simBox
         if sim and hasattr(sim, "scheduler"):
@@ -46,14 +46,18 @@ class IO:
         raise TypeError(f"Cannot connect IO to {type(other)}")
 
     def connectNet(self, net):
+        if net is None:
+            return
         if self.Net == net:
-            if net and self not in net.IO:
+            if self not in net.IO:
                 net.add(self)
             return
+
         if self.Net:
-            self.Net.remove(self)
-        self.Net = net
-        if net:
+            # Merge the incoming net into the pin's existing net hierarchy
+            self.Net.mergeNets(net)
+        else:
+            self.Net = net
             net.add(self)
     def disconnectNet(self):
         if self.Net:
@@ -121,15 +125,15 @@ class Net:
         for io in list(self.IO):
             io.Net = None
         self.IO.clear()
-    def mergeNets(self, target_net):
-        if target_net is None or target_net == self:
+    def mergeNets(self, other):
+        if other is None or other is self:
             return
-        for io in list(target_net.IO):
+        for io in list(other.IO):
             io.Net = self
             if io not in self.IO:
                 self.IO.append(io)
-        target_net.IO.clear()
-        self.resolve()
+        other.IO.clear()
+        other.merged_into = self
 
 class Component:
     def __init__(self, Name, IOArray, updateFunction=None):
@@ -176,7 +180,7 @@ class Module(Component):
         pass
 
 class SimBox:
-    def __init__(self, Objects, MAX_DELTA_CYCLES=30):
+    def __init__(self, Objects, MAX_DELTA_CYCLES=50):
         self.Objects = []
         self.Nets = []
         self.scheduler = Kairos()
