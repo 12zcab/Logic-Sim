@@ -7,8 +7,8 @@
 # Description about how the code, so first, only one "object" is in the hand of the communciator while containing other created "objects", 
 # this make things easy to reuse. Like processor for same script, import yet different purpose each time
 
-import pkgutil, importlib,  ast
-import types
+import pkgutil, importlib
+import Temp.Data, copy
 
 def Initize():
     pass
@@ -69,11 +69,32 @@ class Loader():
 class Modifier:
     @staticmethod
 
-    def Applied(FoundInfo, TargetMod):
-        pass
-           
-    def Delete():
-        pass
+    def Applied(TargetImport, TargetInfo, Receiver):
+        FoundReceiver = Loader.RetreiveScript(Receiver)
+        CopyImport = copy.copy(TargetImport)
+
+        for Receiver in FoundReceiver:
+            setattr(Receiver, CopyImport)
+            delattr(Receiver, Loader.RetreiveScript(TargetImport))
+
+        for TarObject, TarMod in TargetInfo:
+            FullMod = Modifier.PushMod(TarMod, CopyImport)
+
+    @staticmethod 
+    def PushMod(TarMod, Import):
+        if isinstance(TarMod, exec): return TarMod 
+
+        CodeVer = compile(TarMod, "<string>", "eval")
+        setattr(Import, CodeVer)
+
+
+    def Delete(Im, Receiver):
+        FullImport = Loader.RetreiveScript(Im)
+
+        for Rec in Receiver:
+            if hasattr(Rec, FullImport.name): 
+                delattr(Rec, FullImport.name)
+                setattr(Rec, FullImport)
 
 
 class Handler():
@@ -97,7 +118,11 @@ class Handler():
                         delattr(Receiver, f"{Import}")
        
  
-    def Modification(self, YesNo, Target, TargetMod):
-        if not isinstance(Target, dict): return print("Incorrect PARAMET")
+    def Modification(self, YesNo, Receiver, ModInfo=None): 
 
-                            
+        for Import, TargetInfo in ModInfo:
+            for Im in self.FoundImport:
+                if Im.name == Import:
+                    Modifier.Applied(Im, TargetInfo, Receiver)
+                elif not YesNo:
+                    Modifier.Delete(Im, Receiver)
