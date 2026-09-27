@@ -2,7 +2,7 @@ from core import *
 from tabulate import tabulate
 
 def Logger(Name,IOArray,MonitoredIO):
-    DictIO = {}
+    DictIO = {}     
     for i in range(len(IOArray)):
         DictIO[IOArray[i]] = IO(IOArray[i])
         DictIO[IOArray[i]].connect(MonitoredIO[i])
@@ -15,3 +15,8 @@ def doLog(self):
         data[0].append(IOObj.Value)
     print(str(self.Name) + "===" + str(self.simBox.scheduler.currentTime))
     print(tabulate(data, headers=self.IO.keys(), tablefmt="grid"))
+
+
+## SUMMARIZE CHANGES FOR GUI
+ 
+ 

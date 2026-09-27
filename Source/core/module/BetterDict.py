@@ -10,4 +10,3 @@ class BetterDict(dict):
             del self[Name]
         else:
             raise AttributeError(f"'BetterDict' object has no attribute '{Name}'")
-        
