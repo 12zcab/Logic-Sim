@@ -14,18 +14,22 @@ def Initize():
     pass
 
 class Center():
-    def __init__(self, Import, Receiver):
-        if Receiver is __path__:
-            self.Script = Loader.RetreievFromPath(Receiver)
+    def __init__(self, ImportList, ReceiverList):
+        if ReceiverList is __path__:
+            self.Script = Loader.RetreievFromPath(ReceiverList)
+        elif isinstance(ReceiverList, list):
+            self.Script = Loader.RetreiveScript(ReceiverList)
         else:
-            self.Script = Loader.RetreiveScript(Receiver)
+            self.Script = None
+            print("Retreiver Ram version can not be found")
 
-        if Import is __path__:
-            self.Import = Loader.RetreievFromPath(Import)
+        if ImportList is __path__:
+            self.Script = Loader.RetreievFromPath(ImportList)
+        elif isinstance(ImportList, list):
+            self.Script = Loader.RetreiveScript(ImportList)
         else:
-            self.Import = Loader.RetreiveScript(Import)
-
-        self.Handler = Handler(self.Import, self.Script)
+            self.Script = None
+            print("Import Script Ram version can not be found")
         
 class Loader():
     
@@ -49,19 +53,19 @@ class Loader():
 
             Target.append(FullName)
 
-        Loader.RetreiveScript(Target)
+        return Loader.RetreiveScript(Target)
 
     @staticmethod 
     def SearchingTarget(Import, Target=None):
         FoundItems = []
         for Im in Import:
             if Target: 
-                for Tar in Target:
+                for Tar in Target: 
                     if Im.name == Tar:
                         FoundItems.append(Im)
             else:
                 FoundItems.append(Im)
-             
+               
         return FoundItems
 
 
