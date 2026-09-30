@@ -56,8 +56,8 @@ class Loader:
 
             setattr(Import, key, value)
 
-        return CloneImport
-
+        return CloneImport    
+   
 
 class Modifier:
 
@@ -128,7 +128,11 @@ class HandlerForNoob:
 
 
     def Connect(self, ImportName, TargetScript):
-        Import = Loader.LoadModule(ImportName):
+        Import = Loader.LoadModule(ImportName)
+
+
+
+    
 
 
         
