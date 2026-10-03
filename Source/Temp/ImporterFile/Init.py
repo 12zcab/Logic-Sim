@@ -1,0 +1,15 @@
+from ImporterFile import Mutanter
+from pathlib import Path
+import Source
+
+FilePath = Path(Source).resolve()
+Handler = Mutanter.Handler()
+
+Connections = {}
+
+AllItems = Mutanter.Loader.LoadFromPath(FilePath)
+
+for item in AllItems:
+    Connections[item] = Mutanter
+
+Handler.Connect(Connections)
