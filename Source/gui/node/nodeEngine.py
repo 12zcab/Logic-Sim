@@ -875,26 +875,25 @@ if __name__ == "__main__":
     root = Tk()
     root.title("Node Editor")
     root.geometry("900x650")
-    toolbar = NodeEditor(master=root)
-
-    root.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
-    root.addContainer("Box2", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="#342A4A", border_color="#BB86FC")
-    root.containers["Box1"].addNode("Pin0", -1, 0)
-    root.containers["Box1"].addNode("Pin1", -1, 2)
-    root.containers["Box1"].addNode("PinOut", 3, 1, bg_color="#00ADB5")
-    root.containers["Box2"].addNode("Pin0", -1, 1)
-    root.containers["Box2"].addNode("PinOut", 3, 1, bg_color="#BB86FC")
-    root.containers["Box2"].addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, svg_data=open("icon1.svg").read())
-    root.addConnection("Box1", "Pin0", "Box2", "PinOut")
-    root.update_idletasks()
-    root.renderAll()
+    app = NodeEditor(master=root)
+    app.pack(fill=BOTH, expand=True)
+    app.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
+    app.addContainer("Box2", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="#342A4A", border_color="#BB86FC")
+    app.containers["Box1"].addNode("Pin0", -1, 0)
+    app.containers["Box1"].addNode("Pin1", -1, 2)
+    app.containers["Box1"].addNode("PinOut", 3, 1, bg_color="#00ADB5")
+    app.containers["Box2"].addNode("Pin0", -1, 1)
+    app.containers["Box2"].addNode("PinOut", 3, 1, bg_color="#BB86FC")
+    app.containers["Box2"].addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, svg_data=open("icon1.svg").read())
+    app.addConnection("Box1", "Pin0", "Box2", "PinOut")
+    app.update_idletasks()
+    app.renderAll()
     def custom_interval():
-        for connection in root.connections:
+        for connection in app.connections:
             connection["Activated"] = not connection.get("Activated", True)
-        root.renderAll()
-        root.after(1000, root.interval)
+        app.renderAll()
+        app.after(1000, app.interval)
 
-    root.interval = custom_interval
-    root.interval()
+    app.interval = custom_interval
+    app.interval()
     root.mainloop()
-

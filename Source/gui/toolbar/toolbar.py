@@ -17,20 +17,16 @@ class ToolBar(Frame):
 
         self.buttons = []
         self.button_containers = []
-        for i in range(1, 25):
-            container = Frame(self.button_frame)
-            container.pack(side=LEFT, fill=Y)
-            container.pack_propagate(False)
-
-            btn = Button(container, text=f"B{i}")
-            btn.pack(fill=BOTH, expand=True)
-
-            self.button_containers.append(container)
-            self.buttons.append(btn)
-
         self.button_frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
         self.canvas.bind("<Configure>", self._on_canvas_resize)
-
+    def add_button(self, button):
+        container = Frame(self.button_frame)
+        container.pack(side=LEFT, fill=Y)
+        container.pack_propagate(False)
+        btn = Button(container, text=f"B{i}")
+        btn.pack(fill=BOTH, expand=True)
+        self.button_containers.append(container)
+        self.buttons.append(btn)
     def _on_canvas_resize(self, event):
         height = event.height
         for container in self.button_containers:
