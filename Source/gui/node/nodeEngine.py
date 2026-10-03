@@ -1,6 +1,20 @@
 import math
 from tkinter import *
 from typing import Dict, List, Tuple, Optional, Any
+import xml.etree.ElementTree as ET
+import re
+
+
+def rotatePoint(x: float, y: float, cx: float, cy: float, angle_deg: float) -> Tuple[float, float]:
+    """Rotate a point (x, y) around a center point (cx, cy) by angle_deg degrees."""
+    if angle_deg % 360 == 0:
+        return x, y
+    rad = math.radians(angle_deg)
+    cos_a = math.cos(rad)
+    sin_a = math.sin(rad)
+    nx = cx + (x - cx) * cos_a - (y - cy) * sin_a
+    ny = cy + (x - cx) * sin_a + (y - cy) * cos_a
+    return nx, ny
 
 
 class ChildrenModel:
@@ -27,13 +41,14 @@ class NodeModel:
 
 class ContainerModel:
     def __init__(self, parent_editor, name: str, grid_x: float, grid_y: float, grid_w: float, grid_h: float,
-                 bg_color: str = "#2D3748", border_color: str = "#4A5568"):
+                 bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0):
         self.parent = parent_editor
         self.name = name
         self.gridX = float(grid_x)
         self.gridY = float(grid_y)
         self.gridW = float(grid_w)
         self.gridH = float(grid_h)
+        self.angle = angle
         self.bg_color = bg_color
         self.border_color = border_color
         self.canvasId = None
@@ -44,7 +59,7 @@ class ContainerModel:
         node = NodeModel(name, gridX, gridY, bg_color=bg_color, border_color=border_color)
         self.nodes[name] = node
         if hasattr(self.parent, "nodeScaleAnim"):
-            self.parent.nodeScaleAnim[f"{self.name}_{name}"] = 0.6
+            self.parent.nodeScaleAnim[(self, name)] = 0.6
         return node
 
     def addChild(self, name: str, gridX: float, gridY: float, gridW: float, gridH: float,
@@ -63,11 +78,9 @@ class NodeEditor(Frame):
     def __init__(self, master=None):
         super().__init__(master)
 
-        # Attach Canvas directly to self (the Frame)
         self.canvas = Canvas(self, bg="#181818", highlightthickness=0)
         self.canvas.pack(fill=BOTH, expand=True)
 
-        # Rest of your node engine bindings and initializations...
         self.canvas.bind("<ButtonPress-1>", self.onPress)
         self.canvas.bind("<B1-Motion>", self.onDrag)
         self.canvas.bind("<ButtonRelease-1>", self.onRelease)
@@ -81,14 +94,18 @@ class NodeEditor(Frame):
         self.canvas.bind("<ButtonPress-2>", self.startPan)
         self.canvas.bind("<B2-Motion>", self.panCanvas)
 
+        self.canvas.focus_set()
+        self.master.bind("<Key-r>", self.rotateSelectedContainer)
+        self.master.bind("<Key-R>", self.rotateSelectedContainer)
+
         self.zoom = 1.0
         self.panX = 0.0
         self.panY = 0.0
         self.gridSize = 20
 
-        self.containers: Dict[str, ContainerModel] = {}
+        self.containers: List[ContainerModel] = []
         self.connections: List[Dict[str, Any]] = []
-        self.selectedContainerName = None
+        self.selectedContainer: Optional[ContainerModel] = None
         self.selectedConnectionIndex = None
         self.hoveredNode = None
         self.hoveredWaypoint = None
@@ -107,6 +124,11 @@ class NodeEditor(Frame):
         self.nodeScaleAnim = {}
         self.activeAnimators = set()
 
+    def rotateSelectedContainer(self, event=None):
+        if self.selectedContainer:
+            self.selectedContainer.angle = (self.selectedContainer.angle + 90) % 360
+            self.renderAll()
+
     def sanitize_color(self, color: str) -> str:
         if not color:
             return ""
@@ -118,12 +140,12 @@ class NodeEditor(Frame):
         return color
 
     def addContainer(self, name: str, gridX: float, gridY: float, gridW: float, gridH: float,
-                     bg_color: str = "#2D3748", border_color: str = "#4A5568") -> ContainerModel:
-        container = ContainerModel(self, name, gridX, gridY, gridW, gridH, bg_color, border_color)
-        self.containers[name] = container
+                     bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0) -> ContainerModel:
+        container = ContainerModel(self, name, gridX, gridY, gridW, gridH, bg_color, border_color, angle)
+        self.containers.append(container)
         return container
 
-    def addConnection(self, fromContainer: str, fromNode: str, toContainer: str, toNode: str, waypoints: Optional[List[Tuple[float, float]]] = None):
+    def addConnection(self, fromContainer: ContainerModel, fromNode: str, toContainer: ContainerModel, toNode: str, waypoints: Optional[List[Tuple[float, float]]] = None):
         if waypoints is None:
             fromX, fromY = self.getNodeCenterLogicalSpace(fromContainer, fromNode)
             toX, toY = self.getNodeCenterLogicalSpace(toContainer, toNode)
@@ -164,25 +186,44 @@ class NodeEditor(Frame):
         winY = logY * self.zoom + cy + self.panY
         return winX, winY
 
-    def getNodeCenterWindowSpace(self, cName: str, nName: str) -> Tuple[float, float]:
-        container = self.containers[cName]
-        node = container.nodes[nName]
-        nLogX = (container.gridX + node.gridX + 0.5) * self.gridSize
-        nLogY = (container.gridY + node.gridY + 0.5) * self.gridSize
-        return self.toWindowSpace(nLogX, nLogY)
+    def getNodeCenterWindowSpace(self, container: ContainerModel, nName: str) -> Tuple[float, float]:
+        logX, logY = self.getNodeCenterLogicalSpace(container, nName)
+        return self.toWindowSpace(logX, logY)
 
-    def getNodeCenterLogicalSpace(self, cName: str, nName: str) -> Tuple[float, float]:
-        container = self.containers[cName]
+    def getNodeCenterLogicalSpace(self, container: ContainerModel, nName: str) -> Tuple[float, float]:
         node = container.nodes[nName]
-        return (container.gridX + node.gridX + 0.5) * self.gridSize, (container.gridY + node.gridY + 0.5) * self.gridSize
+        unrotated_x = (container.gridX + node.gridX + 0.5) * self.gridSize
+        unrotated_y = (container.gridY + node.gridY + 0.5) * self.gridSize
+
+        center_x = (container.gridX + container.gridW / 2) * self.gridSize
+        center_y = (container.gridY + container.gridH / 2) * self.gridSize
+
+        return rotatePoint(unrotated_x, unrotated_y, center_x, center_y, container.angle)
+
+    def findContainerAtPosition(self, logX: float, logY: float) -> Optional[ContainerModel]:
+        for container in reversed(self.containers):
+            cx = (container.gridX + container.gridW / 2) * self.gridSize
+            cy = (container.gridY + container.gridH / 2) * self.gridSize
+            
+            # Unrotate click point back into container coordinate system
+            rx, ry = rotatePoint(logX, logY, cx, cy, -container.angle)
+            
+            x0 = container.gridX * self.gridSize
+            y0 = container.gridY * self.gridSize
+            x1 = x0 + container.gridW * self.gridSize
+            y1 = y0 + container.gridH * self.gridSize
+
+            if x0 <= rx <= x1 and y0 <= ry <= y1:
+                return container
+        return None
 
     def findNodeAtPosition(self, winX: float, winY: float, maxDistance: float = 10):
-        for cName, container in self.containers.items():
+        for container in self.containers:
             for nName in container.nodes:
-                nx, ny = self.getNodeCenterWindowSpace(cName, nName)
+                nx, ny = self.getNodeCenterWindowSpace(container, nName)
                 dist = math.hypot(winX - nx, winY - ny)
                 if dist <= maxDistance * self.zoom:
-                    return (cName, nName)
+                    return (container, nName)
         return None
 
     def findWaypointAtPosition(self, winX: float, winY: float, maxDistance: float = 8):
@@ -210,13 +251,11 @@ class NodeEditor(Frame):
 
         for idx, conn in enumerate(self.connections):
             fromC, fromN = conn["from"]
-            if fromC not in self.containers:
-                continue
             startLog = self.getNodeCenterLogicalSpace(fromC, fromN)
 
             def checkBranchSegments(startPoint, branch):
                 pts = [startPoint] + branch["waypoints"]
-                if "to" in branch and branch["to"][0] in self.containers:
+                if "to" in branch:
                     pts.append(self.getNodeCenterLogicalSpace(*branch["to"]))
 
                 winPts = [self.toWindowSpace(px, py) for px, py in pts]
@@ -269,28 +308,21 @@ class NodeEditor(Frame):
                     subs_to_keep.append(sb)
             branch["sub_branches"] = subs_to_keep
 
-    def renderSvgData(self, svg_str: str, wx0: float, wy0: float, width: float, height: float, tags: Any):
-        import xml.etree.ElementTree as ET
-        import re
-
+    def renderSvgData(self, svg_str: str, wx0: float, wy0: float, width: float, height: float, tags: Any, angle: float = 0.0, center_win: Tuple[float, float] = (0, 0)):
         def sanitize_color(color_str: str) -> str:
             if not color_str or color_str.lower() in ("none", "transparent"):
                 return ""
-            
             color_str = color_str.strip()
-
             if color_str.startswith("#") and len(color_str) == 9:
                 alpha = color_str[7:9]
                 if alpha.lower() == "00":
                     return ""
                 return color_str[:7]
-
             if color_str.startswith("#") and len(color_str) == 5:
                 r, g, b, a = color_str[1], color_str[2], color_str[3], color_str[4]
                 if a == "0":
                     return ""
                 return f"#{r}{r}{g}{g}{b}{b}"
-
             rgba_match = re.match(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)', color_str, re.IGNORECASE)
             if rgba_match:
                 r, g, b = map(int, rgba_match.groups()[:3])
@@ -298,7 +330,6 @@ class NodeEditor(Frame):
                 if a == 0:
                     return ""
                 return f"#{r:02x}{g:02x}{b:02x}"
-
             return color_str
 
         try:
@@ -315,11 +346,12 @@ class NodeEditor(Frame):
         scale_x = width / vw if vw else 1
         scale_y = height / vh if vh else 1
 
-        def map_x(x_val):
-            return wx0 + (float(x_val) - vx) * scale_x
-
-        def map_y(y_val):
-            return wy0 + (float(y_val) - vy) * scale_y
+        def transform_pt(x_val, y_val):
+            wx = wx0 + (float(x_val) - vx) * scale_x
+            wy = wy0 + (float(y_val) - vy) * scale_y
+            if angle != 0:
+                return rotatePoint(wx, wy, center_win[0], center_win[1], angle)
+            return wx, wy
 
         for elem in root.iter():
             tag = elem.tag.split("}")[-1]
@@ -335,31 +367,39 @@ class NodeEditor(Frame):
             stroke_val = sanitize_color(stroke)
 
             if tag == "rect":
-                rx0 = map_x(elem.attrib.get("x", 0))
-                ry0 = map_y(elem.attrib.get("y", 0))
-                rx1 = rx0 + float(elem.attrib.get("width", 0)) * scale_x
-                ry1 = ry0 + float(elem.attrib.get("height", 0)) * scale_y
-                self.canvas.create_rectangle(rx0, ry0, rx1, ry1, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
+                rx0 = float(elem.attrib.get("x", 0))
+                ry0 = float(elem.attrib.get("y", 0))
+                rw = float(elem.attrib.get("width", 0))
+                rh = float(elem.attrib.get("height", 0))
 
-            elif tag == "circle":
-                cx_v = map_x(elem.attrib.get("cx", 0))
-                cy_v = map_y(elem.attrib.get("cy", 0))
-                r_v = float(elem.attrib.get("r", 0)) * scale_x
-                self.canvas.create_oval(cx_v - r_v, cy_v - r_v, cx_v + r_v, cy_v + r_v, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
+                poly = [
+                    transform_pt(rx0, ry0),
+                    transform_pt(rx0 + rw, ry0),
+                    transform_pt(rx0 + rw, ry0 + rh),
+                    transform_pt(rx0, ry0 + rh)
+                ]
+                flat_pts = [c for pt in poly for c in pt]
+                self.canvas.create_polygon(flat_pts, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
 
-            elif tag == "ellipse":
-                cx_v = map_x(elem.attrib.get("cx", 0))
-                cy_v = map_y(elem.attrib.get("cy", 0))
-                rx_v = float(elem.attrib.get("rx", 0)) * scale_x
-                ry_v = float(elem.attrib.get("ry", 0)) * scale_y
-                self.canvas.create_oval(cx_v - rx_v, cy_v - rx_v, cx_v + rx_v, cy_v + ry_v, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
+            elif tag in ("circle", "ellipse"):
+                cx_v = float(elem.attrib.get("cx", 0))
+                cy_v = float(elem.attrib.get("cy", 0))
+                rx_v = float(elem.attrib.get("r", elem.attrib.get("rx", 0)))
+                ry_v = float(elem.attrib.get("r", elem.attrib.get("ry", 0)))
+
+                steps = 16
+                pts = []
+                for i in range(steps):
+                    a = math.radians(i * 360 / steps)
+                    px = cx_v + rx_v * math.cos(a)
+                    py = cy_v + ry_v * math.sin(a)
+                    pts.extend(transform_pt(px, py))
+                self.canvas.create_polygon(pts, fill=fill_val, outline=stroke_val, width=sw, smooth=True, tags=tags)
 
             elif tag == "line":
-                lx1 = map_x(elem.attrib.get("x1", 0))
-                ly1 = map_y(elem.attrib.get("y1", 0))
-                lx2 = map_x(elem.attrib.get("x2", 0))
-                ly2 = map_y(elem.attrib.get("y2", 0))
-                self.canvas.create_line(lx1, ly1, lx2, ly2, fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
+                p1 = transform_pt(elem.attrib.get("x1", 0), elem.attrib.get("y1", 0))
+                p2 = transform_pt(elem.attrib.get("x2", 0), elem.attrib.get("y2", 0))
+                self.canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
 
             elif tag in ("polyline", "polygon"):
                 pts_raw = elem.attrib.get("points", "").strip().split()
@@ -367,7 +407,7 @@ class NodeEditor(Frame):
                 for p in pts_raw:
                     coords = p.split(",")
                     if len(coords) == 2:
-                        pts.extend([map_x(coords[0]), map_y(coords[1])])
+                        pts.extend(transform_pt(coords[0], coords[1]))
                 if pts:
                     if tag == "polygon":
                         self.canvas.create_polygon(pts, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
@@ -391,10 +431,10 @@ class NodeEditor(Frame):
                     if isinstance(c, str):
                         idx += 1
                         if c in ['M', 'L']:
-                            pts.extend([map_x(cmd_list[idx]), map_y(cmd_list[idx+1])])
+                            pts.extend(transform_pt(cmd_list[idx], cmd_list[idx+1]))
                             idx += 2
                     else:
-                        pts.extend([map_x(cmd_list[idx]), map_y(cmd_list[idx+1])])
+                        pts.extend(transform_pt(cmd_list[idx], cmd_list[idx+1]))
                         idx += 2
                 if pts:
                     if fill_val:
@@ -402,7 +442,7 @@ class NodeEditor(Frame):
                     else:
                         self.canvas.create_line(pts, fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
 
-    def createRoundedRectPoints(self, x0, y0, x1, y1, radius):
+    def createRoundedRectPoints(self, x0, y0, x1, y1, radius, angle=0.0, center=None):
         radius = max(1, min(radius, (x1 - x0) / 2, (y1 - y0) / 2))
         points = []
         corners = [
@@ -414,11 +454,15 @@ class NodeEditor(Frame):
         for cx, cy, startAngle, endAngle in corners:
             for step in range(startAngle, endAngle + 1, 15):
                 rad = math.radians(step)
-                points.extend([cx + radius * math.cos(rad), cy - radius * math.sin(rad)])
+                px = cx + radius * math.cos(rad)
+                py = cy - radius * math.sin(rad)
+                if angle != 0 and center:
+                    px, py = rotatePoint(px, py, center[0], center[1], angle)
+                points.extend([px, py])
         return points
 
-    def drawRoundedRect(self, x0, y0, x1, y1, radius, fill, outline, width=2, tags="container"):
-        points = self.createRoundedRectPoints(x0, y0, x1, y1, radius)
+    def drawRoundedRect(self, x0, y0, x1, y1, radius, fill, outline, width=2, tags="container", angle=0.0, center=None):
+        points = self.createRoundedRectPoints(x0, y0, x1, y1, radius, angle=angle, center=center)
         fill_val = "" if fill == "transparent" else fill
         outline_val = "" if outline == "transparent" else outline
         return self.canvas.create_polygon(points, fill=fill_val, outline=outline_val, width=width, smooth=True, tags=tags)
@@ -450,8 +494,6 @@ class NodeEditor(Frame):
 
         for idx, conn in enumerate(self.connections):
             fromC, fromN = conn["from"]
-            if fromC not in self.containers:
-                continue
             startWin = self.getNodeCenterWindowSpace(fromC, fromN)
 
             isSelected = (idx == self.selectedConnectionIndex)
@@ -467,7 +509,7 @@ class NodeEditor(Frame):
                     wx, wy = self.toWindowSpace(wLogX, wLogY)
                     pts.extend([wx, wy])
 
-                if "to" in branch and branch["to"][0] in self.containers:
+                if "to" in branch:
                     endWin = self.getNodeCenterWindowSpace(*branch["to"])
                     pts.extend([endWin[0], endWin[1]])
 
@@ -525,7 +567,7 @@ class NodeEditor(Frame):
         cornerRadiusPixels = self.gridSize * 0.4 * self.zoom
         borderWidth = max(1, int(2 * self.zoom))
 
-        for cName, container in self.containers.items():
+        for container in self.containers:
             cLogX = container.gridX * self.gridSize
             cLogY = container.gridY * self.gridSize
             cLogW = container.gridW * self.gridSize
@@ -534,7 +576,11 @@ class NodeEditor(Frame):
             wx0, wy0 = self.toWindowSpace(cLogX, cLogY)
             wx1, wy1 = self.toWindowSpace(cLogX + cLogW, cLogY + cLogH)
 
-            isSelected = cName == self.selectedContainerName
+            centerLogX = (container.gridX + container.gridW / 2) * self.gridSize
+            centerLogY = (container.gridY + container.gridH / 2) * self.gridSize
+            centerWin = self.toWindowSpace(centerLogX, centerLogY)
+
+            isSelected = container is self.selectedContainer
 
             container.canvasId = self.drawRoundedRect(
                 wx0, wy0, wx1, wy1,
@@ -542,7 +588,9 @@ class NodeEditor(Frame):
                 fill=container.bg_color,
                 outline=container.border_color if not isSelected else "#FFFFFF",
                 width=borderWidth,
-                tags=("container", f"container_{cName}")
+                tags=("container",),
+                angle=container.angle,
+                center=centerWin
             )
 
             for chName, child in container.children.items():
@@ -558,17 +606,10 @@ class NodeEditor(Frame):
                 h_px = chWy1 - chWy0
 
                 if child.svg_data:
-                    self.renderSvgData(child.svg_data, chWx0, chWy0, w_px, h_px, tags=("child_svg", f"svg_{cName}_{chName}"))
-
-                # Transparent hit-testing overlay to ensure dragging child area triggers container movement
-                self.canvas.create_rectangle(
-                    chWx0, chWy0, chWx1, chWy1,
-                    fill="", outline="", width=0,
-                    tags=("child", f"child_{cName}_{chName}")
-                )
+                    self.renderSvgData(child.svg_data, chWx0, chWy0, w_px, h_px, tags=("child_svg",), angle=container.angle, center_win=centerWin)
 
             for nName, node in container.nodes.items():
-                nodeKey = f"{cName}_{nName}"
+                nodeKey = (container, nName)
                 currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
 
                 scaledSize = self.gridSize * currentScale
@@ -581,10 +622,10 @@ class NodeEditor(Frame):
                 nWx1, nWy1 = self.toWindowSpace(nLogX + scaledSize, nLogY + scaledSize)
 
                 pinRadius = (scaledSize * 0.25) * self.zoom
-                isNodeHovered = (self.hoveredNode == (cName, nName))
+                isNodeHovered = (self.hoveredNode == (container, nName))
 
                 if isNodeHovered or currentScale > 0.6:
-                    glowPoints = self.createRoundedRectPoints(nWx0, nWy0, nWx1, nWy1, pinRadius)
+                    glowPoints = self.createRoundedRectPoints(nWx0, nWy0, nWx1, nWy1, pinRadius, angle=container.angle, center=centerWin)
                     self.canvas.create_polygon(
                         glowPoints, fill="", outline="#FFFFFF", width=int(2 * self.zoom), smooth=True, tags="nodeGlow"
                     )
@@ -595,21 +636,30 @@ class NodeEditor(Frame):
                     fill=node.bg_color,
                     outline=node.border_color,
                     width=borderWidth,
-                    tags=("node", f"node_{cName}_{nName}")
+                    tags=("node",),
+                    angle=container.angle,
+                    center=centerWin
                 )
+
+                nodeCenterLogX, nodeCenterLogY = self.getNodeCenterLogicalSpace(container, nName)
+                textWinX, textWinY = self.toWindowSpace(nodeCenterLogX, nodeCenterLogY)
+
+                # Fix 1: Properly scale pin text dynamically based on current zoom level
+                scaledFontSize = int(4 * self.zoom * currentScale)
+
                 self.canvas.create_text(
-                    (nWx0 + nWx1) / 2,
-                    (nWy0 + nWy1) / 2,
+                    textWinX,
+                    textWinY,
                     fill="white",
-                    font=("Arial", int(borderWidth * 1.2), "bold"),
+                    font=("Arial", scaledFontSize, "bold"),
                     text=node.name
                 )
 
         self.canvas.tag_lower("connection")
         self.canvas.tag_lower("gridLine")
 
-    def animateNodeScale(self, cName: str, nName: str, targetScale: float):
-        nodeKey = f"{cName}_{nName}"
+    def animateNodeScale(self, container: ContainerModel, nName: str, targetScale: float):
+        nodeKey = (container, nName)
 
         def stepAnimation():
             currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
@@ -641,12 +691,12 @@ class NodeEditor(Frame):
         self.hoveredWaypoint = self.findWaypointAtPosition(event.x, event.y, maxDistance=6)
         self.hoveredConnectionSegment = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5)
 
-        for cName, container in self.containers.items():
-            for nName in container.nodes:
-                nodeKey = f"{cName}_{nName}"
-                targetScale = 1.0 if self.hoveredNode == (cName, nName) else 0.6
+        for container in self.containers:
+            for nName, node in container.nodes.items():
+                nodeKey = (container, nName)
+                targetScale = 1.0 if self.hoveredNode == (container, nName) else 0.6
                 if self.nodeScaleAnim.get(nodeKey, 0.6) != targetScale:
-                    self.animateNodeScale(cName, nName, targetScale)
+                    self.animateNodeScale(container, nName, targetScale)
 
         self.connectingMousePos = (event.x, event.y)
         self.renderAll()
@@ -675,6 +725,7 @@ class NodeEditor(Frame):
             self.renderAll()
 
     def onPress(self, event):
+        self.canvas.focus_set()
         nodeAtPress = self.findNodeAtPosition(event.x, event.y, maxDistance=10)
         if nodeAtPress:
             if not self.connectingStart:
@@ -686,9 +737,6 @@ class NodeEditor(Frame):
             else:
                 if self.connectingStart["mode"] == "new_tree":
                     wps = list(self.connectingWaypoints)
-                    if not wps:
-                        wps = []
-
                     self.connections.append({
                         "from": self.connectingStart["from"],
                         "branches": [
@@ -717,7 +765,7 @@ class NodeEditor(Frame):
             self.renderAll()
             return
 
-        if event.state & 0x0001:
+        if event.state & 0x0001:  # Shift Key
             wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
             if wp and not self.connectingStart:
                 connIdx, branch, wpIdx = wp
@@ -775,41 +823,18 @@ class NodeEditor(Frame):
             self.renderAll()
             return
 
-        clickedItems = self.canvas.find_withtag("current")
-        if clickedItems:
-            clickedId = clickedItems[0]
-            tags = self.canvas.gettags(clickedId)
+        # Fix 2: Container detection works on unrotated and rotated geometric bounds (including over SVG elements)
+        mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
+        container = self.findContainerAtPosition(mouseLogX, mouseLogY)
+        if container:
+            self.selectedContainer = container
+            self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
+            self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
+            self.selectedConnectionIndex = None
+            self.renderAll()
+            return
 
-            # Skip dragging container if clicking directly on a node
-            if "node" not in tags and "nodeGlow" not in tags:
-                target_container_name = None
-                for tag in tags:
-                    if tag.startswith("container_"):
-                        target_container_name = tag.replace("container_", "")
-                        break
-                    elif tag.startswith("child_"):
-                        parts = tag.split("_")
-                        if len(parts) >= 2:
-                            target_container_name = parts[1]
-                        break
-                    elif tag.startswith("svg_"):
-                        parts = tag.split("_")
-                        if len(parts) >= 2:
-                            target_container_name = parts[1]
-                        break
-
-                if target_container_name and target_container_name in self.containers:
-                    self.selectedContainerName = target_container_name
-                    container = self.containers.pop(self.selectedContainerName)
-                    self.containers[self.selectedContainerName] = container
-
-                    mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-                    self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
-                    self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
-                    self.selectedConnectionIndex = None
-                    self.renderAll()
-                    return
-
+        self.selectedContainer = None
         self.selectedConnectionIndex = None
         self.renderAll()
 
@@ -827,23 +852,21 @@ class NodeEditor(Frame):
             self.renderAll()
             return
 
-        if self.selectedContainerName:
-            container = self.containers[self.selectedContainerName]
+        if self.selectedContainer:
             mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
 
             snapGridX = round((mouseLogX / self.gridSize) - self.dragOffsetGridX)
             snapGridY = round((mouseLogY / self.gridSize) - self.dragOffsetGridY)
 
-            if container.gridX != snapGridX or container.gridY != snapGridY:
-                container.gridX = snapGridX
-                container.gridY = snapGridY
+            if self.selectedContainer.gridX != snapGridX or self.selectedContainer.gridY != snapGridY:
+                self.selectedContainer.gridX = snapGridX
+                self.selectedContainer.gridY = snapGridY
                 self.renderAll()
 
     def onRelease(self, event):
         if self.draggingWaypoint:
             self.draggingWaypoint = None
-
-        self.selectedContainerName = None
+        # Fix 2: Retain self.selectedContainer on release so 'R' rotation keypress works!
         self.renderAll()
 
     def onMouseWheel(self, event):
@@ -875,25 +898,37 @@ if __name__ == "__main__":
     root = Tk()
     root.title("Node Editor")
     root.geometry("900x650")
+
     app = NodeEditor(master=root)
     app.pack(fill=BOTH, expand=True)
-    app.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
-    app.addContainer("Box2", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="#342A4A", border_color="#BB86FC")
-    app.containers["Box1"].addNode("Pin0", -1, 0)
-    app.containers["Box1"].addNode("Pin1", -1, 2)
-    app.containers["Box1"].addNode("PinOut", 3, 1, bg_color="#00ADB5")
-    app.containers["Box2"].addNode("Pin0", -1, 1)
-    app.containers["Box2"].addNode("PinOut", 3, 1, bg_color="#BB86FC")
-    app.containers["Box2"].addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, svg_data=open("icon1.svg").read())
-    app.addConnection("Box1", "Pin0", "Box2", "PinOut")
+
+    box1 = app.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
+    box2 = app.addContainer("Box1", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="#342A4A", border_color="#BB86FC")
+
+    box1.addNode("Pin0", -1, 0)
+    box1.addNode("Pin1", -1, 2)
+    box1.addNode("PinOut", 3, 1)
+    box2.addNode("Pin0", -1, 1)
+    box2.addNode("PinOut", 3, 1)
+
+    sample_svg = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#00ADB5"/></svg>'
+    try:
+        with open("icon1.svg", "r") as f:
+            sample_svg = f.read()
+    except FileNotFoundError:
+        pass
+
+    box2.addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, svg_data=sample_svg)
+    app.addConnection(box1, "Pin0", box2, "PinOut")
+
     app.update_idletasks()
     app.renderAll()
-    def custom_interval():
+
+    def toggle_activation():
         for connection in app.connections:
             connection["Activated"] = not connection.get("Activated", True)
         app.renderAll()
-        app.after(1000, app.interval)
+        root.after(1000, toggle_activation)
 
-    app.interval = custom_interval
-    app.interval()
+    root.after(1000, toggle_activation)
     root.mainloop()

@@ -1,0 +1,21 @@
+{
+    "name": "LogicGate",
+    "components":{
+        "Not Gate":{
+            "constructor":"NotGate",
+            "size": [3,3],
+            "color": "#FFFFFF",
+            "pins": {
+                "A": {"position":[0,1]},
+                "Y": {"position":[3,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[3,3],
+                    "path":"NotGate.svg"
+                }
+            }
+        }
+    }
+}
