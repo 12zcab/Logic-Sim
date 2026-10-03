@@ -5,15 +5,13 @@ from typing import Dict, List, Tuple, Optional, Any
 
 class ChildrenModel:
     def __init__(self, name: str, grid_x: float, grid_y: float, grid_w: float, grid_h: float,
-                 svg_data: str = "", bg_color: str = "transparent", border_color: str = "transparent"):
+                 svg_data: str = ""):
         self.name = name
         self.gridX = float(grid_x)
         self.gridY = float(grid_y)
         self.gridW = float(grid_w)
         self.gridH = float(grid_h)
         self.svg_data = svg_data
-        self.bg_color = bg_color
-        self.border_color = border_color
         self.canvasId = None
 
 
@@ -50,8 +48,8 @@ class ContainerModel:
         return node
 
     def addChild(self, name: str, gridX: float, gridY: float, gridW: float, gridH: float,
-                 svg_data: str = "", bg_color: str = "transparent", border_color: str = "transparent") -> ChildrenModel:
-        child = ChildrenModel(name, gridX, gridY, gridW, gridH, svg_data=svg_data, bg_color=bg_color, border_color=border_color)
+                 svg_data: str = "") -> ChildrenModel:
+        child = ChildrenModel(name, gridX, gridY, gridW, gridH, svg_data=svg_data)
         self.children[name] = child
         return child
 
@@ -61,19 +59,15 @@ Node = NodeModel
 Children = ChildrenModel
 
 
-class NodeEditor(Tk):
+class NodeEditor(Frame):
     def __init__(self, master=None):
-        if master is None:
-            super().__init__()
-            self.title("Node Editor")
-            self.geometry("900x650")
-            self.root = self
-        else:
-            self.root = master
+        super().__init__(master)
 
-        self.canvas = Canvas(self.root, bg="#181818", highlightthickness=0)
+        # Attach Canvas directly to self (the Frame)
+        self.canvas = Canvas(self, bg="#181818", highlightthickness=0)
         self.canvas.pack(fill=BOTH, expand=True)
 
+        # Rest of your node engine bindings and initializations...
         self.canvas.bind("<ButtonPress-1>", self.onPress)
         self.canvas.bind("<B1-Motion>", self.onDrag)
         self.canvas.bind("<ButtonRelease-1>", self.onRelease)
@@ -112,6 +106,16 @@ class NodeEditor(Tk):
 
         self.nodeScaleAnim = {}
         self.activeAnimators = set()
+
+    def sanitize_color(self, color: str) -> str:
+        if not color:
+            return ""
+        if color.startswith("#") and len(color) == 9:
+            alpha = color[7:9]
+            if alpha.lower() == "00":
+                return ""
+            return color[:7]
+        return color
 
     def addContainer(self, name: str, gridX: float, gridY: float, gridW: float, gridH: float,
                      bg_color: str = "#2D3748", border_color: str = "#4A5568") -> ContainerModel:
@@ -267,6 +271,36 @@ class NodeEditor(Tk):
 
     def renderSvgData(self, svg_str: str, wx0: float, wy0: float, width: float, height: float, tags: Any):
         import xml.etree.ElementTree as ET
+        import re
+
+        def sanitize_color(color_str: str) -> str:
+            if not color_str or color_str.lower() in ("none", "transparent"):
+                return ""
+            
+            color_str = color_str.strip()
+
+            if color_str.startswith("#") and len(color_str) == 9:
+                alpha = color_str[7:9]
+                if alpha.lower() == "00":
+                    return ""
+                return color_str[:7]
+
+            if color_str.startswith("#") and len(color_str) == 5:
+                r, g, b, a = color_str[1], color_str[2], color_str[3], color_str[4]
+                if a == "0":
+                    return ""
+                return f"#{r}{r}{g}{g}{b}{b}"
+
+            rgba_match = re.match(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)', color_str, re.IGNORECASE)
+            if rgba_match:
+                r, g, b = map(int, rgba_match.groups()[:3])
+                a = float(rgba_match.group(4)) if rgba_match.group(4) is not None else 1.0
+                if a == 0:
+                    return ""
+                return f"#{r:02x}{g:02x}{b:02x}"
+
+            return color_str
+
         try:
             root = ET.fromstring(svg_str)
         except Exception:
@@ -297,8 +331,8 @@ class NodeEditor(Tk):
             except ValueError:
                 sw = 1.0
 
-            fill_val = "" if fill == "none" else fill
-            stroke_val = "" if stroke == "none" else stroke
+            fill_val = sanitize_color(fill)
+            stroke_val = sanitize_color(stroke)
 
             if tag == "rect":
                 rx0 = map_x(elem.attrib.get("x", 0))
@@ -318,16 +352,16 @@ class NodeEditor(Tk):
                 cy_v = map_y(elem.attrib.get("cy", 0))
                 rx_v = float(elem.attrib.get("rx", 0)) * scale_x
                 ry_v = float(elem.attrib.get("ry", 0)) * scale_y
-                self.canvas.create_oval(cx_v - rx_v, cy_v - ry_v, cx_v + rx_v, cy_v + ry_v, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
+                self.canvas.create_oval(cx_v - rx_v, cy_v - rx_v, cx_v + rx_v, cy_v + ry_v, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
 
             elif tag == "line":
                 lx1 = map_x(elem.attrib.get("x1", 0))
                 ly1 = map_y(elem.attrib.get("y1", 0))
                 lx2 = map_x(elem.attrib.get("x2", 0))
                 ly2 = map_y(elem.attrib.get("y2", 0))
-                self.canvas.create_line(lx1, ly1, lx2, ly2, fill=stroke_val, width=sw, tags=tags)
+                self.canvas.create_line(lx1, ly1, lx2, ly2, fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
 
-            elif tag == "polyline" or tag == "polygon":
+            elif tag in ("polyline", "polygon"):
                 pts_raw = elem.attrib.get("points", "").strip().split()
                 pts = []
                 for p in pts_raw:
@@ -338,11 +372,10 @@ class NodeEditor(Tk):
                     if tag == "polygon":
                         self.canvas.create_polygon(pts, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
                     else:
-                        self.canvas.create_line(pts, fill=stroke_val, width=sw, tags=tags)
+                        self.canvas.create_line(pts, fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
 
             elif tag == "path":
                 d = elem.attrib.get("d", "")
-                import re
                 tokens = re.findall(r'([a-zA-Z])|([-+]?(?:\d*\.\d+|\d+))', d)
                 cmd_list = []
                 for t in tokens:
@@ -367,7 +400,7 @@ class NodeEditor(Tk):
                     if fill_val:
                         self.canvas.create_polygon(pts, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
                     else:
-                        self.canvas.create_line(pts, fill=stroke_val, width=sw, tags=tags)
+                        self.canvas.create_line(pts, fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
 
     def createRoundedRectPoints(self, x0, y0, x1, y1, radius):
         radius = max(1, min(radius, (x1 - x0) / 2, (y1 - y0) / 2))
@@ -524,18 +557,15 @@ class NodeEditor(Tk):
                 w_px = chWx1 - chWx0
                 h_px = chWy1 - chWy0
 
-                if child.bg_color != "transparent" or child.border_color != "transparent":
-                    child.canvasId = self.drawRoundedRect(
-                        chWx0, chWy0, chWx1, chWy1,
-                        radius=4 * self.zoom,
-                        fill=child.bg_color,
-                        outline=child.border_color,
-                        width=borderWidth,
-                        tags=("child", f"child_{cName}_{chName}")
-                    )
-
                 if child.svg_data:
                     self.renderSvgData(child.svg_data, chWx0, chWy0, w_px, h_px, tags=("child_svg", f"svg_{cName}_{chName}"))
+
+                # Transparent hit-testing overlay to ensure dragging child area triggers container movement
+                self.canvas.create_rectangle(
+                    chWx0, chWy0, chWx1, chWy1,
+                    fill="", outline="", width=0,
+                    tags=("child", f"child_{cName}_{chName}")
+                )
 
             for nName, node in container.nodes.items():
                 nodeKey = f"{cName}_{nName}"
@@ -746,33 +776,39 @@ class NodeEditor(Tk):
             return
 
         clickedItems = self.canvas.find_withtag("current")
-        if clickedItems and ("container" in self.canvas.gettags(clickedItems[0]) or "child" in self.canvas.gettags(clickedItems[0]) or "child_svg" in self.canvas.gettags(clickedItems[0])):
+        if clickedItems:
             clickedId = clickedItems[0]
             tags = self.canvas.gettags(clickedId)
 
-            target_container_name = None
-            for tag in tags:
-                if tag.startswith("container_"):
-                    target_container_name = tag.replace("container_", "")
-                    break
-                elif tag.startswith("child_"):
-                    target_container_name = tag.split("_")[1]
-                    break
-                elif tag.startswith("svg_"):
-                    target_container_name = tag.split("_")[1]
-                    break
+            # Skip dragging container if clicking directly on a node
+            if "node" not in tags and "nodeGlow" not in tags:
+                target_container_name = None
+                for tag in tags:
+                    if tag.startswith("container_"):
+                        target_container_name = tag.replace("container_", "")
+                        break
+                    elif tag.startswith("child_"):
+                        parts = tag.split("_")
+                        if len(parts) >= 2:
+                            target_container_name = parts[1]
+                        break
+                    elif tag.startswith("svg_"):
+                        parts = tag.split("_")
+                        if len(parts) >= 2:
+                            target_container_name = parts[1]
+                        break
 
-            if target_container_name and target_container_name in self.containers:
-                self.selectedContainerName = target_container_name
-                container = self.containers.pop(self.selectedContainerName)
-                self.containers[self.selectedContainerName] = container
+                if target_container_name and target_container_name in self.containers:
+                    self.selectedContainerName = target_container_name
+                    container = self.containers.pop(self.selectedContainerName)
+                    self.containers[self.selectedContainerName] = container
 
-                mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-                self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
-                self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
-                self.selectedConnectionIndex = None
-                self.renderAll()
-                return
+                    mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
+                    self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
+                    self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
+                    self.selectedConnectionIndex = None
+                    self.renderAll()
+                    return
 
         self.selectedConnectionIndex = None
         self.renderAll()
@@ -836,5 +872,29 @@ class NodeEditor(Tk):
 
 
 if __name__ == "__main__":
-    app = NodeEditor()
-    app.mainloop()
+    root = Tk()
+    root.title("Node Editor")
+    root.geometry("900x650")
+    toolbar = NodeEditor(master=root)
+
+    root.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
+    root.addContainer("Box2", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="#342A4A", border_color="#BB86FC")
+    root.containers["Box1"].addNode("Pin0", -1, 0)
+    root.containers["Box1"].addNode("Pin1", -1, 2)
+    root.containers["Box1"].addNode("PinOut", 3, 1, bg_color="#00ADB5")
+    root.containers["Box2"].addNode("Pin0", -1, 1)
+    root.containers["Box2"].addNode("PinOut", 3, 1, bg_color="#BB86FC")
+    root.containers["Box2"].addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, svg_data=open("icon1.svg").read())
+    root.addConnection("Box1", "Pin0", "Box2", "PinOut")
+    root.update_idletasks()
+    root.renderAll()
+    def custom_interval():
+        for connection in root.connections:
+            connection["Activated"] = not connection.get("Activated", True)
+        root.renderAll()
+        root.after(1000, root.interval)
+
+    root.interval = custom_interval
+    root.interval()
+    root.mainloop()
+
