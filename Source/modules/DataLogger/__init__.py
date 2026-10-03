@@ -7,6 +7,7 @@ def Logger(Name,IOArray,MonitoredIO):
         DictIO[IOArray[i]] = IO(IOArray[i])
         DictIO[IOArray[i]].connect(MonitoredIO[i])
     obj = Component(Name,DictIO,doLog)
+
     return obj
 
 def doLog(self):

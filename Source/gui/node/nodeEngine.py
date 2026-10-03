@@ -875,7 +875,7 @@ if __name__ == "__main__":
     root = Tk()
     root.title("Node Editor")
     root.geometry("900x650")
-    toolbar = NodeEditor(master=root)
+    root = NodeEditor(master=root)
 
     root.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
     root.addContainer("Box2", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="#342A4A", border_color="#BB86FC")
