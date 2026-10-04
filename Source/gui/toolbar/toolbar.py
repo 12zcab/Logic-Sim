@@ -2,10 +2,8 @@ from tkinter import *
 
 class ToolBar(Frame):
     def __init__(self, master=None):
-        # 1. Set main ToolBar frame background
         super().__init__(master, bg="#111111")
 
-        # 2. Set Canvas background to match
         self.canvas = Canvas(self, height=50, highlightthickness=0, bd=0, bg="#111111")
         self.scrollbar = Scrollbar(self, troughcolor="#111111", background="#222222", orient=HORIZONTAL, command=self.canvas.xview)
         
@@ -14,7 +12,6 @@ class ToolBar(Frame):
         self.scrollbar.pack(side=BOTTOM, fill=X)
         self.canvas.pack(side=TOP, fill=BOTH, expand=True)
 
-        # 3. Set inner button_frame background
         self.button_frame = Frame(self.canvas, bg="#111111")
         self.canvas.create_window((0, 0), window=self.button_frame, anchor="nw")
 
@@ -24,7 +21,6 @@ class ToolBar(Frame):
         self.canvas.bind("<Configure>", self._on_canvas_resize)
 
     def add_button(self, Text):
-        # 4. Set container background
         container = Frame(self.button_frame, bg="#111111")
         container.pack(side=LEFT, fill=Y)
         container.pack_propagate(False)

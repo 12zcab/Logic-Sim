@@ -2,8 +2,8 @@ import os
 import sys
 import traceback
 import pkgutil
-
 if __name__ == '__main__':
+    
     if getattr(sys, 'frozen', False):
         base_dir = os.path.dirname(os.path.abspath(sys.executable))
     else:

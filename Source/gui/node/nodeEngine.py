@@ -644,7 +644,6 @@ class NodeEditor(Frame):
                 nodeCenterLogX, nodeCenterLogY = self.getNodeCenterLogicalSpace(container, nName)
                 textWinX, textWinY = self.toWindowSpace(nodeCenterLogX, nodeCenterLogY)
 
-                # Fix 1: Properly scale pin text dynamically based on current zoom level
                 scaledFontSize = int(4 * self.zoom * currentScale)
 
                 self.canvas.create_text(
@@ -765,7 +764,7 @@ class NodeEditor(Frame):
             self.renderAll()
             return
 
-        if event.state & 0x0001:  # Shift Key
+        if event.state & 0x0001:
             wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
             if wp and not self.connectingStart:
                 connIdx, branch, wpIdx = wp
