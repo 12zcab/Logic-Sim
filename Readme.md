@@ -27,6 +27,7 @@ For more Details of how to use Cli interface, please read Docs/Cli.md and Docs/A
         - enum  err just some value enums
         - object  Logic Objects
     - '__init__'.py  Importer and some testing stuff
+- Gui  WIP a GUI Editor :DDDD
 - modules
     - DataLogger  Basic DataLogger Module
     - FlipFlop  Basic FlipFlop Components made with LogicGate module

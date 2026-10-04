@@ -12,7 +12,7 @@ Source/core/module/BetterDict.py
 Source/core/module/chronos.py
 Source/core/module/enum.py
 Source/core/module/object.py
-Source/gui/__init__.py
+Source/gui/main.py
 Source/gui/connector/__init__.py
 Source/gui/node/nodeEngine.py
 Source/gui/toolbar/toolbar.py

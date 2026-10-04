@@ -1,0 +1,84 @@
+mid_y = y + h * 0.5
+
+# Full height spanning (from 0 to 3 grid units)
+y_top = y
+y_bottom = y + h
+
+# Widened gate body
+x_gate_left = x + w * (0.8 / 4.0)
+x_gate_right = x + w * (2.7 / 4.0)
+
+r_bubble = h * (0.16 / 3.0)
+cx_bubble = x_gate_right + r_bubble
+
+pts = [
+    (x_gate_left, y_top),
+    (x_gate_right, mid_y),
+    (x_gate_left, y_bottom)
+]
+
+# Straight leads extending to external node columns
+line_in = [(x - w * (0.5 / 4.0), mid_y), (x_gate_left, mid_y)]
+line_out = [(cx_bubble + r_bubble, mid_y), (x + w * (4.5 / 4.0), mid_y)]
+
+if angle != 0:
+    pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
+    line_in = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in]
+    line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
+
+stroke_w = max(2, int(min(w, h) * 0.05))
+select_w = stroke_w + max(2, int(min(w, h) * 0.04))
+
+canvas.create_line(
+    line_in[0][0], line_in[0][1], line_in[1][0], line_in[1][1],
+    fill="#000000", width=stroke_w, tags=tags
+)
+
+canvas.create_line(
+    line_out[0][0], line_out[0][1], line_out[1][0], line_out[1][1],
+    fill="#000000", width=stroke_w, tags=tags
+)
+
+flat_pts = [coord for pt in pts for coord in pt]
+
+bubble_center = (cx_bubble, mid_y)
+if angle != 0:
+    bubble_center = rotatePoint(bubble_center[0], bubble_center[1], cx, cy, angle)
+
+if is_selected:
+    canvas.create_polygon(
+        flat_pts, 
+        fill="", 
+        outline="#00E5FF", 
+        width=select_w, 
+        joinstyle="miter",
+        tags=tags
+    )
+    canvas.create_oval(
+        bubble_center[0] - r_bubble - select_w/2, bubble_center[1] - r_bubble - select_w/2, 
+        bubble_center[0] + r_bubble + select_w/2, bubble_center[1] + r_bubble + select_w/2,
+        fill="", 
+        outline="#00E5FF", 
+        width=stroke_w, 
+        tags=tags
+    )
+
+# Draw Triangle
+canvas.create_polygon(
+    flat_pts, 
+    fill="#FFFFFF", 
+    outline="#000000", 
+    width=stroke_w, 
+    joinstyle="miter",
+    tags=tags
+)
+
+# Draw Bubble
+canvas.create_oval(
+    bubble_center[0] - r_bubble, bubble_center[1] - r_bubble, 
+    bubble_center[0] + r_bubble, bubble_center[1] + r_bubble,
+    fill="#FFFFFF", 
+    outline="#000000", 
+    width=stroke_w, 
+    tags=tags
+)

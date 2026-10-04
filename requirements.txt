@@ -1,0 +1,14 @@
+svglib
+pillow
+reportlab
+keyboard
+pkgutil
+tabulate
+typing
+tempfile
+json
+time
+random
+collections
+yowasp_yosys
+wasmtime

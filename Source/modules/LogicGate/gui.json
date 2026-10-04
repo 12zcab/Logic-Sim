@@ -3,17 +3,36 @@
     "components":{
         "Not Gate":{
             "constructor":"NotGate",
-            "size": [3,3],
-            "color": "#FFFFFF",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
             "pins": {
-                "A": {"position":[0,1]},
-                "Y": {"position":[3,1]}
+                "A": {"position":[-1,1]},
+                "Y": {"position":[4,1]}
             },
             "children": {
                 "svg": {
                     "position":[0,0],
-                    "size":[3,3],
-                    "path":"NotGate.svg"
+                    "size":[4,3],
+                    "path":"NotGate.pyIcon"
+                }
+            }
+        },
+        "And Gate":{
+            "constructor":"AndGate",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"AndGate.pyIcon"
                 }
             }
         }

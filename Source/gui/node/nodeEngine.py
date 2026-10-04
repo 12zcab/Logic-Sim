@@ -1,12 +1,10 @@
 import math
+import copy
 from tkinter import *
 from typing import Dict, List, Tuple, Optional, Any
-import xml.etree.ElementTree as ET
-import re
 
 
 def rotatePoint(x: float, y: float, cx: float, cy: float, angle_deg: float) -> Tuple[float, float]:
-    """Rotate a point (x, y) around a center point (cx, cy) by angle_deg degrees."""
     if angle_deg % 360 == 0:
         return x, y
     rad = math.radians(angle_deg)
@@ -18,14 +16,14 @@ def rotatePoint(x: float, y: float, cx: float, cy: float, angle_deg: float) -> T
 
 
 class ChildrenModel:
-    def __init__(self, name: str, grid_x: float, grid_y: float, grid_w: float, grid_h: float,
-                 svg_data: str = ""):
+    def __init__(self, name: str, grid_x: float, grid_y: float, grid_w: float = 1.0, grid_h: float = 1.0,
+                 python_script: str = ""):
         self.name = name
         self.gridX = float(grid_x)
         self.gridY = float(grid_y)
         self.gridW = float(grid_w)
         self.gridH = float(grid_h)
-        self.svg_data = svg_data
+        self.python_script = python_script
         self.canvasId = None
 
 
@@ -40,7 +38,8 @@ class NodeModel:
 
 
 class ContainerModel:
-    def __init__(self, parent_editor, name: str, grid_x: float, grid_y: float, grid_w: float, grid_h: float,
+    def __init__(self, parent_editor, name: str, grid_x: float, grid_y: float,
+                 grid_w: float = 1.0, grid_h: float = 1.0,
                  bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0):
         self.parent = parent_editor
         self.name = name
@@ -62,16 +61,11 @@ class ContainerModel:
             self.parent.nodeScaleAnim[(self, name)] = 0.6
         return node
 
-    def addChild(self, name: str, gridX: float, gridY: float, gridW: float, gridH: float,
-                 svg_data: str = "") -> ChildrenModel:
-        child = ChildrenModel(name, gridX, gridY, gridW, gridH, svg_data=svg_data)
+    def addChild(self, name: str, gridX: float, gridY: float, gridW: float = 1.0, gridH: float = 1.0,
+                 python_script: str = "") -> ChildrenModel:
+        child = ChildrenModel(name, gridX, gridY, gridW, gridH, python_script=python_script)
         self.children[name] = child
         return child
-
-
-Container = ContainerModel
-Node = NodeModel
-Children = ChildrenModel
 
 
 class NodeEditor(Frame):
@@ -129,40 +123,26 @@ class NodeEditor(Frame):
             self.selectedContainer.angle = (self.selectedContainer.angle + 90) % 360
             self.renderAll()
 
-    def sanitize_color(self, color: str) -> str:
-        if not color:
-            return ""
-        if color.startswith("#") and len(color) == 9:
-            alpha = color[7:9]
-            if alpha.lower() == "00":
-                return ""
-            return color[:7]
-        return color
-
-    def addContainer(self, name: str, gridX: float, gridY: float, gridW: float, gridH: float,
+    def addContainer(self, name: str, gridX: float, gridY: float, gridW: float = 1.0, gridH: float = 1.0,
                      bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0) -> ContainerModel:
-        container = ContainerModel(self, name, gridX, gridY, gridW, gridH, bg_color, border_color, angle)
+        container = ContainerModel(self, name, gridX, gridY, gridW, gridH, bg_color=bg_color, border_color=border_color, angle=angle)
         self.containers.append(container)
         return container
 
-    def addConnection(self, fromContainer: ContainerModel, fromNode: str, toContainer: ContainerModel, toNode: str, waypoints: Optional[List[Tuple[float, float]]] = None):
-        if waypoints is None:
-            fromX, fromY = self.getNodeCenterLogicalSpace(fromContainer, fromNode)
-            toX, toY = self.getNodeCenterLogicalSpace(toContainer, toNode)
-            midX, _ = self.snapToMidGrid((fromX + toX) / 2, 0)
-            waypoints = [(midX, fromY), (midX, toY)]
-
-        self.connections.append({
-            "from": (fromContainer, fromNode),
+    def addConnection(self, from_container: ContainerModel, from_pin: str, to_container: ContainerModel, to_pin: str):
+        conn = {
+            "from": (from_container, from_pin),
             "branches": [
                 {
-                    "waypoints": waypoints,
-                    "to": (toContainer, toNode),
+                    "waypoints": [],
+                    "to": (to_container, to_pin),
                     "sub_branches": []
                 }
             ],
             "Activated": True
-        })
+        }
+        self.connections.append(conn)
+        return conn
 
     def snapToMidGrid(self, logX: float, logY: float) -> Tuple[float, float]:
         snappedX = (math.floor(logX / self.gridSize) + 0.5) * self.gridSize
@@ -200,21 +180,25 @@ class NodeEditor(Frame):
 
         return rotatePoint(unrotated_x, unrotated_y, center_x, center_y, container.angle)
 
-    def findContainerAtPosition(self, logX: float, logY: float) -> Optional[ContainerModel]:
-        for container in reversed(self.containers):
-            cx = (container.gridX + container.gridW / 2) * self.gridSize
-            cy = (container.gridY + container.gridH / 2) * self.gridSize
-            
-            # Unrotate click point back into container coordinate system
-            rx, ry = rotatePoint(logX, logY, cx, cy, -container.angle)
-            
-            x0 = container.gridX * self.gridSize
-            y0 = container.gridY * self.gridSize
-            x1 = x0 + container.gridW * self.gridSize
-            y1 = y0 + container.gridH * self.gridSize
+    def findContainerAtWindowPos(self, winX: float, winY: float) -> Optional[ContainerModel]:
+        items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
+        if not items:
+            return None
 
-            if x0 <= rx <= x1 and y0 <= ry <= y1:
-                return container
+        for item in reversed(items):
+            tags = self.canvas.gettags(item)
+            if "node" in tags or "nodeGlow" in tags or "connection" in tags or "waypoint" in tags:
+                continue
+
+            for container in reversed(self.containers):
+                if container.canvasId == item:
+                    return container
+                
+                for child in container.children.values():
+                    child_tag = f"child_{id(child)}"
+                    if child_tag in tags:
+                        return container
+
         return None
 
     def findNodeAtPosition(self, winX: float, winY: float, maxDistance: float = 10):
@@ -308,139 +292,29 @@ class NodeEditor(Frame):
                     subs_to_keep.append(sb)
             branch["sub_branches"] = subs_to_keep
 
-    def renderSvgData(self, svg_str: str, wx0: float, wy0: float, width: float, height: float, tags: Any, angle: float = 0.0, center_win: Tuple[float, float] = (0, 0)):
-        def sanitize_color(color_str: str) -> str:
-            if not color_str or color_str.lower() in ("none", "transparent"):
-                return ""
-            color_str = color_str.strip()
-            if color_str.startswith("#") and len(color_str) == 9:
-                alpha = color_str[7:9]
-                if alpha.lower() == "00":
-                    return ""
-                return color_str[:7]
-            if color_str.startswith("#") and len(color_str) == 5:
-                r, g, b, a = color_str[1], color_str[2], color_str[3], color_str[4]
-                if a == "0":
-                    return ""
-                return f"#{r}{r}{g}{g}{b}{b}"
-            rgba_match = re.match(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)', color_str, re.IGNORECASE)
-            if rgba_match:
-                r, g, b = map(int, rgba_match.groups()[:3])
-                a = float(rgba_match.group(4)) if rgba_match.group(4) is not None else 1.0
-                if a == 0:
-                    return ""
-                return f"#{r:02x}{g:02x}{b:02x}"
-            return color_str
-
-        try:
-            root = ET.fromstring(svg_str)
-        except Exception:
+    def executePythonIconScript(self, child: ChildrenModel, wx0: float, wy0: float, width: float, height: float, tags: Any, angle: float = 0.0, center_win: Tuple[float, float] = (0, 0), is_selected: bool = False):
+        if not child.python_script or width <= 0 or height <= 0:
             return
 
-        vb = root.attrib.get("viewBox")
-        if vb:
-            vx, vy, vw, vh = map(float, vb.split())
-        else:
-            vx, vy, vw, vh = 0, 0, 100, 100
+        scope = {
+            "canvas": self.canvas,
+            "x": wx0,
+            "y": wy0,
+            "w": width,
+            "h": height,
+            "tags": tags,
+            "angle": angle,
+            "cx": center_win[0],
+            "cy": center_win[1],
+            "is_selected": is_selected,
+            "rotatePoint": rotatePoint,
+            "math": math
+        }
 
-        scale_x = width / vw if vw else 1
-        scale_y = height / vh if vh else 1
-
-        def transform_pt(x_val, y_val):
-            wx = wx0 + (float(x_val) - vx) * scale_x
-            wy = wy0 + (float(y_val) - vy) * scale_y
-            if angle != 0:
-                return rotatePoint(wx, wy, center_win[0], center_win[1], angle)
-            return wx, wy
-
-        for elem in root.iter():
-            tag = elem.tag.split("}")[-1]
-            fill = elem.attrib.get("fill", "none")
-            stroke = elem.attrib.get("stroke", "none")
-            sw_str = elem.attrib.get("stroke-width", "1")
-            try:
-                sw = float(sw_str) * min(scale_x, scale_y)
-            except ValueError:
-                sw = 1.0
-
-            fill_val = sanitize_color(fill)
-            stroke_val = sanitize_color(stroke)
-
-            if tag == "rect":
-                rx0 = float(elem.attrib.get("x", 0))
-                ry0 = float(elem.attrib.get("y", 0))
-                rw = float(elem.attrib.get("width", 0))
-                rh = float(elem.attrib.get("height", 0))
-
-                poly = [
-                    transform_pt(rx0, ry0),
-                    transform_pt(rx0 + rw, ry0),
-                    transform_pt(rx0 + rw, ry0 + rh),
-                    transform_pt(rx0, ry0 + rh)
-                ]
-                flat_pts = [c for pt in poly for c in pt]
-                self.canvas.create_polygon(flat_pts, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
-
-            elif tag in ("circle", "ellipse"):
-                cx_v = float(elem.attrib.get("cx", 0))
-                cy_v = float(elem.attrib.get("cy", 0))
-                rx_v = float(elem.attrib.get("r", elem.attrib.get("rx", 0)))
-                ry_v = float(elem.attrib.get("r", elem.attrib.get("ry", 0)))
-
-                steps = 16
-                pts = []
-                for i in range(steps):
-                    a = math.radians(i * 360 / steps)
-                    px = cx_v + rx_v * math.cos(a)
-                    py = cy_v + ry_v * math.sin(a)
-                    pts.extend(transform_pt(px, py))
-                self.canvas.create_polygon(pts, fill=fill_val, outline=stroke_val, width=sw, smooth=True, tags=tags)
-
-            elif tag == "line":
-                p1 = transform_pt(elem.attrib.get("x1", 0), elem.attrib.get("y1", 0))
-                p2 = transform_pt(elem.attrib.get("x2", 0), elem.attrib.get("y2", 0))
-                self.canvas.create_line(p1[0], p1[1], p2[0], p2[1], fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
-
-            elif tag in ("polyline", "polygon"):
-                pts_raw = elem.attrib.get("points", "").strip().split()
-                pts = []
-                for p in pts_raw:
-                    coords = p.split(",")
-                    if len(coords) == 2:
-                        pts.extend(transform_pt(coords[0], coords[1]))
-                if pts:
-                    if tag == "polygon":
-                        self.canvas.create_polygon(pts, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
-                    else:
-                        self.canvas.create_line(pts, fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
-
-            elif tag == "path":
-                d = elem.attrib.get("d", "")
-                tokens = re.findall(r'([a-zA-Z])|([-+]?(?:\d*\.\d+|\d+))', d)
-                cmd_list = []
-                for t in tokens:
-                    if t[0]:
-                        cmd_list.append(t[0])
-                    elif t[1]:
-                        cmd_list.append(float(t[1]))
-
-                pts = []
-                idx = 0
-                while idx < len(cmd_list):
-                    c = cmd_list[idx]
-                    if isinstance(c, str):
-                        idx += 1
-                        if c in ['M', 'L']:
-                            pts.extend(transform_pt(cmd_list[idx], cmd_list[idx+1]))
-                            idx += 2
-                    else:
-                        pts.extend(transform_pt(cmd_list[idx], cmd_list[idx+1]))
-                        idx += 2
-                if pts:
-                    if fill_val:
-                        self.canvas.create_polygon(pts, fill=fill_val, outline=stroke_val, width=sw, tags=tags)
-                    else:
-                        self.canvas.create_line(pts, fill=stroke_val if stroke_val else "#FFFFFF", width=sw, tags=tags)
+        try:
+            exec(child.python_script, scope)
+        except Exception as e:
+            print(f"[PythonIconScript Execution Error] {e}")
 
     def createRoundedRectPoints(self, x0, y0, x1, y1, radius, angle=0.0, center=None):
         radius = max(1, min(radius, (x1 - x0) / 2, (y1 - y0) / 2))
@@ -462,6 +336,9 @@ class NodeEditor(Frame):
         return points
 
     def drawRoundedRect(self, x0, y0, x1, y1, radius, fill, outline, width=2, tags="container", angle=0.0, center=None):
+        if fill == "transparent" and outline == "transparent":
+            return None
+
         points = self.createRoundedRectPoints(x0, y0, x1, y1, radius, angle=angle, center=center)
         fill_val = "" if fill == "transparent" else fill
         outline_val = "" if outline == "transparent" else outline
@@ -561,6 +438,7 @@ class NodeEditor(Frame):
 
     def renderAll(self):
         self.canvas.delete("all")
+
         self.renderGrid()
         self.renderConnections()
 
@@ -581,12 +459,16 @@ class NodeEditor(Frame):
             centerWin = self.toWindowSpace(centerLogX, centerLogY)
 
             isSelected = container is self.selectedContainer
+            
+            border_color = container.border_color
+            if isSelected and container.border_color != "transparent":
+                border_color = "#FFFFFF"
 
             container.canvasId = self.drawRoundedRect(
                 wx0, wy0, wx1, wy1,
                 radius=cornerRadiusPixels,
                 fill=container.bg_color,
-                outline=container.border_color if not isSelected else "#FFFFFF",
+                outline=border_color,
                 width=borderWidth,
                 tags=("container",),
                 angle=container.angle,
@@ -605,8 +487,15 @@ class NodeEditor(Frame):
                 w_px = chWx1 - chWx0
                 h_px = chWy1 - chWy0
 
-                if child.svg_data:
-                    self.renderSvgData(child.svg_data, chWx0, chWy0, w_px, h_px, tags=("child_svg",), angle=container.angle, center_win=centerWin)
+                if child.python_script:
+                    child_tag = f"child_{id(child)}"
+                    self.executePythonIconScript(
+                        child, chWx0, chWy0, w_px, h_px, 
+                        tags=("child_python_icon", child_tag), 
+                        angle=container.angle, 
+                        center_win=centerWin, 
+                        is_selected=isSelected
+                    )
 
             for nName, node in container.nodes.items():
                 nodeKey = (container, nName)
@@ -646,13 +535,15 @@ class NodeEditor(Frame):
 
                 scaledFontSize = int(4 * self.zoom * currentScale)
 
-                self.canvas.create_text(
-                    textWinX,
-                    textWinY,
-                    fill="white",
-                    font=("Arial", scaledFontSize, "bold"),
-                    text=node.name
-                )
+                if scaledFontSize > 0:
+                    self.canvas.create_text(
+                        textWinX,
+                        textWinY,
+                        fill="white",
+                        font=("Arial", scaledFontSize, "bold"),
+                        text=node.name,
+                        tags="node"
+                    )
 
         self.canvas.tag_lower("connection")
         self.canvas.tag_lower("gridLine")
@@ -726,6 +617,7 @@ class NodeEditor(Frame):
     def onPress(self, event):
         self.canvas.focus_set()
         nodeAtPress = self.findNodeAtPosition(event.x, event.y, maxDistance=10)
+        
         if nodeAtPress:
             if not self.connectingStart:
                 self.connectingStart = {
@@ -822,10 +714,9 @@ class NodeEditor(Frame):
             self.renderAll()
             return
 
-        # Fix 2: Container detection works on unrotated and rotated geometric bounds (including over SVG elements)
-        mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-        container = self.findContainerAtPosition(mouseLogX, mouseLogY)
+        container = self.findContainerAtWindowPos(event.x, event.y)
         if container:
+            mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
             self.selectedContainer = container
             self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
             self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
@@ -865,7 +756,6 @@ class NodeEditor(Frame):
     def onRelease(self, event):
         if self.draggingWaypoint:
             self.draggingWaypoint = None
-        # Fix 2: Retain self.selectedContainer on release so 'R' rotation keypress works!
         self.renderAll()
 
     def onMouseWheel(self, event):
@@ -902,7 +792,7 @@ if __name__ == "__main__":
     app.pack(fill=BOTH, expand=True)
 
     box1 = app.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
-    box2 = app.addContainer("Box1", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="#342A4A", border_color="#BB86FC")
+    box2 = app.addContainer("Box2", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="transparent", border_color="transparent")
 
     box1.addNode("Pin0", -1, 0)
     box1.addNode("Pin1", -1, 2)
@@ -910,14 +800,26 @@ if __name__ == "__main__":
     box2.addNode("Pin0", -1, 1)
     box2.addNode("PinOut", 3, 1)
 
-    sample_svg = '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#00ADB5"/></svg>'
+    # Sample Python Icon Script that draws an active highlight ring when selected
+    sample_python_script = """
+cx_circle, cy_circle = x + w/2, y + h/2
+r = min(w, h) * 0.35
+if angle != 0:
+    cx_circle, cy_circle = rotatePoint(cx_circle, cy_circle, cx, cy, angle)
+
+# Highlight real object contour when selected
+if is_selected:
+    canvas.create_oval(cx_circle - r - 4, cy_circle - r - 4, cx_circle + r + 4, cy_circle + r + 4, fill="", outline="#FFFFFF", width=3, tags=tags)
+
+canvas.create_oval(cx_circle - r, cy_circle - r, cx_circle + r, cy_circle + r, fill="#00ADB5", outline="#FFFFFF", width=2, tags=tags)
+"""
     try:
-        with open("icon1.svg", "r") as f:
-            sample_svg = f.read()
+        with open("vectorGraphicIcon.py", "r") as f:
+            sample_python_script = f.read()
     except FileNotFoundError:
         pass
 
-    box2.addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, svg_data=sample_svg)
+    box2.addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, python_script=sample_python_script)
     app.addConnection(box1, "Pin0", box2, "PinOut")
 
     app.update_idletasks()
