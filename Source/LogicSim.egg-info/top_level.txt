@@ -1,0 +1,4 @@
+Temp
+core
+gui
+modules
