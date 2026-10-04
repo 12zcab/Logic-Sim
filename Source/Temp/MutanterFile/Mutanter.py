@@ -3,10 +3,10 @@
 # I have searched the better way to make the structure ( Ai + YT video )
 # Son, this thing can self destruct
 
-
 from Temp.Data import DataHandler
 import importlib
 import pkgutil
+from pathlib import Path
 import logging
 import types
 from typing import *
@@ -18,7 +18,6 @@ logging.basicConfig(level=logging.INFO)
 class Loader:
     @staticmethod
     def LoadModule(TargetName):
-
         #Return Tables
         FoundItems = []
   
@@ -32,18 +31,35 @@ class Loader:
         return FoundItems  
 
     @staticmethod
-    def LoadFromPath(TargetPaths , prefix : str = ""):
-
+    def LoadModuleFromPath(Targets , prefix : str = ""):
         # Return Table
         FoundItems = []
+        Paths = []
+        if not isinstance(Targets, List):
+            Targets = [Targets]
 
-        for _, modname, _ in pkgutil.iter_importers(TargetPaths):
-            Target = f"{prefix}{modname}"
-            try:
-               FoundItems.append(importlib.import_module(Target))
-            except ImportError as e:
-                print(f"{Target}" " does not exist due to" f"{e}")
+        for Folder in Targets:
+            Paths.append(Path(Folder).resolve())
+
+        for Path in Paths:
+            for _, modname, _ in pkgutil.iter_importers(Paths):
+                Target = f"{prefix}{modname}"
+                try:
+                    FoundItems.append(importlib.import_module(Target))
+                except ImportError as e:
+                    print(f"{Target}" " does not exist due to" f"{e}")
+
         return FoundItems
+
+    def LoadFiles(Targets, prefix : str = "", FileType=None):
+        Paths = []
+        FoundItem = []
+
+        if not isinstance(Targets, List):
+            Targets = [Targets]
+
+        
+
     
     @staticmethod
     def CloneImport(TargetImport):
@@ -65,9 +81,6 @@ class Loader:
             Clone.append(CloneImport)
 
         return Clone
-
-
-
 
 
 class Modifier:

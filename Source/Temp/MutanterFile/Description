@@ -1,0 +1,11 @@
+In here, it will show how to use the Mutanter
+
+Loader:
+LoadModule allow using the name or table of names of the module u want to get the object itself
+example:
+Loader.LoadModule("Mutanter.py"), it will return a table [Mutanter.py, ... (more if table)]
+LoadFromPath allow using the path of a file to get all modules/script from the file 
+
+Get the reference of the folder and then contain it as table
+Loader.LoadFromPath(FoldersTable) -> return found modules as table
+
