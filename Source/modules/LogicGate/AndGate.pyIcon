@@ -1,73 +1,71 @@
 import math
 
-mid_y = y + h * 0.5
+y_in0 = y + h * (0.5 / 3.0)
+y_out = y + h * (1.5 / 3.0)
+y_in1 = y + h * (2.5 / 3.0)
 
-# Inputs at row 0 (y=0.5) and row 2 (y=2.5) in 3-row grid
-y_in1 = y + h * (0.5 / 3.0)
-y_in2 = y + h * (2.5 / 3.0)
+x_gate_back = x + w * (0.9 / 3.0)
+x_gate_flat_end = x + w * (1.5 / 3.0)
 
-# Full height spanning (from 0 to 3 grid units)
-y_top = y
-y_bottom = y + h
-gate_h = h
-r_arc = gate_h / 2
+y_top = y + h * (0.2 / 3.0)
+y_bot = y + h * (2.8 / 3.0)
+y_mid = y + h * 0.5
 
-# Widened gate body (spans x = 0.8/4 to x = 3.0/4)
-x_gate_left = x + w * (0.8 / 4.0)
-x_gate_right = x + w * (3.0 / 4.0)
-cx_arc = x_gate_right - r_arc
+arc_radius = (y_bot - y_top) / 2.0
+arc_center_x = x_gate_flat_end
+arc_center_y = y_mid
 
-# Arc geometry
-pts = [(x_gate_left, y_top)]
+pts = [(x_gate_back, y_top), (x_gate_flat_end, y_top)]
 num_arc_pts = 16
 for i in range(num_arc_pts + 1):
-    a = (math.pi / 2) - (i / num_arc_pts) * math.pi
-    px = cx_arc + r_arc * math.cos(a)
-    py = mid_y - r_arc * math.sin(a)
+    a = (math.pi / 2.0) - (i / num_arc_pts) * math.pi
+    px = arc_center_x + arc_radius * math.cos(a)
+    py = arc_center_y - arc_radius * math.sin(a)
     pts.append((px, py))
-pts.append((x_gate_left, y_bottom))
 
-# Straight leads extending to external node columns
-line_in1 = [(x - w * (0.5 / 4.0), y_in1), (x_gate_left, y_in1)]
-line_in2 = [(x - w * (0.5 / 4.0), y_in2), (x_gate_left, y_in2)]
-line_out = [(x_gate_right, mid_y), (x + w * (4.5 / 4.0), mid_y)]
+pts.extend([(x_gate_flat_end, y_bot), (x_gate_back, y_bot)])
 
-if angle != 0:
-    pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
-    line_in1 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in1]
-    line_in2 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in2]
-    line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
+gate_tip_x = arc_center_x + arc_radius
 
+line_in0 = [(x, y_in0), (x_gate_back, y_in0)]
+line_in1 = [(x, y_in1), (x_gate_back, y_in1)]
+line_out = [(gate_tip_x, y_out), (x + w, y_out)]
+
+pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
+line_in0 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in0]
+line_in1 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in1]
+line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
+
+flat_line0 = [coord for pt in line_in0 for coord in pt]
 flat_line1 = [coord for pt in line_in1 for coord in pt]
-flat_line2 = [coord for pt in line_in2 for coord in pt]
 flat_out = [coord for pt in line_out for coord in pt]
 
 stroke_w = max(2, int(min(w, h) * 0.05))
 select_w = stroke_w + max(2, int(min(w, h) * 0.04))
 
-# Draw leads
-canvas.create_line(*flat_line1, fill="#000000", width=stroke_w, tags=tags)
-canvas.create_line(*flat_line2, fill="#000000", width=stroke_w, tags=tags)
-canvas.create_line(*flat_out, fill="#000000", width=stroke_w, tags=tags)
+canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_out, fill="#FFFFFF", width=stroke_w, tags=tags)
 
 flat_pts = [coord for pt in pts for coord in pt]
 
 if is_selected:
     canvas.create_polygon(
-        flat_pts, 
-        fill="", 
-        outline="#00E5FF", 
-        width=select_w, 
+        flat_pts,
+        fill="",
+        outline="#00E5FF",
+        width=select_w,
         joinstyle="miter",
+        smooth=False,
         tags=tags
     )
 
-# Draw AND gate shape
 canvas.create_polygon(
-    flat_pts, 
-    fill="#FFFFFF", 
-    outline="#000000", 
-    width=stroke_w, 
+    flat_pts,
+    fill="#181818",
+    outline="#FFFFFF",
+    width=stroke_w,
     joinstyle="miter",
+    smooth=False,
     tags=tags
 )

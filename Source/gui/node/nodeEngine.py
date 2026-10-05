@@ -47,7 +47,7 @@ class ContainerModel:
         self.gridY = float(grid_y)
         self.gridW = float(grid_w)
         self.gridH = float(grid_h)
-        self.angle = angle
+        self.angle = angle % 360
         self.bg_color = bg_color
         self.border_color = border_color
         self.canvasId = None
@@ -89,8 +89,9 @@ class NodeEditor(Frame):
         self.canvas.bind("<B2-Motion>", self.panCanvas)
 
         self.canvas.focus_set()
-        self.master.bind("<Key-r>", self.rotateSelectedContainer)
-        self.master.bind("<Key-R>", self.rotateSelectedContainer)
+
+        self.master.bind_all("r", self.rotateSelectedContainer)
+        self.master.bind_all("R", self.rotateSelectedContainer)
 
         self.zoom = 1.0
         self.panX = 0.0
@@ -118,6 +119,19 @@ class NodeEditor(Frame):
         self.nodeScaleAnim = {}
         self.activeAnimators = set()
 
+    def getContainerCenterLogical(self, container: ContainerModel) -> Tuple[float, float]:
+        cx = (container.gridX + container.gridW / 2.0) * self.gridSize
+        cy = (container.gridY + container.gridH / 2.0) * self.gridSize
+        
+        # Shift pivot by 0.5 units for odd/even mixed parities to align rotated nodes to grid centers
+        if container.gridW % 2 != container.gridH % 2:
+            if container.gridW % 2 == 0:
+                cx += 0.5 * self.gridSize
+            else:
+                cy += 0.5 * self.gridSize
+                
+        return cx, cy
+
     def rotateSelectedContainer(self, event=None):
         if self.selectedContainer:
             self.selectedContainer.angle = (self.selectedContainer.angle + 90) % 360
@@ -128,6 +142,36 @@ class NodeEditor(Frame):
         container = ContainerModel(self, name, gridX, gridY, gridW, gridH, bg_color=bg_color, border_color=border_color, angle=angle)
         self.containers.append(container)
         return container
+
+    def deleteContainer(self, container: ContainerModel):
+        if container in self.containers:
+            self.containers.remove(container)
+        if self.selectedContainer == container:
+            self.selectedContainer = None
+
+        # Clean up any connections attached to nodes in this container
+        new_connections = []
+        for conn in self.connections:
+            fromC, _ = conn["from"]
+            if fromC == container:
+                continue
+
+            def filterBranches(branches):
+                valid_branches = []
+                for b in branches:
+                    if "to" in b:
+                        toC, _ = b["to"]
+                        if toC == container:
+                            continue
+                    b["sub_branches"] = filterBranches(b.get("sub_branches", []))
+                    valid_branches.append(b)
+                return valid_branches
+
+            conn["branches"] = filterBranches(conn["branches"])
+            if conn["branches"]:
+                new_connections.append(conn)
+
+        self.connections = new_connections
 
     def addConnection(self, from_container: ContainerModel, from_pin: str, to_container: ContainerModel, to_pin: str):
         conn = {
@@ -174,30 +218,45 @@ class NodeEditor(Frame):
         node = container.nodes[nName]
         unrotated_x = (container.gridX + node.gridX + 0.5) * self.gridSize
         unrotated_y = (container.gridY + node.gridY + 0.5) * self.gridSize
-
-        center_x = (container.gridX + container.gridW / 2) * self.gridSize
-        center_y = (container.gridY + container.gridH / 2) * self.gridSize
-
+        center_x, center_y = self.getContainerCenterLogical(container)
         return rotatePoint(unrotated_x, unrotated_y, center_x, center_y, container.angle)
 
+    def isPointInRotatedRect(self, winX: float, winY: float, container: ContainerModel) -> bool:
+        logX, logY = self.toLogicalSpace(winX, winY)
+        cx, cy = self.getContainerCenterLogical(container)
+        unrotX, unrotY = rotatePoint(logX, logY, cx, cy, -container.angle)
+
+        x0 = container.gridX * self.gridSize
+        x1 = (container.gridX + container.gridW) * self.gridSize
+        y0 = container.gridY * self.gridSize
+        y1 = (container.gridY + container.gridH) * self.gridSize
+
+        return (x0 <= unrotX <= x1) and (y0 <= unrotY <= y1)
+
     def findContainerAtWindowPos(self, winX: float, winY: float) -> Optional[ContainerModel]:
+        # Collect all canvas tags under the mouse cursor
         items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
-        if not items:
-            return None
+        hit_tags = set()
+        if items:
+            for item in items:
+                hit_tags.update(self.canvas.gettags(item))
 
-        for item in reversed(items):
-            tags = self.canvas.gettags(item)
-            if "node" in tags or "nodeGlow" in tags or "connection" in tags or "waypoint" in tags:
-                continue
-
-            for container in reversed(self.containers):
-                if container.canvasId == item:
+        # Evaluate layers top-to-bottom so upper layers take priority over lower layers
+        for container in reversed(self.containers):
+            # 1. Check if mouse hits any child of THIS container
+            for child in container.children.values():
+                if f"child_{id(child)}" in hit_tags:
                     return container
-                
-                for child in container.children.values():
-                    child_tag = f"child_{id(child)}"
-                    if child_tag in tags:
-                        return container
+
+            # 2. Check bounding box hit for THIS container (unless transparent)
+            is_transparent = (
+                container.bg_color in ("transparent", "", "none", None) and 
+                container.border_color in ("transparent", "", "none", None)
+            )
+            
+            if not is_transparent:
+                if self.isPointInRotatedRect(winX, winY, container):
+                    return container
 
         return None
 
@@ -296,6 +355,31 @@ class NodeEditor(Frame):
         if not child.python_script or width <= 0 or height <= 0:
             return
 
+        def draw_oval(cx_circle, cy_circle, r, fill="", outline="#FFFFFF", width=2):
+            if angle != 0:
+                cx_circle, cy_circle = rotatePoint(cx_circle, cy_circle, center_win[0], center_win[1], angle)
+            return self.canvas.create_oval(cx_circle - r, cy_circle - r, cx_circle + r, cy_circle + r,
+                                           fill=fill, outline=outline, width=width, tags=tags)
+
+        def draw_polygon(points, fill="", outline="#FFFFFF", width=2):
+            rot_points = []
+            for i in range(0, len(points), 2):
+                px, py = points[i], points[i+1]
+                if angle != 0:
+                    px, py = rotatePoint(px, py, center_win[0], center_win[1], angle)
+                rot_points.extend([px, py])
+            return self.canvas.create_polygon(rot_points, fill=fill, outline=outline, width=width, tags=tags)
+
+        def draw_rect(rx0, ry0, rx1, ry1, fill="", outline="#FFFFFF", width=2):
+            rect_pts = [rx0, ry0, rx1, ry0, rx1, ry1, rx0, ry1]
+            return draw_polygon(rect_pts, fill=fill, outline=outline, width=width)
+
+        def draw_line(x1_l, y1_l, x2_l, y2_l, fill="#FFFFFF", width=2):
+            if angle != 0:
+                x1_l, y1_l = rotatePoint(x1_l, y1_l, center_win[0], center_win[1], angle)
+                x2_l, y2_l = rotatePoint(x2_l, y2_l, center_win[0], center_win[1], angle)
+            return self.canvas.create_line(x1_l, y1_l, x2_l, y2_l, fill=fill, width=width, tags=tags)
+
         scope = {
             "canvas": self.canvas,
             "x": wx0,
@@ -308,6 +392,10 @@ class NodeEditor(Frame):
             "cy": center_win[1],
             "is_selected": is_selected,
             "rotatePoint": rotatePoint,
+            "draw_oval": draw_oval,
+            "draw_polygon": draw_polygon,
+            "draw_rect": draw_rect,
+            "draw_line": draw_line,
             "math": math
         }
 
@@ -317,7 +405,7 @@ class NodeEditor(Frame):
             print(f"[PythonIconScript Execution Error] {e}")
 
     def createRoundedRectPoints(self, x0, y0, x1, y1, radius, angle=0.0, center=None):
-        radius = max(1, min(radius, (x1 - x0) / 2, (y1 - y0) / 2))
+        radius = max(1, min(radius, (x1 - x0) / 2.0, (y1 - y0) / 2.0))
         points = []
         corners = [
             (x1 - radius, y0 + radius, 0, 90),
@@ -336,13 +424,10 @@ class NodeEditor(Frame):
         return points
 
     def drawRoundedRect(self, x0, y0, x1, y1, radius, fill, outline, width=2, tags="container", angle=0.0, center=None):
-        if fill == "transparent" and outline == "transparent":
-            return None
-
         points = self.createRoundedRectPoints(x0, y0, x1, y1, radius, angle=angle, center=center)
-        fill_val = "" if fill == "transparent" else fill
-        outline_val = "" if outline == "transparent" else outline
-        return self.canvas.create_polygon(points, fill=fill_val, outline=outline_val, width=width, smooth=True, tags=tags)
+        fill_val = "" if fill in ("transparent", "", "none", None) else fill
+        outline_val = "" if outline in ("transparent", "", "none", None) else outline
+        return self.canvas.create_polygon(points, fill=fill_val, outline=outline_val, width=width, tags=tags)
 
     def renderGrid(self):
         self.canvas.delete("gridLine")
@@ -454,12 +539,11 @@ class NodeEditor(Frame):
             wx0, wy0 = self.toWindowSpace(cLogX, cLogY)
             wx1, wy1 = self.toWindowSpace(cLogX + cLogW, cLogY + cLogH)
 
-            centerLogX = (container.gridX + container.gridW / 2) * self.gridSize
-            centerLogY = (container.gridY + container.gridH / 2) * self.gridSize
+            centerLogX, centerLogY = self.getContainerCenterLogical(container)
             centerWin = self.toWindowSpace(centerLogX, centerLogY)
 
             isSelected = container is self.selectedContainer
-            
+
             border_color = container.border_color
             if isSelected and container.border_color != "transparent":
                 border_color = "#FFFFFF"
@@ -490,10 +574,10 @@ class NodeEditor(Frame):
                 if child.python_script:
                     child_tag = f"child_{id(child)}"
                     self.executePythonIconScript(
-                        child, chWx0, chWy0, w_px, h_px, 
-                        tags=("child_python_icon", child_tag), 
-                        angle=container.angle, 
-                        center_win=centerWin, 
+                        child, chWx0, chWy0, w_px, h_px,
+                        tags=("child_python_icon", child_tag),
+                        angle=container.angle,
+                        center_win=centerWin,
                         is_selected=isSelected
                     )
 
@@ -502,7 +586,7 @@ class NodeEditor(Frame):
                 currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
 
                 scaledSize = self.gridSize * currentScale
-                offset = (self.gridSize - scaledSize) / 2
+                offset = (self.gridSize - scaledSize) / 2.0
 
                 nLogX = (container.gridX + node.gridX) * self.gridSize + offset
                 nLogY = (container.gridY + node.gridY) * self.gridSize + offset
@@ -516,7 +600,7 @@ class NodeEditor(Frame):
                 if isNodeHovered or currentScale > 0.6:
                     glowPoints = self.createRoundedRectPoints(nWx0, nWy0, nWx1, nWy1, pinRadius, angle=container.angle, center=centerWin)
                     self.canvas.create_polygon(
-                        glowPoints, fill="", outline="#FFFFFF", width=int(2 * self.zoom), smooth=True, tags="nodeGlow"
+                        glowPoints, fill="", outline="#FFFFFF", width=int(2 * self.zoom), tags="nodeGlow"
                     )
 
                 node.canvasId = self.drawRoundedRect(
@@ -613,11 +697,18 @@ class NodeEditor(Frame):
             self.selectedConnectionIndex = None
             self.hoveredConnectionSegment = None
             self.renderAll()
+            return
+
+        container = self.findContainerAtWindowPos(event.x, event.y)
+        if container:
+            self.deleteContainer(container)
+            self.renderAll()
+            return
 
     def onPress(self, event):
         self.canvas.focus_set()
         nodeAtPress = self.findNodeAtPosition(event.x, event.y, maxDistance=10)
-        
+
         if nodeAtPress:
             if not self.connectingStart:
                 self.connectingStart = {
@@ -721,6 +812,12 @@ class NodeEditor(Frame):
             self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
             self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
             self.selectedConnectionIndex = None
+
+            # Bring selected container to top of layer stack
+            if container in self.containers:
+                self.containers.remove(container)
+                self.containers.append(container)
+
             self.renderAll()
             return
 
@@ -744,29 +841,31 @@ class NodeEditor(Frame):
 
         if self.selectedContainer:
             mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-
-            snapGridX = round((mouseLogX / self.gridSize) - self.dragOffsetGridX)
-            snapGridY = round((mouseLogY / self.gridSize) - self.dragOffsetGridY)
-
-            if self.selectedContainer.gridX != snapGridX or self.selectedContainer.gridY != snapGridY:
-                self.selectedContainer.gridX = snapGridX
-                self.selectedContainer.gridY = snapGridY
-                self.renderAll()
+            newGridX = math.floor((mouseLogX / self.gridSize) - self.dragOffsetGridX)
+            newGridY = math.floor((mouseLogY / self.gridSize) - self.dragOffsetGridY)
+            self.selectedContainer.gridX = newGridX
+            self.selectedContainer.gridY = newGridY
+            self.renderAll()
 
     def onRelease(self, event):
-        if self.draggingWaypoint:
-            self.draggingWaypoint = None
-        self.renderAll()
+        self.draggingWaypoint = None
 
     def onMouseWheel(self, event):
-        cx, cy, _, _ = self.getCenter()
-        scaleFactor = 1.1 if (event.num == 4 or event.delta > 0) else 0.9
+        if event.num == 4 or event.delta > 0:
+            zoom_factor = 1.1
+        else:
+            zoom_factor = 0.9
 
-        mx, my = event.x, event.y
-        self.panX = (mx - cx) - scaleFactor * (mx - cx - self.panX)
-        self.panY = (my - cy) - scaleFactor * (my - cy - self.panY)
-        self.zoom *= scaleFactor
-        self.connectingMousePos = (mx, my)
+        # Capture mouse position in logical space prior to zoom scaling
+        mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
+
+        self.zoom *= zoom_factor
+
+        # Adjust panning offsets so the logical coordinate stays fixed under the cursor
+        cx, cy, _, _ = self.getCenter()
+        self.panX = event.x - cx - (mouseLogX * self.zoom)
+        self.panY = event.y - cy - (mouseLogY * self.zoom)
+
         self.renderAll()
 
     def startPan(self, event):
@@ -786,50 +885,22 @@ class NodeEditor(Frame):
 if __name__ == "__main__":
     root = Tk()
     root.title("Node Editor")
-    root.geometry("900x650")
+    root.geometry("1000x700")
 
-    app = NodeEditor(master=root)
-    app.pack(fill=BOTH, expand=True)
+    editor = NodeEditor(root)
+    editor.pack(fill=BOTH, expand=True)
 
-    box1 = app.addContainer("Box1", gridX=3, gridY=2, gridW=3, gridH=3, bg_color="#2A394A", border_color="#00ADB5")
-    box2 = app.addContainer("Box2", gridX=-7, gridY=-3, gridW=3, gridH=3, bg_color="transparent", border_color="transparent")
+    c1 = editor.addContainer("Container 1", gridX=-2, gridY=-2, gridW=3, gridH=2, bg_color="#2D3748")
+    c1.addNode("A", 0, 0)
+    c1.addNode("B", 2, 1)
 
-    box1.addNode("Pin0", -1, 0)
-    box1.addNode("Pin1", -1, 2)
-    box1.addNode("PinOut", 3, 1)
-    box2.addNode("Pin0", -1, 1)
-    box2.addNode("PinOut", 3, 1)
-
-    # Sample Python Icon Script that draws an active highlight ring when selected
-    sample_python_script = """
-cx_circle, cy_circle = x + w/2, y + h/2
-r = min(w, h) * 0.35
-if angle != 0:
-    cx_circle, cy_circle = rotatePoint(cx_circle, cy_circle, cx, cy, angle)
-
-# Highlight real object contour when selected
-if is_selected:
-    canvas.create_oval(cx_circle - r - 4, cy_circle - r - 4, cx_circle + r + 4, cy_circle + r + 4, fill="", outline="#FFFFFF", width=3, tags=tags)
-
-canvas.create_oval(cx_circle - r, cy_circle - r, cx_circle + r, cy_circle + r, fill="#00ADB5", outline="#FFFFFF", width=2, tags=tags)
+    c2 = editor.addContainer("Transparent Container", gridX=3, gridY=1, gridW=3, gridH=2, bg_color="transparent", border_color="transparent")
+    c2.addNode("C", 0, 0)
+    
+    script = """
+draw_rect(x + 5, y + 5, x + w - 5, y + h - 5, fill="#4A5568", outline="#A0AEC0")
 """
-    try:
-        with open("vectorGraphicIcon.py", "r") as f:
-            sample_python_script = f.read()
-    except FileNotFoundError:
-        pass
+    c2.addChild("Icon", 1.0, 0.5, 1.0, 1.0, python_script=script)
 
-    box2.addChild("Hello", gridX=0, gridY=0, gridW=3, gridH=3, python_script=sample_python_script)
-    app.addConnection(box1, "Pin0", box2, "PinOut")
-
-    app.update_idletasks()
-    app.renderAll()
-
-    def toggle_activation():
-        for connection in app.connections:
-            connection["Activated"] = not connection.get("Activated", True)
-        app.renderAll()
-        root.after(1000, toggle_activation)
-
-    root.after(1000, toggle_activation)
+    editor.renderAll()
     root.mainloop()
