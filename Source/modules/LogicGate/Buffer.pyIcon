@@ -2,13 +2,13 @@ import math
 
 y_pin = y + h * (1.5 / 3.0)
 
-x_gate_left = x + w * (1.0 / 3.0)
-x_gate_right = x + w * (2.1 / 3.0)
+x_gate_left = x + w * (1.0 / 4.0)
+x_gate_right = x + w * (3.0 / 4.0)
 
 pts = [
-    (x_gate_left, y_pin - h * (0.8 / 3.0)),
+    (x_gate_left, y_pin - h * (1.2 / 3.0)),
     (x_gate_right, y_pin),
-    (x_gate_left, y_pin + h * (0.8 / 3.0))
+    (x_gate_left, y_pin + h * (1.2 / 3.0))
 ]
 
 line_in = [(x, y_pin), (x_gate_left, y_pin)]

@@ -6,12 +6,12 @@ y_in1 = y + h * (2.5 / 3.0)
 
 y_top = y + h * (0.2 / 3.0)
 y_bot = y + h * (2.8 / 3.0)
-y_mid = y + h * 0.5
+y_mid = y + h * (1.5 / 3.0)
 
-x_gate_back = x + w * (0.5 / 3.0)
-x_gate_flat_end = x + w * (1.5 / 3.0)
-x_gate_back_mid = x + w * (0.95 / 3.0)
-x_tip = x + w * (2.3 / 3.0)
+x_gate_back = x + w * (1.0 / 4.0)
+x_gate_flat_end = x + w * (2.0 / 4.0)
+x_gate_back_mid = x + w * (1.5 / 4.0)
+x_tip = x + w * (3.0 / 4.0)
 
 pts = []
 num_pts = 16
@@ -62,6 +62,10 @@ flat_line0 = [coord for pt in line_in0 for coord in pt]
 flat_line1 = [coord for pt in line_in1 for coord in pt]
 flat_out = [coord for pt in line_out for coord in pt]
 
+canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_out, fill="#FFFFFF", width=stroke_w, tags=tags)
+
 if is_selected:
     canvas.create_polygon(
         flat_pts,
@@ -82,7 +86,3 @@ canvas.create_polygon(
     smooth=False,
     tags=tags
 )
-
-canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
-canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
-canvas.create_line(*flat_out, fill="#FFFFFF", width=stroke_w, tags=tags)

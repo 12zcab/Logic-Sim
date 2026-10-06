@@ -6,13 +6,12 @@ y_in1 = y + h * (2.5 / 3.0)
 
 y_top = y + h * (0.2 / 3.0)
 y_bot = y + h * (2.8 / 3.0)
-y_mid = y + h * 0.5
+y_mid = y + h * (1.5 / 3.0)
 
-x_gate_back = x + w * (0.7 / 3.0)
-x_gate_flat_end = x + w * (1.4 / 3.0)
-x_gate_back_mid = x + w * (1.15 / 3.0)
-x_xor_offset = w * (0.2 / 3.0)
-x_tip = x + w * (2.0 / 3.0)
+x_gate_back = x + w * (1.2 / 4.0)
+x_gate_flat_end = x + w * (1.8 / 4.0)
+x_gate_back_mid = x + w * (1.7 / 4.0)
+x_tip = x + w * (2.6 / 4.0)
 
 pts = []
 num_pts = 16
@@ -40,28 +39,30 @@ for i in range(1, num_pts):
     px = x_gate_back + (x_gate_back_mid - x_gate_back) * 4.0 * t * (1.0 - t)
     pts.append((px, py))
 
-xor_arc = []
+x_back_curve = x + w * (0.8 / 4.0)
+x_back_curve_mid = x + w * (1.3 / 4.0)
+back_arc_pts = []
 for i in range(num_pts + 1):
     t = i / num_pts
-    py = y_bot - t * (y_bot - y_top)
-    px = (x_gate_back - x_xor_offset) + (x_gate_back_mid - x_gate_back) * 4.0 * t * (1.0 - t)
-    xor_arc.append((px, py))
+    py = y_top + t * (y_bot - y_top)
+    px = x_back_curve + (x_back_curve_mid - x_back_curve) * 4.0 * t * (1.0 - t)
+    back_arc_pts.append((px, py))
 
-r_bubble = h * 0.05
+r_bubble = h * (0.2 / 3.0)
 cx_bubble = x_tip + r_bubble
 
 t0 = (y_bot - y_in0) / (y_bot - y_top)
-x_attach0 = (x_gate_back - x_xor_offset) + (x_gate_back_mid - x_gate_back) * 4.0 * t0 * (1.0 - t0)
+x_attach0 = x_back_curve + (x_back_curve_mid - x_back_curve) * 4.0 * t0 * (1.0 - t0)
 
 t1 = (y_bot - y_in1) / (y_bot - y_top)
-x_attach1 = (x_gate_back - x_xor_offset) + (x_gate_back_mid - x_gate_back) * 4.0 * t1 * (1.0 - t1)
+x_attach1 = x_back_curve + (x_back_curve_mid - x_back_curve) * 4.0 * t1 * (1.0 - t1)
 
 line_in0 = [(x, y_in0), (x_attach0, y_in0)]
 line_in1 = [(x, y_in1), (x_attach1, y_in1)]
 line_out = [(cx_bubble + r_bubble, y_out), (x + w, y_out)]
 
 pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
-xor_arc = [rotatePoint(px, py, cx, cy, angle) for px, py in xor_arc]
+back_arc_pts = [rotatePoint(px, py, cx, cy, angle) for px, py in back_arc_pts]
 line_in0 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in0]
 line_in1 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in1]
 line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
@@ -72,10 +73,10 @@ stroke_w = max(2, int(min(w, h) * 0.05))
 select_w = stroke_w + max(2, int(min(w, h) * 0.04))
 
 flat_pts = [coord for pt in pts for coord in pt]
+flat_back_arc = [coord for pt in back_arc_pts for coord in pt]
 flat_line0 = [coord for pt in line_in0 for coord in pt]
 flat_line1 = [coord for pt in line_in1 for coord in pt]
 flat_out = [coord for pt in line_out for coord in pt]
-flat_xor_arc = [coord for pt in xor_arc for coord in pt]
 
 if is_selected:
     canvas.create_polygon(
@@ -87,7 +88,6 @@ if is_selected:
         smooth=False,
         tags=tags
     )
-    canvas.create_line(*flat_xor_arc, fill="#00E5FF", width=select_w, tags=tags)
     canvas.create_oval(
         bubble_center[0] - r_bubble - select_w / 2, bubble_center[1] - r_bubble - select_w / 2,
         bubble_center[0] + r_bubble + select_w / 2, bubble_center[1] + r_bubble + select_w / 2,
@@ -107,8 +107,6 @@ canvas.create_polygon(
     tags=tags
 )
 
-canvas.create_line(*flat_xor_arc, fill="#FFFFFF", width=stroke_w, tags=tags)
-
 canvas.create_oval(
     bubble_center[0] - r_bubble, bubble_center[1] - r_bubble,
     bubble_center[0] + r_bubble, bubble_center[1] + r_bubble,
@@ -121,3 +119,4 @@ canvas.create_oval(
 canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
 canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
 canvas.create_line(*flat_out, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_back_arc, fill="#FFFFFF", width=stroke_w, tags=tags)

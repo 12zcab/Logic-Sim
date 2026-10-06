@@ -123,7 +123,6 @@ class NodeEditor(Frame):
         cx = (container.gridX + container.gridW / 2.0) * self.gridSize
         cy = (container.gridY + container.gridH / 2.0) * self.gridSize
         
-        # Shift pivot by 0.5 units for odd/even mixed parities to align rotated nodes to grid centers
         if container.gridW % 2 != container.gridH % 2:
             if container.gridW % 2 == 0:
                 cx += 0.5 * self.gridSize
@@ -149,7 +148,6 @@ class NodeEditor(Frame):
         if self.selectedContainer == container:
             self.selectedContainer = None
 
-        # Clean up any connections attached to nodes in this container
         new_connections = []
         for conn in self.connections:
             fromC, _ = conn["from"]
@@ -233,22 +231,41 @@ class NodeEditor(Frame):
 
         return (x0 <= unrotX <= x1) and (y0 <= unrotY <= y1)
 
+    def isPointObscuredByHigherContainer(self, winX: float, winY: float, current_container: ContainerModel) -> bool:
+        for c in reversed(self.containers):
+            if c == current_container:
+                return False
+            
+            items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
+            if items:
+                hit_tags = set()
+                for item in items:
+                    hit_tags.update(self.canvas.gettags(item))
+                for child in c.children.values():
+                    if f"child_{id(child)}" in hit_tags:
+                        return True
+
+            is_transparent = (
+                c.bg_color in ("transparent", "", "none", None) and 
+                c.border_color in ("transparent", "", "none", None)
+            )
+            if not is_transparent and self.isPointInRotatedRect(winX, winY, c):
+                return True
+
+        return False
+
     def findContainerAtWindowPos(self, winX: float, winY: float) -> Optional[ContainerModel]:
-        # Collect all canvas tags under the mouse cursor
         items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
         hit_tags = set()
         if items:
             for item in items:
                 hit_tags.update(self.canvas.gettags(item))
 
-        # Evaluate layers top-to-bottom so upper layers take priority over lower layers
         for container in reversed(self.containers):
-            # 1. Check if mouse hits any child of THIS container
             for child in container.children.values():
                 if f"child_{id(child)}" in hit_tags:
                     return container
 
-            # 2. Check bounding box hit for THIS container (unless transparent)
             is_transparent = (
                 container.bg_color in ("transparent", "", "none", None) and 
                 container.border_color in ("transparent", "", "none", None)
@@ -261,7 +278,10 @@ class NodeEditor(Frame):
         return None
 
     def findNodeAtPosition(self, winX: float, winY: float, maxDistance: float = 10):
-        for container in self.containers:
+        for container in reversed(self.containers):
+            if self.isPointObscuredByHigherContainer(winX, winY, container):
+                continue
+
             for nName in container.nodes:
                 nx, ny = self.getNodeCenterWindowSpace(container, nName)
                 dist = math.hypot(winX - nx, winY - ny)
@@ -271,6 +291,10 @@ class NodeEditor(Frame):
 
     def findWaypointAtPosition(self, winX: float, winY: float, maxDistance: float = 8):
         for idx, conn in enumerate(self.connections):
+            fromC, _ = conn["from"]
+            if self.isPointObscuredByHigherContainer(winX, winY, fromC):
+                continue
+
             def searchBranch(branch):
                 for wpIdx, (wLogX, wLogY) in enumerate(branch["waypoints"]):
                     wx, wy = self.toWindowSpace(wLogX, wLogY)
@@ -294,6 +318,9 @@ class NodeEditor(Frame):
 
         for idx, conn in enumerate(self.connections):
             fromC, fromN = conn["from"]
+            if self.isPointObscuredByHigherContainer(winX, winY, fromC):
+                continue
+
             startLog = self.getNodeCenterLogicalSpace(fromC, fromN)
 
             def checkBranchSegments(startPoint, branch):
@@ -813,7 +840,6 @@ class NodeEditor(Frame):
             self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
             self.selectedConnectionIndex = None
 
-            # Bring selected container to top of layer stack
             if container in self.containers:
                 self.containers.remove(container)
                 self.containers.append(container)
@@ -856,12 +882,10 @@ class NodeEditor(Frame):
         else:
             zoom_factor = 0.9
 
-        # Capture mouse position in logical space prior to zoom scaling
         mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
 
         self.zoom *= zoom_factor
 
-        # Adjust panning offsets so the logical coordinate stays fixed under the cursor
         cx, cy, _, _ = self.getCenter()
         self.panX = event.x - cx - (mouseLogX * self.zoom)
         self.panY = event.y - cy - (mouseLogY * self.zoom)

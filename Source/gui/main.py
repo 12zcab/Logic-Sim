@@ -3,7 +3,7 @@ from node.nodeEngine import *
 from toolbar.toolbar import *
 from connector import *
 root = Tk()
-root.title("LogicSim - Node Editor")
+root.title("LogicSim GUI")
 root.geometry("900x700")
 
 paned_window = PanedWindow(

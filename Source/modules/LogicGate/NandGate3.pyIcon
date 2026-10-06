@@ -1,18 +1,19 @@
 import math
 
-y_in0 = y + h * (0.8 / 4.0)
-y_in1 = y + h * (2.0 / 4.0)
-y_in2 = y + h * (3.2 / 4.0)
-y_out = y + h * (2.0 / 4.0)
+y_in0 = y + h * (0.5 / 5.0)
+y_in1 = y + h * (2.5 / 5.0)
+y_in2 = y + h * (4.5 / 5.0)
+y_out = y + h * (2.5 / 5.0)
 
-x_gate_back = x + w * (1.0 / 5.0)
-x_gate_flat_end = x + w * (2.0 / 5.0)
+x_gate_back = x + w * (1.5 / 6.0)
+x_gate_flat_end = x + w * (3.0 / 6.0)
 
-y_top = y + h * (0.4 / 4.0)
-y_bot = y + h * (3.6 / 4.0)
-y_mid = y + h * (2.0 / 4.0)
+y_top = y + h * (0.3 / 5.0)
+y_bot = y + h * (4.7 / 5.0)
+y_mid = y + h * (2.5 / 5.0)
 
-arc_radius = (y_bot - y_top) / 2.0
+rx = w * (1.2 / 6.0)
+ry = (y_bot - y_top) / 2.0
 arc_center_x = x_gate_flat_end
 arc_center_y = y_mid
 
@@ -20,14 +21,14 @@ pts = [(x_gate_back, y_top), (x_gate_flat_end, y_top)]
 num_arc_pts = 16
 for i in range(num_arc_pts + 1):
     a = (math.pi / 2.0) - (i / num_arc_pts) * math.pi
-    px = arc_center_x + arc_radius * math.cos(a)
-    py = arc_center_y - arc_radius * math.sin(a)
+    px = arc_center_x + rx * math.cos(a)
+    py = arc_center_y - ry * math.sin(a)
     pts.append((px, py))
 
 pts.extend([(x_gate_flat_end, y_bot), (x_gate_back, y_bot)])
 
-gate_tip_x = arc_center_x + arc_radius
-r_bubble = h * (0.15 / 4.0)
+gate_tip_x = arc_center_x + rx
+r_bubble = h * (0.25 / 5.0)
 cx_bubble = gate_tip_x + r_bubble
 
 line_in0 = [(x, y_in0), (x_gate_back, y_in0)]
@@ -51,7 +52,6 @@ flat_line1 = [coord for pt in line_in1 for coord in pt]
 flat_line2 = [coord for pt in line_in2 for coord in pt]
 flat_out = [coord for pt in line_out for coord in pt]
 
-# Draw input lines (placed behind gate body)
 canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
 canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
 canvas.create_line(*flat_line2, fill="#FFFFFF", width=stroke_w, tags=tags)

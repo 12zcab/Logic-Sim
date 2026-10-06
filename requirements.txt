@@ -2,7 +2,6 @@ svglib
 pillow
 reportlab
 keyboard
-pkgutil
 tabulate
 typing
 tempfile
