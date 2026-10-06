@@ -1,0 +1,110 @@
+import math
+
+y_in0 = y + h * (0.5 / 3.0)
+y_out = y + h * (1.5 / 3.0)
+y_in1 = y + h * (2.5 / 3.0)
+
+y_top = y + h * (0.2 / 3.0)
+y_bot = y + h * (2.8 / 3.0)
+y_mid = y + h * 0.5
+
+x_gate_back = x + w * (0.5 / 3.0)
+x_gate_flat_end = x + w * (1.5 / 3.0)
+x_gate_back_mid = x + w * (0.95 / 3.0)
+x_tip = x + w * (2.3 / 3.0)
+
+pts = []
+num_pts = 16
+
+pts.append((x_gate_back, y_top))
+pts.append((x_gate_flat_end, y_top))
+
+for i in range(1, num_pts + 1):
+    a = (i / num_pts) * (math.pi / 2.0)
+    px = x_gate_flat_end + (x_tip - x_gate_flat_end) * math.sin(a)
+    py = y_top + (y_mid - y_top) * (1.0 - math.cos(a))
+    pts.append((px, py))
+
+for i in range(1, num_pts + 1):
+    a = (i / num_pts) * (math.pi / 2.0)
+    px = x_tip - (x_tip - x_gate_flat_end) * (1.0 - math.cos(a))
+    py = y_mid + (y_bot - y_mid) * math.sin(a)
+    pts.append((px, py))
+
+pts.append((x_gate_back, y_bot))
+
+for i in range(1, num_pts):
+    t = i / num_pts
+    py = y_bot - t * (y_bot - y_top)
+    px = x_gate_back + (x_gate_back_mid - x_gate_back) * 4.0 * t * (1.0 - t)
+    pts.append((px, py))
+
+t0 = (y_bot - y_in0) / (y_bot - y_top)
+x_attach0 = x_gate_back + (x_gate_back_mid - x_gate_back) * 4.0 * t0 * (1.0 - t0)
+
+t1 = (y_bot - y_in1) / (y_bot - y_top)
+x_attach1 = x_gate_back + (x_gate_back_mid - x_gate_back) * 4.0 * t1 * (1.0 - t1)
+
+r_bubble = h * 0.05
+cx_bubble_b = x_attach1 - r_bubble
+
+line_in0 = [(x, y_in0), (x_attach0, y_in0)]
+line_in1 = [(x, y_in1), (cx_bubble_b - r_bubble, y_in1)]
+line_out = [(x_tip, y_out), (x + w, y_out)]
+
+pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
+line_in0 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in0]
+line_in1 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in1]
+line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
+
+bubble_b_center = rotatePoint(cx_bubble_b, y_in1, cx, cy, angle)
+
+stroke_w = max(2, int(min(w, h) * 0.05))
+select_w = stroke_w + max(2, int(min(w, h) * 0.04))
+
+flat_pts = [coord for pt in pts for coord in pt]
+flat_line0 = [coord for pt in line_in0 for coord in pt]
+flat_line1 = [coord for pt in line_in1 for coord in pt]
+flat_out = [coord for pt in line_out for coord in pt]
+
+if is_selected:
+    canvas.create_polygon(
+        flat_pts,
+        fill="",
+        outline="#00E5FF",
+        width=select_w,
+        joinstyle="miter",
+        smooth=False,
+        tags=tags
+    )
+    canvas.create_oval(
+        bubble_b_center[0] - r_bubble - select_w / 2, bubble_b_center[1] - r_bubble - select_w / 2,
+        bubble_b_center[0] + r_bubble + select_w / 2, bubble_b_center[1] + r_bubble + select_w / 2,
+        fill="",
+        outline="#00E5FF",
+        width=stroke_w,
+        tags=tags
+    )
+
+canvas.create_polygon(
+    flat_pts,
+    fill="#181818",
+    outline="#FFFFFF",
+    width=stroke_w,
+    joinstyle="miter",
+    smooth=False,
+    tags=tags
+)
+
+canvas.create_oval(
+    bubble_b_center[0] - r_bubble, bubble_b_center[1] - r_bubble,
+    bubble_b_center[0] + r_bubble, bubble_b_center[1] + r_bubble,
+    fill="#181818",
+    outline="#FFFFFF",
+    width=stroke_w,
+    tags=tags
+)
+
+canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_out, fill="#FFFFFF", width=stroke_w, tags=tags)

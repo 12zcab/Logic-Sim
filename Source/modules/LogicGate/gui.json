@@ -1,6 +1,23 @@
 {
     "name": "LogicGate",
     "components":{
+        "Buffer":{
+            "constructor":"Buffer",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,1]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"Buffer.pyIcon"
+                }
+            }
+        },
         "Not Gate":{
             "constructor":"NotGate",
             "size": [4,3],
@@ -33,6 +50,133 @@
                     "position":[0,0],
                     "size":[4,3],
                     "path":"AndGate.pyIcon"
+                }
+            }
+        },
+        "Nand Gate":{
+            "constructor":"NandGate",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"NandGate.pyIcon"
+                }
+            }
+        },
+        "Or Gate":{
+            "constructor":"OrGate",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"OrGate.pyIcon"
+                }
+            }
+        },
+        "Nor Gate":{
+            "constructor":"NorGate",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"NorGate.pyIcon"
+                }
+            }
+        },
+        "Xor Gate":{
+            "constructor":"XorGate",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"XorGate.pyIcon"
+                }
+            }
+        },
+        "Xnor Gate":{
+            "constructor":"XnorGate",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"XnorGate.pyIcon"
+                }
+            }
+        },
+        "NandGate3":{
+            "constructor":"NandGate3",
+            "size": [4,5],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "C": {"position":[-1,4]},
+                "Y": {"position":[5,2]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[5,5],
+                    "path":"NandGate3.pyIcon"
+                }
+            }
+        },
+        "OrNot Gate":{
+            "constructor":"OrNotGate",
+            "size": [4,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,2]},
+                "Y": {"position":[4,1]}
+            },
+            "children": {
+                "svg": {
+                    "position":[0,0],
+                    "size":[4,3],
+                    "path":"OrNotGate.pyIcon"
                 }
             }
         }
