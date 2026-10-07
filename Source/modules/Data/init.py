@@ -1,6 +1,7 @@
-from MutanterFile import Mutanter
+from Source.modules.MutanterFile import Mutanter
 from pathlib import Path
 import Source
+import Source.modules.Data.DataHandler as DataHandler
 
 FilePath = Path(Source).resolve()
 Handler = Mutanter.Handler()
@@ -10,7 +11,7 @@ Connections = {}
 AllItems = Mutanter.Loader.LoadFromPath(FilePath)
 
 for item in AllItems:
-    Connections[item] = Mutanter
+    Connections[item] = DataHandler
 
 Handler.Connect(Connections)
 
@@ -53,4 +54,5 @@ Text = f"""
    
 """  
    
-print(Text)  
+print(Text)
+
