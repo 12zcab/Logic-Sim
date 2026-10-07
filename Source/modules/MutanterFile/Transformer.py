@@ -1,11 +1,8 @@
 # This put different file type content into a module assigned by user
 # an extend version of mutanter
 
-
-
-
 from pathlib import Path
-import types
+import types, importlib
 import Mutanter
 import Transformer
 
@@ -59,16 +56,29 @@ def Transform(Reads, ModuleName):
         setattr(File, Name, Read)
         ReturnRef.setdefault(Name) = Read
 
-     
+
+def UpdateData(NewDataName , ModuleName : str, path : str, OldDataName = None):
+
+    if not isinstance(NewDataName, dict):
+        NewDataName = {NewDataName}
+
+    if not isinstance(NewDataName, dict):
+        NewDataName = {NewDataName}
+
+    File = ReadFile(path)
+
+
+    if OldDataName:
+        for OldName in OldDataName:
+            for NewName in NewDataName:
+                if NewName == OldName:
+                    NewData = importlib.import_module(ModuleName).__getattr__(NewName)
+                    File.replace(OldName, NewData)
+                else:
+                    File.Add(NewData)
+
+            
+            
 
     
-
-        
-
-
-
-
-
-
-
-
+    
