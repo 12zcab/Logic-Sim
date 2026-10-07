@@ -1,16 +1,19 @@
 # Since the old version is too shit and anti human, i want to create a whole new version. Bruh
 # On top of that, the old one is hard to track (The main issue) while having heavy security issue 
 # I have searched the better way to make the structure ( Ai + YT video )
+# I have used AI to help me check errors 
 # Son, this thing can self destruct
 
-from Temp.Data import DataHandler
 import importlib
-import pkgutil
-from pathlib import Path
+import importlib.util
 import logging
+import pkgutil
 import types
-from typing import *
+from pathlib import Path
+import Source.modules.MutanterFile.Transformer as Transformer
 
+# Import your data handler dependency
+from Temp.Data import DataHandler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,239 +21,335 @@ logging.basicConfig(level=logging.INFO)
 class Loader:
     @staticmethod
     def LoadModule(TargetName):
-        #Return Tables
+        # Return Tables
         FoundItems = []
-  
+        if isinstance(TargetName, str):
+            TargetName = [TargetName]
+
         for Target in TargetName:
             try:
                 Found = importlib.import_module(Target)
                 FoundItems.append(Found)
             except ImportError as e:
-                print(f"{Target}" " does not exist due to" f"{e}")
+                logging.error(f"'{Target}' does not exist due to: {e}")
 
-        return FoundItems  
+        return FoundItems
 
     @staticmethod
-    def LoadModuleFromPath(Targets , prefix : str = ""):
+    def LoadModuleFromPath(Targets, prefix=""):
         # Return Table
         FoundItems = []
         Paths = []
-        if not isinstance(Targets, List):
+        if not isinstance(Targets, list):
             Targets = [Targets]
 
         for Folder in Targets:
             Paths.append(Path(Folder).resolve())
 
-        for Path in Paths:
-            for _, modname, _ in pkgutil.iter_importers(Paths):
+        str_paths = [str(p) for p in Paths]
+        for p in Paths:
+            for _, modname, _ in pkgutil.iter_importers(str_paths):
                 Target = f"{prefix}{modname}"
                 try:
                     FoundItems.append(importlib.import_module(Target))
                 except ImportError as e:
-                    print(f"{Target}" " does not exist due to" f"{e}")
+                    logging.error(f"'{Target}' does not exist due to: {e}")
 
         return FoundItems
 
-    def LoadFiles(Targets, prefix : str = "", FileType=None):
-        Paths = []
-        FoundItem = []
-
-        if not isinstance(Targets, List):
+    @staticmethod
+    def LoadFiles(Targets, prefix="", FileType=".py"):
+        # Completed method implementation
+        if not isinstance(Targets, list):
             Targets = [Targets]
 
-        
-
-    
-    @staticmethod
-    def CloneImport(TargetImport):
-        # Return table
-        Clone = []
-        Imports = Loader.LoadModule(TargetImport)
-        
-        for Import in Imports:
-            if Import == None:
+        FoundItems = []
+        for Folder in Targets:
+            dir_path = Path(Folder).resolve()
+            if not dir_path.is_dir():
                 continue
 
-            CloneImport = types.ModuleType(f"{Import}")
-            setattr(CloneImport, "__name__", str(f"Copy_{Import}"))
+            for file_path in dir_path.glob(f"*{FileType}"):
+                if file_path.name.startswith("__"):
+                    continue
+                mod_name = f"{prefix}{file_path.stem}"
+                try:
+                    spec = importlib.util.spec_from_file_location(
+                        mod_name, file_path
+                    )
+                    if spec and spec.loader:
+                        mod = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        FoundItems.append(mod)
+                except Exception as e:
+                    logging.error(f"Failed to load file module {file_path}: {e}")
 
+        return FoundItems
+
+    @staticmethod
+    def CloneImport(TargetImport, clone_name=None):
+        # Return table with True Isolated Spec Reloading
+        Clones = []
+        if isinstance(TargetImport, str):
+            Imports = Loader.LoadModule(TargetImport)
+        else:
+            Imports = [TargetImport]
+
+        for Import in Imports:
+            if Import is None:
+                continue
+
+            mod_file = getattr(Import, "__file__", None)
+            mod_name = getattr(Import, "__name__", "Module")
+            new_name = clone_name if clone_name else f"Copy_{mod_name}"
+
+            if mod_file and Path(mod_file).exists():
+                try:
+                    # Isolated reload from spec for true memory separation
+                    spec = importlib.util.spec_from_file_location(new_name, mod_file)
+                    if spec and spec.loader:
+                        CloneModule = importlib.util.module_from_spec(spec)
+                        CloneModule.__name__ = new_name
+                        spec.loader.exec_module(CloneModule)
+                        Clones.append(CloneModule)
+                        continue
+                except Exception as e:
+                    logging.warning(f"Spec clone failed for {mod_name}, falling back to dynamic object: {e}")
+
+            # Fallback for dynamic/builtin modules without disk files
+            CloneModule = types.ModuleType(new_name)
+            CloneModule.__name__ = new_name
+            ignored_keys = (
+                "__name__",
+                "__loader__",
+                "__spec__",
+                "__file__",
+                "__cached__",
+                "__builtins__",
+            )
             for key, value in Import.__dict__.items():
-               if not key == "__name__" or "__loader__" or "__spec__" or "__file__" or "__cached__":
-                   setattr(Import, key, value)
+                if key not in ignored_keys:
+                    setattr(CloneModule, key, value)
+            Clones.append(CloneModule)
 
-            Clone.append(CloneImport)
-
-        return Clone
+        return Clones
 
 
 class Modifier:
     @staticmethod
-    def ApplyAttr(TargetModule, Modinfo : any):
-        #one by one
+    def ApplyAttr(TargetModule, Modinfo):
+        # One by one attribute application
         SuccessChanges = []
 
-        try:
-            Import = Loader.LoadModule(TargetModule)
-        except ImportError as e:
-            print(f"{e}")
-            return SuccessChanges == None
+        if isinstance(TargetModule, str):
+            try:
+                modules = Loader.LoadModule(TargetModule)
+                if not modules:
+                    return SuccessChanges
+                Import = modules[0]
+            except Exception as e:
+                logging.error(f"Error resolving target module '{TargetModule}': {e}")
+                return SuccessChanges
+        else:
+            Import = TargetModule
 
+        Name = getattr(Import, "__name__", str(Import))
 
-        Name = getattr(Import, "__name__")
+        # Support both List of Tuples and Dictionary inputs
+        items = Modinfo.items() if isinstance(Modinfo, dict) else Modinfo
 
-        for ModPart, Mod in Modinfo:
-            if  not isinstance(Mod, str):
+        for ModPart, Mod in items:
+            if not isinstance(Mod, str):
                 setattr(Import, str(ModPart), Mod)
-                logging.info(f"{ModPart} has been replaced")
-                SuccessChanges.append(f"{Mod} has been changed")
-            elif isinstance(Mod, str):
-                try:
-                   Compile = compile(Mod)
-                   exec(Compile, Import.__dict__)
-                   logging.info(f"{ModPart} has been compiled and attached to the {Name}")
-                   SuccessChanges.append(Mod)
-                except Exception as e:
-                    logging.info(f" Bruh {ModPart} is shitted inserted black man disappeared")
+                logging.info(f"'{ModPart}' has been replaced on '{Name}'")
+                SuccessChanges.append(str(ModPart))
             else:
-                setattr(Import, ModPart, Mod)
+                try:
+                    Compile = compile(Mod, f"<string_{ModPart}>", "exec")
+                    exec(Compile, Import.__dict__)
+                    logging.info(
+                        f"'{ModPart}' has been compiled and attached to '{Name}'"
+                    )
+                    SuccessChanges.append(str(ModPart))
+                except Exception as e:
+                    logging.error(f"Execution failed for '{ModPart}': {e}")
 
         return SuccessChanges
-   
 
     @staticmethod
-    def DeleteAttr(TargetImport,  AttrNames):
-        # One by one
+    def DeleteAttr(TargetImport, AttrNames):
+        # One by one attribute deletion
+        if isinstance(TargetImport, str):
+            try:
+                modules = Loader.LoadModule(TargetImport)
+                if not modules:
+                    return None
+                Import = modules[0]
+            except Exception as e:
+                logging.error(
+                    f"{e} appeared as '{TargetImport}' is not loaded."
+                )
+                return None
+        else:
+            Import = TargetImport
 
-        SuccessChanges = []
-
-        try:
-            Import = Loader.LoadModule(TargetImport)
-        except ImportError as e:
-            logging.info(f"{e} this shit has appeared as {TargetImport} is not a thing, try harder son")
-  
         for AttrName in AttrNames:
-            if getattr(Import, AttrName):
-               delattr(Import, AttrName)
-               logging.info(f"{AttrName} is deleted")
-               SuccessChanges.append(f"{AttrName} is deleted")
+            if hasattr(Import, AttrName):
+                delattr(Import, AttrName)
+                logging.info(f"Attribute '{AttrName}' deleted from '{getattr(Import, '__name__', 'Module')}'")
 
         return Import
 
 
 class Handler:
-
-    print("This is more automatic but u can still use manually if u are cool")
-    # Handler store the log of the past things so no worry, easy things u know but this is a fixed way, however since u can change this importer, maybe u can do CoolStuff
+    print(
+        "This is more automatic but u can still use manually if u are cool"
+    )
 
     def __init__(self):
         self.DataHandler = DataHandler.Handler()
         self.ConLog = {}
         self.ChangeLog = {}
         self.CloneLog = []
-        # History per Handler
 
     def Connect(self, Info):
         for Target, Imports in Info:
             for Import in Imports:
-                Found = Loader.LoadModule(Target)
-                if not getattr(Found, Import): 
-                    setattr(Found, Import, Loader.LoadModule(Import))
-                    if not self.ConLog[f"{Found.__name__}"]:
-                        self.ConLog[f"{Found.__name__}"] = [Import.__name__]
-                    else:
-                        self.ConLog[f"{Found.__name__}"].append(Import.__name__)
+                FoundList = Loader.LoadModule(Target)
+                if not FoundList:
+                    continue
+                Found = FoundList[0]
+
+                if not hasattr(Found, Import):
+                    imported_mods = Loader.LoadModule(Import)
+                    if imported_mods:
+                        setattr(Found, Import, imported_mods[0])
+                        found_name = getattr(Found, "__name__", str(Target))
+                        self.ConLog.setdefault(found_name, []).append(Import)
                 else:
-                    print("No need from Connect")
-    
+                    print(f"No need to connect '{Import}' to '{Target}'")
 
-    def Disconnect(self, List):
-        for Target, Imports in List:
+    def Disconnect(self, ListInfo):
+        for Target, Imports in ListInfo:
             for Import in Imports:
-                Found = Loader.LoadModule(Target)[0]
-                if not getattr(Found, Import):
-                    delattr(Found, Import)
-                    if self.ConLog[f"{Found.__name__}"]:
-                        self.ConLog[f"{Found.__name__}"].remove(Import.__name__)
-                else: 
-                    print("No need from Disconnect")
-                
-    def ApplyAttr(self, AttrInfos, TargetScripts : dict = None):
-        for ModuleName, AttrInfo in AttrInfos:
-            if not TargetScripts == None:
+                FoundList = Loader.LoadModule(Target)
+                if not FoundList:
+                    continue
+                Found = FoundList[0]
 
-                Clone = Loader.CloneImport(ModuleName, f"Clone_{ModuleName}")[0]
+                if hasattr(Found, Import):
+                    delattr(Found, Import)
+                    found_name = getattr(Found, "__name__", str(Target))
+                    if (
+                        found_name in self.ConLog
+                        and Import in self.ConLog[found_name]
+                    ):
+                        self.ConLog[found_name].remove(Import)
+                else:
+                    print(f"No need to disconnect '{Import}' from '{Target}'")
+
+    def ApplyAttr(self, AttrInfos, TargetScripts=None):
+        for ModuleName, AttrInfo in AttrInfos:
+            if TargetScripts is not None:
+                clones = Loader.CloneImport(
+                    ModuleName, clone_name=f"Clone_{ModuleName}"
+                )
+                if not clones:
+                    continue
+                Clone = clones[0]
+
                 SuccessChanges = Modifier.ApplyAttr(Clone, AttrInfo)
 
-                Handler.LogChanges(self.Handler, self.CloneLog, Clone)
-                Handler.LogChanges(self.Handler, self.ChangeLog, Clone, SuccessChanges)
+                self.LogChanges(self.CloneLog, Clone)
+                self.LogChanges(
+                    self.ChangeLog,
+                    SuccessChanges,
+                    key=getattr(Clone, "__name__", "Clone"),
+                )
 
                 for Target in TargetScripts:
-                    Found = Loader.LoadModule(Target)
-                    setattr(Found, Clone.__name__ , Clone)
-
-                    Handler.LogChanges(self.Handler, self.ConLog, Found.__name__, Clone.__name__)   
+                    targets = Loader.LoadModule(Target)
+                    if targets:
+                        Found = targets[0]
+                        setattr(Found, Clone.__name__, Clone)
+                        self.LogChanges(
+                            self.ConLog,
+                            Clone.__name__,
+                            key=getattr(Found, "__name__", Target),
+                        )
             else:
-
                 SuccessChanges = Modifier.ApplyAttr(ModuleName, AttrInfo)
-            
-                Handler.LogChanges(self.Handler, self.ChangeLog, ModuleName, SuccessChanges)
-            
+                self.LogChanges(
+                    self.ChangeLog, SuccessChanges, key=ModuleName
+                )
 
     def DeleteAttr(self, AttrInfos):
         for ModuleName, AttrInfo in AttrInfos:
             SuccessChange = Modifier.DeleteAttr(ModuleName, AttrInfo)
-            Handler.LogChanges(self.Handler, self.ChangeLog, ModuleName, SuccessChange)
-            
+            self.LogChanges(self.ChangeLog, SuccessChange, key=ModuleName)
 
     def Revert(self, RevertInfo):
-        if not isinstance(RevertInfo, dict):
-            Info = {RevertInfo}
-        Info = RevertInfo
-        for Target, ImportList in Info:
-            Target = Loader.LoadModule(Target)
+        items = RevertInfo.items() if isinstance(RevertInfo, dict) else RevertInfo
+
+        for Target, ImportList in items:
+            targets = Loader.LoadModule(Target)
+            if not targets:
+                continue
+            TargetMod = targets[0]
+
             for ImportName in ImportList:
-                CopyName = f"Clone_{ImportName}"
-                delattr(Target, CopyName) if getattr(Target, CopyName) else print("Revert is not required")
+                CopyName = f"Clone_{ImportName}" if not ImportName.startswith("Clone_") else ImportName
+                if hasattr(TargetMod, CopyName):
+                    delattr(TargetMod, CopyName)
+                    logging.info(f"Reverted '{CopyName}' from '{Target}'")
+                else:
+                    print(f"Revert is not required for '{CopyName}'")
 
     def GarbageCollect(self):
+        # Collect all attached module names from ConLog values
+        attached_names = set()
+        for parent, cons in self.ConLog.items():
+            for c in cons:
+                attached_names.add(str(c))
 
         NotAttach = []
         for Clone in self.CloneLog:
-            for _, Cons in self.ConLog:
-                if not Cons[f"{Clone}"]:
-                    NotAttach.append(Clone)
+            clone_name = getattr(Clone, "__name__", str(Clone))
+            if clone_name not in attached_names:
+                NotAttach.append(Clone)
 
         for Clone in NotAttach:
-            del(Clone)
+            if Clone in self.CloneLog:
+                self.CloneLog.remove(Clone)
+                logging.info(f"Garbage collected unattached clone: '{getattr(Clone, '__name__', Clone)}'")
 
     def LogChanges(self, Table, Value, key=None):
+        if isinstance(Table, dict) and key is None:
+            print("Key is required for dict logs")
+            return
 
-        if isinstance(Table, dict) and key == None:
-            return print("Key is required")
+        if Value is None:
+            print("Changes may have failed: Value is None")
+            return
 
-        if Value == None:
-            return print("Changes may have failed")
-
-        if Table == self.ConLog or self.ChangeLog:
-            if not Table[key]:
-                Table[key] = [Value]
+        if Table is self.ConLog or Table is self.ChangeLog:
+            if key not in Table:
+                Table[key] = [Value] if not isinstance(Value, list) else Value
             else:
-                Table[key].append(Value)
-                self.DataHandler.Backet(Table)
-
-                if self.ConLog:
-                   self.DataHandler.Store("ChangeLog")
+                if isinstance(Value, list):
+                    Table[key].extend(Value)
                 else:
-                    self.DataHandler.Store("ConLog")
+                    Table[key].append(Value)
 
-        if Table == self.CloneLog:
-            if not Table[Value]:
+            self.DataHandler.Backet(Table)
+
+            if Table is self.ChangeLog:
+                self.DataHandler.Store("ChangeLog")
+            else:
+                self.DataHandler.Store("ConLog")
+
+        elif Table is self.CloneLog:
+            if Value not in Table:
                 Table.append(Value)
                 self.DataHandler.Backet(Table)
                 self.DataHandler.Store("CloneLog")
-
-
-
-# Data store for logs
- 
-    

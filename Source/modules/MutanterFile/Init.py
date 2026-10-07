@@ -7,7 +7,7 @@ Handler = Mutanter.Handler()
 
 Connections = {}
 
-AllItems = Mutanter.Loader.LoadFromPath(FilePath)
+AllItems = Mutanter.Loader.LoadModuleFromPath(FilePath)
 
 for item in AllItems:
     Connections[item] = Mutanter
