@@ -12,7 +12,6 @@ import types
 from pathlib import Path
 import Source.modules.MutanterFile.Transformer as Transformer
 
-# Import your data handler dependency
 from Temp.Data import DataHandler
 
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +20,6 @@ logging.basicConfig(level=logging.INFO)
 class Loader:
     @staticmethod
     def LoadModule(TargetName):
-        # Return Tables
         FoundItems = []
         if isinstance(TargetName, str):
             TargetName = [TargetName]
@@ -37,7 +35,6 @@ class Loader:
 
     @staticmethod
     def LoadModuleFromPath(Targets, prefix=""):
-        # Return Table
         FoundItems = []
         Paths = []
         if not isinstance(Targets, list):
@@ -57,38 +54,9 @@ class Loader:
 
         return FoundItems
 
-    @staticmethod
-    def LoadFiles(Targets, prefix="", FileType=".py"):
-        # Completed method implementation
-        if not isinstance(Targets, list):
-            Targets = [Targets]
-
-        FoundItems = []
-        for Folder in Targets:
-            dir_path = Path(Folder).resolve()
-            if not dir_path.is_dir():
-                continue
-
-            for file_path in dir_path.glob(f"*{FileType}"):
-                if file_path.name.startswith("__"):
-                    continue
-                mod_name = f"{prefix}{file_path.stem}"
-                try:
-                    spec = importlib.util.spec_from_file_location(
-                        mod_name, file_path
-                    )
-                    if spec and spec.loader:
-                        mod = importlib.util.module_from_spec(spec)
-                        spec.loader.exec_module(mod)
-                        FoundItems.append(mod)
-                except Exception as e:
-                    logging.error(f"Failed to load file module {file_path}: {e}")
-
-        return FoundItems
 
     @staticmethod
     def CloneImport(TargetImport, clone_name=None):
-        # Return table with True Isolated Spec Reloading
         Clones = []
         if isinstance(TargetImport, str):
             Imports = Loader.LoadModule(TargetImport)
@@ -116,7 +84,6 @@ class Loader:
                 except Exception as e:
                     logging.warning(f"Spec clone failed for {mod_name}, falling back to dynamic object: {e}")
 
-            # Fallback for dynamic/builtin modules without disk files
             CloneModule = types.ModuleType(new_name)
             CloneModule.__name__ = new_name
             ignored_keys = (
@@ -138,7 +105,6 @@ class Loader:
 class Modifier:
     @staticmethod
     def ApplyAttr(TargetModule, Modinfo):
-        # One by one attribute application
         SuccessChanges = []
 
         if isinstance(TargetModule, str):
@@ -155,7 +121,6 @@ class Modifier:
 
         Name = getattr(Import, "__name__", str(Import))
 
-        # Support both List of Tuples and Dictionary inputs
         items = Modinfo.items() if isinstance(Modinfo, dict) else Modinfo
 
         for ModPart, Mod in items:
@@ -283,16 +248,24 @@ class Handler:
                     self.ChangeLog, SuccessChanges, key=ModuleName
                 )
 
-    def DeleteAttr(self, AttrInfos):
+    def DeleteAttr(self, AttrInfos, TargetScripts=None):
         for ModuleName, AttrInfo in AttrInfos:
-            SuccessChange = Modifier.DeleteAttr(ModuleName, AttrInfo)
+            if TargetScripts is not None:
+                clones = Loader.CloneImport(
+                    ModuleName, clone_name=f"Clone_{ModuleName}"
+                )
+                if not clones:
+                    continue
+                Clone = clones[0]
+
+            SuccessChange = Modifier.DeleteAttr(Clone, AttrInfo)
             self.LogChanges(self.ChangeLog, SuccessChange, key=ModuleName)
 
     def Revert(self, RevertInfo):
         items = RevertInfo.items() if isinstance(RevertInfo, dict) else RevertInfo
 
         for Target, ImportList in items:
-            targets = Loader.LoadModule(Target)
+            targets = Loader.LoadModule(Target) 
             if not targets:
                 continue
             TargetMod = targets[0]
@@ -302,13 +275,18 @@ class Handler:
                 if hasattr(TargetMod, CopyName):
                     delattr(TargetMod, CopyName)
                     logging.info(f"Reverted '{CopyName}' from '{Target}'")
+
+                    if Loader.LoadModule(ImportName)[0]:       
+                        setattr(TargetMod, ImportName, Loader.LoadModule(ImportName)[0])
+
+                    self.GarbageCollect()
+                    
                 else:
                     print(f"Revert is not required for '{CopyName}'")
 
     def GarbageCollect(self):
-        # Collect all attached module names from ConLog values
         attached_names = set()
-        for parent, cons in self.ConLog.items():
+        for _, cons in self.ConLog.items():
             for c in cons:
                 attached_names.add(str(c))
 

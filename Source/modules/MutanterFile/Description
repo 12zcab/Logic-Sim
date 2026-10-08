@@ -1,11 +1,52 @@
-In here, it will show how to use the Mutanter
+How to Use Mutanter
 
-Loader:
-LoadModule allow using the name or table of names of the module u want to get the object itself
-example:
-Loader.LoadModule("Mutanter.py"), it will return a table [Mutanter.py, ... (more if table)]
-LoadFromPath allow using the path of a file to get all modules/script from the file 
+------------------------------------------------------------------------------------------------------------------------------------
 
-Get the reference of the folder and then contain it as table
-Loader.LoadFromPath(FoldersTable) -> return found modules as table
+Handler:
+It creates an object that can connect, disconnect, replaceModuleAttr, revert and StoreChangesLog
 
+self.ConLog
+self.CloneLog
+self.ConnectLog
+
+------------------------------------------------------------------------------------------------------------------------------------
+connect:
+
+Handler.connect(Info)
+Handler.disconnect(Info)
+
+Info = {"MyModule1.py" = {"Module2.py", "Calculator.py"}} for example
+
+------------------------------------------------------------------------------------------------------------------------------------
+HandleAttachment:
+
+Handler.ApplyAttr(AttrInfo, Target)
+Handler.DeleteAttr(AttrInfo, Target)
+
+if Target exists, the module that will get modified will be cloned and locally attached to the Target
+AttrInfo = {"Printer", "def Print(): print("I print something haha")"} for example
+
+
+Handler.Revert(RevertInfo) then automatically check if any cloned immport is not attached to anything
+
+RevertInfo = {"MyModule.py", {"Import1.py"}}
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------
+GarbageCollection:
+
+Handler.GarbageCollection()
+GarbageCollection what can i say
+
+------------------------------------------------------------------------------------------------------------------------------------
+History:
+
+Handler.LogChanges(self.CloneLog, "Copy_Copied.py") for example
+
+then it will upload the data to the data StoreChangesLog
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+
+You can pick the functions seperately if u want more overall control from modifier and loader for other purpose
