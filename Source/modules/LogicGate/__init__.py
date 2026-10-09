@@ -36,3 +36,4 @@ class MUX(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A"), IO("B"), IO("S"), IO("OUT")], lambda self: setattr(self.IO.OUT, "Value", (self.IO.A.Value and (not self.IO.S.Value) or (self.IO.B.Value and self.IO.S.Value))))
 
+    
