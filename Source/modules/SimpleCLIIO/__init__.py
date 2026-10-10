@@ -1,6 +1,7 @@
 from core import *
 import keyboard
 
+IO = {}
 Component = 0
 
 def keyboard_button(Name, key):

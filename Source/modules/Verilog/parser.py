@@ -5,6 +5,8 @@ import sys
 from typing import Dict, Any
 from yowasp_yosys import run_yosys
 import json
+from TVA import Snap
+
 def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = None) -> Dict[str, Any]:
     """
     Synthesizes Verilog to a pure gate-level JSON netlist.
@@ -18,7 +20,7 @@ def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = No
         raise FileNotFoundError(f"Cant Find the File: {verilog_absolute_path}")
     safe_verilog_path = verilog_absolute_path.replace('\\', '/')
 
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp_file:
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp_file:  
         output_json_path = tmp_file.name.replace('\\', '/')
 
     try:
@@ -32,7 +34,7 @@ def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = No
         
         gate_level_pipeline = (
             "proc; opt; memory; pmuxtree; "
-            "techmap; simplemap; splitcells; "
+            "techmap; simplemap; splitcells; " 
             "dfflegalize -cell $_DFF_P_ 0 -cell $_DFF_PP0_ 0; "
             "abc -g gates; "
             "opt; check"
@@ -69,4 +71,4 @@ if __name__ == "__main__":
         with open("output.json", "w") as f:
             json.dump(netlist_data, f, indent=4)
     except Exception as error:
-        print(f"[-] Error happened : {error}", file=sys.stderr)
+        print(f"[-] Error happened : {error}", file=sys.stderr) 

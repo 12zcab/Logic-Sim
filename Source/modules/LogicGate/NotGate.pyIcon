@@ -1,0 +1,72 @@
+import math
+
+y_pin = y + h * (1.5 / 3.0)
+
+x_gate_left = x + w * (1.0 / 4.0)
+r_bubble = h * (0.2 / 3.0)
+x_gate_right = x + w * (2.6 / 4.0)
+cx_bubble = x_gate_right + r_bubble
+
+pts = [
+    (x_gate_left, y_pin - h * (1.2 / 3.0)),
+    (x_gate_right, y_pin),
+    (x_gate_left, y_pin + h * (1.2 / 3.0))
+]
+
+line_in = [(x, y_pin), (x_gate_left, y_pin)]
+line_out = [(cx_bubble + r_bubble, y_pin), (x + w, y_pin)]
+
+pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
+line_in = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in]
+line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
+
+bubble_center = rotatePoint(cx_bubble, y_pin, cx, cy, angle)
+
+stroke_w = max(2, int(min(w, h) * 0.05))
+select_w = stroke_w + max(2, int(min(w, h) * 0.04))
+
+flat_line_in = [coord for pt in line_in for coord in pt]
+flat_line_out = [coord for pt in line_out for coord in pt]
+
+canvas.create_line(*flat_line_in, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_line_out, fill="#FFFFFF", width=stroke_w, tags=tags)
+
+flat_pts = [coord for pt in pts for coord in pt]
+
+if is_selected:
+    canvas.create_polygon(
+        flat_pts,
+        fill="",
+        outline="#00E5FF",
+        width=select_w,
+        joinstyle="miter",
+        smooth=False,
+        tags=tags
+    )
+    canvas.create_oval(
+        bubble_center[0] - r_bubble - select_w / 2, bubble_center[1] - r_bubble - select_w / 2,
+        bubble_center[0] + r_bubble + select_w / 2, bubble_center[1] + r_bubble + select_w / 2,
+        fill="",
+        outline="#00E5FF",
+        width=stroke_w,
+        tags=tags
+    )
+
+canvas.create_polygon(
+    flat_pts,
+    fill="#181818",
+    outline="#FFFFFF",
+    width=stroke_w,
+    joinstyle="miter",
+    smooth=False,
+    tags=tags
+)
+
+canvas.create_oval(
+    bubble_center[0] - r_bubble, bubble_center[1] - r_bubble,
+    bubble_center[0] + r_bubble, bubble_center[1] + r_bubble,
+    fill="#181818",
+    outline="#FFFFFF",
+    width=stroke_w,
+    tags=tags
+)

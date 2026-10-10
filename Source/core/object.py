@@ -1,4 +1,6 @@
 from core.library.BetterDict import *
+from modules.TVA import *
+
 class Component:
     def __init__(self, Name, IOArray, updateFunction):
         self.Name = Name
@@ -15,13 +17,13 @@ class Component:
         NetArray = []
         for io in self.IO.values():
             NetArray.append(io.Net) if (io.Net not in NetArray) and not (io.Net == None) else None
-        return NetArray
-     
-
+        return NetArray 
+         
+  
 class IO:
     def __init__(self, Name):
         self.Name = Name
-        self._Value = False
+        self._Value = False  
         self.futureValue = False  
         self.Net = None
     
@@ -30,13 +32,13 @@ class IO:
         return self._Value
 
     @Value.setter
-    def Value(self, Value):
-        self.futureValue = Value
+    def Value(self, Value): 
+        self.futureValue = Value  
     def set(self, Value):
             self.futureValue = Value
     
     def __rshift__(self, other):
-        if isinstance(other,IO):
+        if isinstance(other,IO):       
             self.connect(other)
             return other
         if isinstance(other,Net):
@@ -50,7 +52,7 @@ class IO:
         self.Net = net
         net.add(self)
     def disconnectNet(self):
-        if self.Net:
+        if self.Net:  
             self.Net.remove(self)
             self.Net = None
     def connect(self, subject):
@@ -102,9 +104,9 @@ class Net:
             io.Net = self
         destroyNet(subject)
  
-def destroyNet(Net):
+def destroyNet(Net):   
     if Net:
-        Net.prepareDelete()
+        Net.prepareDelete() 
         del Net
 
 class SimBox:
@@ -168,4 +170,4 @@ class Module(Component):
             io.futureValue = False
     def update(self):
         for block in self.child.values():
-            block.update()
+            block.update() 
