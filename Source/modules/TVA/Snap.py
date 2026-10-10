@@ -59,7 +59,7 @@ class SimBoxState(SimBox):
         
      def UpdateObjects(self, Box):
          if not isinstance(Box, SimBox):  
-            print("Require a simbox")
+            print("Require a simbox")  
             return 
               
          for Component in Box["Objects"]:
@@ -81,9 +81,8 @@ class SimBoxState(SimBox):
 
 class ChangeLog:
      def __init__(self, TableName):
-          f"{TableName}" = {}
-
           self.Handler = DataHandler.Handler()
+          Handler.Backet = f"{TableName}" = {}
 
      def StoreLog(self):
           self.Handler.Store("History.JSON")
