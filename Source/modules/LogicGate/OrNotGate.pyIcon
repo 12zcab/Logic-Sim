@@ -1,11 +1,11 @@
 import math
 
-y_in0 = y + h * (0.5 / 3.0)
+y_in0 = y + h * (2.5 / 3.0)
 y_out = y + h * (1.5 / 3.0)
-y_in1 = y + h * (2.5 / 3.0)
+y_in1 = y + h * (0.5 / 3.0)
 
-y_top = y + h * (0.2 / 3.0)
-y_bot = y + h * (2.8 / 3.0)
+y_top = y + h * (2.8 / 3.0)
+y_bot = y + h * (0.2 / 3.0)
 y_mid = y + h * (1.5 / 3.0)
 
 x_gate_back = x + w * (1.0 / 4.0)

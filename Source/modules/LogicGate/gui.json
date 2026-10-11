@@ -11,7 +11,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"Buffer.pyIcon"
@@ -28,7 +28,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"NotGate.pyIcon"
@@ -46,7 +46,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"AndGate.pyIcon"
@@ -64,7 +64,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"NandGate.pyIcon"
@@ -82,7 +82,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"OrGate.pyIcon"
@@ -100,7 +100,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"NorGate.pyIcon"
@@ -118,7 +118,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"XorGate.pyIcon"
@@ -136,7 +136,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"XnorGate.pyIcon"
@@ -155,7 +155,7 @@
                 "Y": {"position":[6,2]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[6,5],
                     "path":"NandGate3.pyIcon"
@@ -173,7 +173,7 @@
                 "Y": {"position":[4,1]}
             },
             "children": {
-                "svg": {
+                "pyIcon": {
                     "position":[0,0],
                     "size":[4,3],
                     "path":"OrNotGate.pyIcon"

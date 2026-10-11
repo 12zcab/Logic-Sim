@@ -84,56 +84,108 @@ class IO:
             subject.connectNet(self.Net)
 class Net:
     def __init__(self, Name=None):
-        self.IO = []
-        self.Name = Name if Name else f"Net_{id(self)}"
+        self._IO = []
+        self._Name = Name
         self._Value = Logic.Z
         self._Strength = Strength.HIGHZ
+        self.merged_into = None
 
+    @property
+    def root(self):
+        target = self
+        visited = []
+        while target.merged_into is not None:
+            visited.append(target)
+            target = target.merged_into
+        for node in visited:
+            node.merged_into = target
+        return target
+    @property
+    def Name(self):
+        root_net = self.root
+        if root_net._Name:
+            return root_net._Name
+        return f"Net_{id(root_net)}"
+    @Name.setter
+    def Name(self, val):
+        self.root._Name = val
+    @property
+    def IO(self):
+        return self.root._IO
+    @IO.setter
+    def IO(self, val):
+        self.root._IO = val
+    @property
+    def Value(self):
+        return self.root._Value
+    @Value.setter
+    def Value(self, val):
+        self.root._Value = val
+    @property
+    def Strength(self):
+        return self.root._Strength
+    @Strength.setter
+    def Strength(self, val):
+        self.root._Strength = val
     def add(self, io):
-        if io not in self.IO:
-            self.IO.append(io)
-            io.Net = self
-
+        root_net = self.root
+        if io not in root_net._IO:
+            root_net._IO.append(io)
+        io.Net = root_net
     def remove(self, io):
-        if io in self.IO:
-            self.IO.remove(io)
-
+        root_net = self.root
+        if io in root_net._IO:
+            root_net._IO.remove(io)
     def resolve(self):
-        if not self.IO:
-            self._Value = Logic.Z
-            self._Strength = Strength.HIGHZ
-            return False
-
-        maxStr = max(io.driveStr for io in self.IO)
+        root_net = self.root
+        ios = root_net._IO
+        if not ios:
+            valChanged = (root_net._Value != Logic.Z or root_net._Strength != Strength.HIGHZ)
+            root_net._Value = Logic.Z
+            root_net._Strength = Strength.HIGHZ
+            return valChanged
+        maxStr = max(io.driveStr for io in ios)
         if maxStr == Strength.HIGHZ:
             newVal = Logic.Z
         else:
-            maxDriver = [io.driveVal for io in self.IO if io.driveStr == maxStr]
-            firstVal = maxDriver[0]
-            newVal = firstVal if all(v == firstVal for v in maxDriver) else Logic.X
-
-        valChanged = (self._Value != newVal)
-        self._Value = newVal
-        self._Strength = maxStr
-
-        for io in self.IO:
+            firstVal = None
+            newVal = None
+            for io in ios:
+                if io.driveStr == maxStr:
+                    if firstVal is None:
+                        firstVal = io.driveVal
+                    elif io.driveVal != firstVal:
+                        newVal = Logic.X
+                        break
+            if newVal is None:
+                newVal = firstVal
+        valChanged = (root_net._Value != newVal or root_net._Strength != maxStr)
+        root_net._Value = newVal
+        root_net._Strength = maxStr
+        for io in ios:
             io._Value = newVal
 
         return valChanged
-
     def prepareDelete(self):
-        for io in list(self.IO):
+        root_net = self.root
+        for io in list(root_net._IO):
             io.Net = None
-        self.IO.clear()
+        root_net._IO.clear()
     def mergeNets(self, other):
-        if other is None or other is self:
+        if other is None:
             return
-        for io in list(other.IO):
-            io.Net = self
-            if io not in self.IO:
-                self.IO.append(io)
-        other.IO.clear()
-        other.merged_into = self
+        root_self = self.root
+        root_other = other.root
+        if root_self is root_other:
+            return
+        if not root_self._Name and root_other._Name:
+            root_self._Name = root_other._Name
+        for io in root_other._IO:
+            io.Net = root_self
+            if io not in root_self._IO:
+                root_self._IO.append(io)
+        root_other._IO = []
+        root_other.merged_into = root_self
 
 class Component:
     def __init__(self, Name, IOArray, updateFunction=None):

@@ -3,6 +3,11 @@ import copy
 from tkinter import *
 from typing import Dict, List, Tuple, Optional, Any
 
+_RAD_TRIG_CACHE = {
+    step: (math.cos(math.radians(step)), math.sin(math.radians(step)))
+    for step in range(0, 361, 15)
+}
+
 
 def rotatePoint(x: float, y: float, cx: float, cy: float, angle_deg: float) -> Tuple[float, float]:
     if angle_deg % 360 == 0:
@@ -24,17 +29,22 @@ class ChildrenModel:
         self.gridW = float(grid_w)
         self.gridH = float(grid_h)
         self.python_script = python_script
+        self.compiled_code = compile(python_script, f"<script_{name}>", "exec") if python_script.strip() else None
         self.canvasId = None
 
 
 class NodeModel:
-    def __init__(self, name: str, grid_x: int, grid_y: int, bg_color: str = "#1A202C", border_color: str = "#A0AEC0"):
+    def __init__(self, name: str, grid_x: float, grid_y: float, bg_color: str = "#1A202C", border_color: str = "#A0AEC0"):
         self.name = name
-        self.gridX = int(grid_x)
-        self.gridY = int(grid_y)
+        self.gridX = float(grid_x)
+        self.gridY = float(grid_y)
         self.bg_color = bg_color
         self.border_color = border_color
         self.canvasId = None
+
+    def modify(self, gridX: float, gridY: float):
+        self.gridX = float(gridX)
+        self.gridY = float(gridY)
 
 
 class ContainerModel:
@@ -54,12 +64,27 @@ class ContainerModel:
         self.nodes: Dict[str, NodeModel] = {}
         self.children: Dict[str, ChildrenModel] = {}
 
-    def addNode(self, name: str, gridX: int, gridY: int, bg_color: str = "#1A202C", border_color: str = "#A0AEC0") -> NodeModel:
+    def getVisualBounds(self) -> Tuple[float, float, float, float]:
+        if int(self.angle) in (90, 270):
+            w, h = self.gridH, self.gridW
+        else:
+            w, h = self.gridW, self.gridH
+        cx = self.gridX + self.gridW / 2.0
+        cy = self.gridY + self.gridH / 2.0
+        return cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0
+
+    def getUnrotatedVisualBounds(self) -> Tuple[float, float, float, float]:
+        return self.getVisualBounds()
+
+    def addNode(self, name: str, gridX: float, gridY: float, bg_color: str = "#1A202C", border_color: str = "#A0AEC0") -> NodeModel:
         node = NodeModel(name, gridX, gridY, bg_color=bg_color, border_color=border_color)
         self.nodes[name] = node
         if hasattr(self.parent, "nodeScaleAnim"):
             self.parent.nodeScaleAnim[(self, name)] = 0.6
         return node
+
+    def modifyNode(self, name: str, gridX: float, gridY: float):
+        self.nodes[name].modify(gridX, gridY)
 
     def addChild(self, name: str, gridX: float, gridY: float, gridW: float = 1.0, gridH: float = 1.0,
                  python_script: str = "") -> ChildrenModel:
@@ -80,14 +105,11 @@ class NodeEditor(Frame):
         self.canvas.bind("<ButtonRelease-1>", self.onRelease)
         self.canvas.bind("<Motion>", self.onHover)
         self.canvas.bind("<Button-3>", self.onRightClick)
-
         self.canvas.bind("<MouseWheel>", self.onMouseWheel)
         self.canvas.bind("<Button-4>", self.onMouseWheel)
         self.canvas.bind("<Button-5>", self.onMouseWheel)
-
         self.canvas.bind("<ButtonPress-2>", self.startPan)
         self.canvas.bind("<B2-Motion>", self.panCanvas)
-
         self.canvas.focus_set()
 
         self.master.bind_all("r", self.rotateSelectedContainer)
@@ -118,23 +140,27 @@ class NodeEditor(Frame):
 
         self.nodeScaleAnim = {}
         self.activeAnimators = set()
+        self.last_hover_state = None
+        self._render_scheduled = False
+
+    def scheduleRender(self):
+        if not self._render_scheduled:
+            self._render_scheduled = True
+            self.after(8, self._executeRender)
+
+    def _executeRender(self):
+        self._render_scheduled = False
+        self.renderAll()
 
     def getContainerCenterLogical(self, container: ContainerModel) -> Tuple[float, float]:
         cx = (container.gridX + container.gridW / 2.0) * self.gridSize
         cy = (container.gridY + container.gridH / 2.0) * self.gridSize
-        
-        if container.gridW % 2 != container.gridH % 2:
-            if container.gridW % 2 == 0:
-                cx += 0.5 * self.gridSize
-            else:
-                cy += 0.5 * self.gridSize
-                
         return cx, cy
 
     def rotateSelectedContainer(self, event=None):
         if self.selectedContainer:
             self.selectedContainer.angle = (self.selectedContainer.angle + 90) % 360
-            self.renderAll()
+            self.scheduleRender()
 
     def addContainer(self, name: str, gridX: float, gridY: float, gridW: float = 1.0, gridH: float = 1.0,
                      bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0) -> ContainerModel:
@@ -153,7 +179,6 @@ class NodeEditor(Frame):
             fromC, _ = conn["from"]
             if fromC == container:
                 continue
-
             def filterBranches(branches):
                 valid_branches = []
                 for b in branches:
@@ -164,23 +189,15 @@ class NodeEditor(Frame):
                     b["sub_branches"] = filterBranches(b.get("sub_branches", []))
                     valid_branches.append(b)
                 return valid_branches
-
             conn["branches"] = filterBranches(conn["branches"])
             if conn["branches"]:
                 new_connections.append(conn)
-
         self.connections = new_connections
 
     def addConnection(self, from_container: ContainerModel, from_pin: str, to_container: ContainerModel, to_pin: str):
         conn = {
             "from": (from_container, from_pin),
-            "branches": [
-                {
-                    "waypoints": [],
-                    "to": (to_container, to_pin),
-                    "sub_branches": []
-                }
-            ],
+            "branches": [{"waypoints": [], "to": (to_container, to_pin), "sub_branches": []}],
             "Activated": True
         }
         self.connections.append(conn)
@@ -223,141 +240,126 @@ class NodeEditor(Frame):
         logX, logY = self.toLogicalSpace(winX, winY)
         cx, cy = self.getContainerCenterLogical(container)
         unrotX, unrotY = rotatePoint(logX, logY, cx, cy, -container.angle)
-
         x0 = container.gridX * self.gridSize
         x1 = (container.gridX + container.gridW) * self.gridSize
         y0 = container.gridY * self.gridSize
         y1 = (container.gridY + container.gridH) * self.gridSize
-
         return (x0 <= unrotX <= x1) and (y0 <= unrotY <= y1)
 
-    def isPointObscuredByHigherContainer(self, winX: float, winY: float, current_container: ContainerModel) -> bool:
-        for c in reversed(self.containers):
-            if c == current_container:
-                return False
-            
-            items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
-            if items:
-                hit_tags = set()
-                for item in items:
-                    hit_tags.update(self.canvas.gettags(item))
-                for child in c.children.values():
-                    if f"child_{id(child)}" in hit_tags:
-                        return True
+    def getRenderOrderedContainers(self) -> List[ContainerModel]:
+        return list(self.containers)
 
-            is_transparent = (
-                c.bg_color in ("transparent", "", "none", None) and 
-                c.border_color in ("transparent", "", "none", None)
-            )
+    def isPointObscuredByHigherContainer(self, winX: float, winY: float, current_container: ContainerModel, render_order: Optional[List[ContainerModel]] = None) -> bool:
+        if render_order is None:
+            render_order = self.getRenderOrderedContainers()
+        try:
+            current_idx = render_order.index(current_container)
+        except ValueError:
+            return False
+
+        logX, logY = self.toLogicalSpace(winX, winY)
+
+        for c in render_order[current_idx + 1:]:
+            is_transparent = (c.bg_color in ("transparent", "", "none", None) and c.border_color in ("transparent", "", "none", None))
             if not is_transparent and self.isPointInRotatedRect(winX, winY, c):
                 return True
-
+            for child in c.children.values():
+                chX0 = (c.gridX + child.gridX) * self.gridSize
+                chY0 = (c.gridY + child.gridY) * self.gridSize
+                chX1 = chX0 + child.gridW * self.gridSize
+                chY1 = chY0 + child.gridH * self.gridSize
+                cx, cy = self.getContainerCenterLogical(c)
+                unrotX, unrotY = rotatePoint(logX, logY, cx, cy, -c.angle)
+                if chX0 <= unrotX <= chX1 and chY0 <= unrotY <= chY1:
+                    return True
         return False
 
     def findContainerAtWindowPos(self, winX: float, winY: float) -> Optional[ContainerModel]:
-        items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
-        hit_tags = set()
-        if items:
-            for item in items:
-                hit_tags.update(self.canvas.gettags(item))
-
+        logX, logY = self.toLogicalSpace(winX, winY)
         for container in reversed(self.containers):
             for child in container.children.values():
-                if f"child_{id(child)}" in hit_tags:
+                chX0 = (container.gridX + child.gridX) * self.gridSize
+                chY0 = (container.gridY + child.gridY) * self.gridSize
+                chX1 = chX0 + child.gridW * self.gridSize
+                chY1 = chY0 + child.gridH * self.gridSize
+                cx, cy = self.getContainerCenterLogical(container)
+                unrotX, unrotY = rotatePoint(logX, logY, cx, cy, -container.angle)
+                if chX0 <= unrotX <= chX1 and chY0 <= unrotY <= chY1:
                     return container
-
-            is_transparent = (
-                container.bg_color in ("transparent", "", "none", None) and 
-                container.border_color in ("transparent", "", "none", None)
-            )
-            
+            is_transparent = (container.bg_color in ("transparent", "", "none", None) and container.border_color in ("transparent", "", "none", None))
             if not is_transparent:
                 if self.isPointInRotatedRect(winX, winY, container):
                     return container
-
         return None
 
-    def findNodeAtPosition(self, winX: float, winY: float, maxDistance: float = 10):
-        for container in reversed(self.containers):
-            if self.isPointObscuredByHigherContainer(winX, winY, container):
-                continue
-
+    def findNodeAtPosition(self, winX: float, winY: float, maxDistance: float = 10, render_order: Optional[List[ContainerModel]] = None):
+        if render_order is None:
+            render_order = self.getRenderOrderedContainers()
+        for container in reversed(render_order):
             for nName in container.nodes:
                 nx, ny = self.getNodeCenterWindowSpace(container, nName)
                 dist = math.hypot(winX - nx, winY - ny)
                 if dist <= maxDistance * self.zoom:
-                    return (container, nName)
+                    if not self.isPointObscuredByHigherContainer(winX, winY, container, render_order=render_order):
+                        return (container, nName)
         return None
 
-    def findWaypointAtPosition(self, winX: float, winY: float, maxDistance: float = 8):
+    def findWaypointAtPosition(self, winX: float, winY: float, maxDistance: float = 8, render_order: Optional[List[ContainerModel]] = None):
+        if render_order is None:
+            render_order = self.getRenderOrderedContainers()
         for idx, conn in enumerate(self.connections):
             fromC, _ = conn["from"]
-            if self.isPointObscuredByHigherContainer(winX, winY, fromC):
-                continue
-
             def searchBranch(branch):
                 for wpIdx, (wLogX, wLogY) in enumerate(branch["waypoints"]):
                     wx, wy = self.toWindowSpace(wLogX, wLogY)
                     if math.hypot(winX - wx, winY - wy) <= maxDistance:
-                        return (idx, branch, wpIdx)
+                        if not self.isPointObscuredByHigherContainer(winX, winY, fromC, render_order=render_order):
+                            return (idx, branch, wpIdx)
                 for sb in branch.get("sub_branches", []):
                     res = searchBranch(sb)
                     if res:
                         return res
                 return None
-
             for branch in conn["branches"]:
                 res = searchBranch(branch)
                 if res:
                     return res
         return None
 
-    def findConnectionSegmentAtPosition(self, winX: float, winY: float, maxDistance: float = 5):
-        if self.findNodeAtPosition(winX, winY, maxDistance=6):
-            return None
-
+    def findConnectionSegmentAtPosition(self, winX: float, winY: float, maxDistance: float = 5, render_order: Optional[List[ContainerModel]] = None):
+        if render_order is None:
+            render_order = self.getRenderOrderedContainers()
         for idx, conn in enumerate(self.connections):
             fromC, fromN = conn["from"]
-            if self.isPointObscuredByHigherContainer(winX, winY, fromC):
-                continue
-
             startLog = self.getNodeCenterLogicalSpace(fromC, fromN)
-
             def checkBranchSegments(startPoint, branch):
                 pts = [startPoint] + branch["waypoints"]
                 if "to" in branch:
                     pts.append(self.getNodeCenterLogicalSpace(*branch["to"]))
-
                 winPts = [self.toWindowSpace(px, py) for px, py in pts]
-
                 for segIdx in range(len(winPts) - 1):
                     wx1, wy1 = winPts[segIdx]
                     wx2, wy2 = winPts[segIdx + 1]
-
                     lineLenSq = (wx2 - wx1) ** 2 + (wy2 - wy1) ** 2
                     if lineLenSq == 0:
                         continue
-
                     t = max(0, min(1, ((winX - wx1) * (wx2 - wx1) + (winY - wy1) * (wy2 - wy1)) / lineLenSq))
                     projWinX = wx1 + t * (wx2 - wx1)
                     projWinY = wy1 + t * (wy2 - wy1)
-
                     if math.hypot(winX - projWinX, winY - projWinY) <= maxDistance:
-                        projLogX, projLogY = self.toLogicalSpace(projWinX, projWinY)
-                        return (idx, branch, segIdx, projLogX, projLogY)
-
+                        if not self.isPointObscuredByHigherContainer(winX, winY, fromC, render_order=render_order):
+                            projLogX, projLogY = self.toLogicalSpace(projWinX, projWinY)
+                            return (idx, branch, segIdx, projLogX, projLogY)
                 for sb in branch.get("sub_branches", []):
                     tapPt = branch["waypoints"][sb["tap_waypoint_idx"]] if sb["tap_waypoint_idx"] < len(branch["waypoints"]) else startPoint
                     res = checkBranchSegments(tapPt, sb)
                     if res:
                         return res
                 return None
-
             for bIdx, branch in enumerate(conn["branches"]):
                 res = checkBranchSegments(startLog, branch)
                 if res:
                     return res
-
         return None
 
     def insertWaypointInBranch(self, branch, segIdx, coord):
@@ -379,14 +381,13 @@ class NodeEditor(Frame):
             branch["sub_branches"] = subs_to_keep
 
     def executePythonIconScript(self, child: ChildrenModel, wx0: float, wy0: float, width: float, height: float, tags: Any, angle: float = 0.0, center_win: Tuple[float, float] = (0, 0), is_selected: bool = False):
-        if not child.python_script or width <= 0 or height <= 0:
+        if (not child.compiled_code and not child.python_script) or width <= 0 or height <= 0:
             return
 
         def draw_oval(cx_circle, cy_circle, r, fill="", outline="#FFFFFF", width=2):
             if angle != 0:
                 cx_circle, cy_circle = rotatePoint(cx_circle, cy_circle, center_win[0], center_win[1], angle)
-            return self.canvas.create_oval(cx_circle - r, cy_circle - r, cx_circle + r, cy_circle + r,
-                                           fill=fill, outline=outline, width=width, tags=tags)
+            return self.canvas.create_oval(cx_circle - r, cy_circle - r, cx_circle + r, cy_circle + r, fill=fill, outline=outline, width=width, tags=tags)
 
         def draw_polygon(points, fill="", outline="#FFFFFF", width=2):
             rot_points = []
@@ -408,28 +409,18 @@ class NodeEditor(Frame):
             return self.canvas.create_line(x1_l, y1_l, x2_l, y2_l, fill=fill, width=width, tags=tags)
 
         scope = {
-            "canvas": self.canvas,
-            "x": wx0,
-            "y": wy0,
-            "w": width,
-            "h": height,
-            "tags": tags,
-            "angle": angle,
-            "cx": center_win[0],
-            "cy": center_win[1],
-            "is_selected": is_selected,
-            "rotatePoint": rotatePoint,
-            "draw_oval": draw_oval,
-            "draw_polygon": draw_polygon,
-            "draw_rect": draw_rect,
-            "draw_line": draw_line,
-            "math": math
+            "canvas": self.canvas, "x": wx0, "y": wy0, "w": width, "h": height, "tags": tags,
+            "angle": angle, "cx": center_win[0], "cy": center_win[1], "is_selected": is_selected,
+            "rotatePoint": rotatePoint, "draw_oval": draw_oval, "draw_polygon": draw_polygon,
+            "draw_rect": draw_rect, "draw_line": draw_line, "math": math
         }
-
         try:
-            exec(child.python_script, scope)
-        except Exception as e:
-            print(f"[PythonIconScript Execution Error] {e}")
+            if child.compiled_code:
+                exec(child.compiled_code, scope)
+            else:
+                exec(child.python_script, scope)
+        except Exception:
+            pass
 
     def createRoundedRectPoints(self, x0, y0, x1, y1, radius, angle=0.0, center=None):
         radius = max(1, min(radius, (x1 - x0) / 2.0, (y1 - y0) / 2.0))
@@ -442,9 +433,9 @@ class NodeEditor(Frame):
         ]
         for cx, cy, startAngle, endAngle in corners:
             for step in range(startAngle, endAngle + 1, 15):
-                rad = math.radians(step)
-                px = cx + radius * math.cos(rad)
-                py = cy - radius * math.sin(rad)
+                cos_val, sin_val = _RAD_TRIG_CACHE[step]
+                px = cx + radius * cos_val
+                py = cy - radius * sin_val
                 if angle != 0 and center:
                     px, py = rotatePoint(px, py, center[0], center[1], angle)
                 points.extend([px, py])
@@ -459,36 +450,33 @@ class NodeEditor(Frame):
     def renderGrid(self):
         self.canvas.delete("gridLine")
         _, _, w, h = self.getCenter()
-
         logLeft, logTop = self.toLogicalSpace(0, 0)
         logRight, logBottom = self.toLogicalSpace(w, h)
-
         step = self.gridSize
         startX = (int(logLeft) // step) * step
         startY = (int(logTop) // step) * step
 
+        grid_lines = []
         for lx in range(startX, int(logRight) + step, step):
             wx, _ = self.toWindowSpace(lx, 0)
-            self.canvas.create_line(wx, 0, wx, h, fill="#222222", tags="gridLine")
-
+            grid_lines.extend([wx, 0, wx, h])
         for ly in range(startY, int(logBottom) + step, step):
             _, wy = self.toWindowSpace(0, ly)
-            self.canvas.create_line(0, wy, w, wy, fill="#222222", tags="gridLine")
+            grid_lines.extend([0, wy, w, wy])
 
+        for i in range(0, len(grid_lines), 4):
+            self.canvas.create_line(grid_lines[i], grid_lines[i+1], grid_lines[i+2], grid_lines[i+3], fill="#222222", tags="gridLine")
         self.canvas.tag_lower("gridLine")
 
     def renderConnections(self):
         self.canvas.delete("connection")
         self.canvas.delete("waypoint")
-
         for idx, conn in enumerate(self.connections):
             fromC, fromN = conn["from"]
             startWin = self.getNodeCenterWindowSpace(fromC, fromN)
-
             isSelected = (idx == self.selectedConnectionIndex)
             isHovered = (self.hoveredConnectionSegment and self.hoveredConnectionSegment[0] == idx)
             isActivated = conn.get("Activated", True)
-
             wireColor = "#FF2E93" if isSelected else ("#00E5FF" if isHovered else ("#00ADB5" if isActivated else "#555555"))
             wireWidth = max(1, int((4 if isSelected else 3) * self.zoom))
 
@@ -497,37 +485,27 @@ class NodeEditor(Frame):
                 for wLogX, wLogY in branch["waypoints"]:
                     wx, wy = self.toWindowSpace(wLogX, wLogY)
                     pts.extend([wx, wy])
-
                 if "to" in branch:
                     endWin = self.getNodeCenterWindowSpace(*branch["to"])
                     pts.extend([endWin[0], endWin[1]])
-
-                self.canvas.create_line(
-                    pts, fill=wireColor, width=wireWidth,
-                    capstyle=ROUND, joinstyle=ROUND, tags="connection"
-                )
-
+                self.canvas.create_line(pts, fill=wireColor, width=wireWidth, capstyle=ROUND, joinstyle=ROUND, tags="connection")
                 for wpIdx, (wLogX, wLogY) in enumerate(branch["waypoints"]):
                     isWpHovered = (self.hoveredWaypoint and self.hoveredWaypoint[0] == idx and self.hoveredWaypoint[1] is branch and self.hoveredWaypoint[2] == wpIdx)
-
                     if isSelected or isWpHovered or isHovered:
                         wx, wy = self.toWindowSpace(wLogX, wLogY)
                         r = max(3, int(5 * self.zoom))
                         dotFill = "#FFFFFF" if isWpHovered else "#00ADB5"
-                        self.canvas.create_oval(
-                            wx - r, wy - r, wx + r, wy + r,
-                            fill=dotFill, outline="#FFFFFF", width=max(1, int(1.5 * self.zoom)), tags="waypoint"
-                        )
-
+                        self.canvas.create_oval(wx - r, wy - r, wx + r, wy + r, fill=dotFill, outline="#FFFFFF", width=max(1, int(1.5 * self.zoom)), tags="waypoint")
                 for sb in branch.get("sub_branches", []):
                     if sb["tap_waypoint_idx"] < len(branch["waypoints"]):
                         tapWp = branch["waypoints"][sb["tap_waypoint_idx"]]
                         tapWin = self.toWindowSpace(*tapWp)
                         drawBranchTree(tapWin, sb)
-
             for branch in conn["branches"]:
                 drawBranchTree(startWin, branch)
 
+    def renderConnectingLine(self):
+        self.canvas.delete("connecting_line")
         if self.connectingStart:
             if self.connectingStart["mode"] == "new_tree":
                 startWin = self.getNodeCenterWindowSpace(*self.connectingStart["from"])
@@ -536,145 +514,108 @@ class NodeEditor(Frame):
                 tapIdx = self.connectingStart["tapIdx"]
                 tapLog = parentBranch["waypoints"][tapIdx]
                 startWin = self.toWindowSpace(*tapLog)
-
             pts = [startWin[0], startWin[1]]
             for wLogX, wLogY in self.connectingWaypoints:
                 wx, wy = self.toWindowSpace(wLogX, wLogY)
                 pts.extend([wx, wy])
             pts.extend([self.connectingMousePos[0], self.connectingMousePos[1]])
+            self.canvas.create_line(pts, fill="#FF2E93", width=max(1, int(2 * self.zoom)), dash=(4, 4), capstyle=ROUND, joinstyle=ROUND, tags=("connection", "connecting_line"))
 
-            self.canvas.create_line(
-                pts, fill="#FF2E93", width=max(1, int(2 * self.zoom)),
-                dash=(4, 4), capstyle=ROUND, joinstyle=ROUND, tags="connection"
-            )
+    def renderContainerShape(self, container: ContainerModel):
+        cornerRadiusPixels = self.gridSize * 0.4 * self.zoom
+        borderWidth = max(1, int(2 * self.zoom))
+        cLogX = container.gridX * self.gridSize
+        cLogY = container.gridY * self.gridSize
+        cLogW = container.gridW * self.gridSize
+        cLogH = container.gridH * self.gridSize
+        wx0, wy0 = self.toWindowSpace(cLogX, cLogY)
+        wx1, wy1 = self.toWindowSpace(cLogX + cLogW, cLogY + cLogH)
+        centerLogX, centerLogY = self.getContainerCenterLogical(container)
+        centerWin = self.toWindowSpace(centerLogX, centerLogY)
+
+        isSelected = container is self.selectedContainer
+        border_color = container.border_color
+        if isSelected and container.border_color != "transparent":
+            border_color = "#FFFFFF"
+
+        container.canvasId = self.drawRoundedRect(wx0, wy0, wx1, wy1, radius=cornerRadiusPixels, fill=container.bg_color, outline=border_color, width=borderWidth, tags=("container",), angle=container.angle, center=centerWin)
+
+    def renderContainerDetails(self, container: ContainerModel):
+        borderWidth = max(1, int(2 * self.zoom))
+        cLogX = container.gridX * self.gridSize
+        cLogY = container.gridY * self.gridSize
+        cLogW = container.gridW * self.gridSize
+        cLogH = container.gridH * self.gridSize
+        wx0, wy0 = self.toWindowSpace(cLogX, cLogY)
+        wx1, wy1 = self.toWindowSpace(cLogX + cLogW, cLogY + cLogH)
+        centerLogX, centerLogY = self.getContainerCenterLogical(container)
+        centerWin = self.toWindowSpace(centerLogX, centerLogY)
+
+        isSelected = container is self.selectedContainer
+
+        for chName, child in container.children.items():
+            chLogX = (container.gridX + child.gridX) * self.gridSize
+            chLogY = (container.gridY + child.gridY) * self.gridSize
+            chLogW = child.gridW * self.gridSize
+            chLogH = child.gridH * self.gridSize
+            chWx0, chWy0 = self.toWindowSpace(chLogX, chLogY)
+            chWx1, chWy1 = self.toWindowSpace(chLogX + chLogW, chLogY + chLogH)
+            w_px = chWx1 - chWx0
+            h_px = chWy1 - chWy0
+            if child.python_script:
+                child_tag = f"child_{id(child)}"
+                self.executePythonIconScript(child, chWx0, chWy0, w_px, h_px, tags=("child_python_icon", child_tag), angle=container.angle, center_win=centerWin, is_selected=isSelected)
+
+        for nName, node in container.nodes.items():
+            nodeKey = (container, nName)
+            currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
+            scaledSize = self.gridSize * currentScale
+            offset = (self.gridSize - scaledSize) / 2.0
+            nLogX = (container.gridX + node.gridX) * self.gridSize + offset
+            nLogY = (container.gridY + node.gridY) * self.gridSize + offset
+            nWx0, nWy0 = self.toWindowSpace(nLogX, nLogY)
+            nWx1, nWy1 = self.toWindowSpace(nLogX + scaledSize, nLogY + scaledSize)
+            pinRadius = (scaledSize * 0.25) * self.zoom
+            isNodeHovered = (self.hoveredNode == (container, nName))
+
+            if isNodeHovered or currentScale > 0.6:
+                glowPoints = self.createRoundedRectPoints(nWx0, nWy0, nWx1, nWy1, pinRadius, angle=container.angle, center=centerWin)
+                self.canvas.create_polygon(glowPoints, fill="", outline="#FFFFFF", width=int(2 * self.zoom), tags="nodeGlow")
+            node.canvasId = self.drawRoundedRect(nWx0, nWy0, nWx1, nWy1, radius=pinRadius, fill=node.bg_color, outline=node.border_color, width=borderWidth, tags=("node",), angle=container.angle, center=centerWin)
+
+            nodeCenterLogX, nodeCenterLogY = self.getNodeCenterLogicalSpace(container, nName)
+            textWinX, textWinY = self.toWindowSpace(nodeCenterLogX, nodeCenterLogY)
+            scaledFontSize = int(4 * self.zoom * currentScale)
+            if scaledFontSize > 0:
+                self.canvas.create_text(textWinX, textWinY, fill="white", font=("Arial", scaledFontSize, "bold"), text=node.name, tags="node")
+
+    def renderContainer(self, container: ContainerModel):
+        self.renderContainerShape(container)
+        self.renderContainerDetails(container)
 
     def renderAll(self):
         self.canvas.delete("all")
-
         self.renderGrid()
         self.renderConnections()
-
-        cornerRadiusPixels = self.gridSize * 0.4 * self.zoom
-        borderWidth = max(1, int(2 * self.zoom))
-
-        for container in self.containers:
-            cLogX = container.gridX * self.gridSize
-            cLogY = container.gridY * self.gridSize
-            cLogW = container.gridW * self.gridSize
-            cLogH = container.gridH * self.gridSize
-
-            wx0, wy0 = self.toWindowSpace(cLogX, cLogY)
-            wx1, wy1 = self.toWindowSpace(cLogX + cLogW, cLogY + cLogH)
-
-            centerLogX, centerLogY = self.getContainerCenterLogical(container)
-            centerWin = self.toWindowSpace(centerLogX, centerLogY)
-
-            isSelected = container is self.selectedContainer
-
-            border_color = container.border_color
-            if isSelected and container.border_color != "transparent":
-                border_color = "#FFFFFF"
-
-            container.canvasId = self.drawRoundedRect(
-                wx0, wy0, wx1, wy1,
-                radius=cornerRadiusPixels,
-                fill=container.bg_color,
-                outline=border_color,
-                width=borderWidth,
-                tags=("container",),
-                angle=container.angle,
-                center=centerWin
-            )
-
-            for chName, child in container.children.items():
-                chLogX = (container.gridX + child.gridX) * self.gridSize
-                chLogY = (container.gridY + child.gridY) * self.gridSize
-                chLogW = child.gridW * self.gridSize
-                chLogH = child.gridH * self.gridSize
-
-                chWx0, chWy0 = self.toWindowSpace(chLogX, chLogY)
-                chWx1, chWy1 = self.toWindowSpace(chLogX + chLogW, chLogY + chLogH)
-
-                w_px = chWx1 - chWx0
-                h_px = chWy1 - chWy0
-
-                if child.python_script:
-                    child_tag = f"child_{id(child)}"
-                    self.executePythonIconScript(
-                        child, chWx0, chWy0, w_px, h_px,
-                        tags=("child_python_icon", child_tag),
-                        angle=container.angle,
-                        center_win=centerWin,
-                        is_selected=isSelected
-                    )
-
-            for nName, node in container.nodes.items():
-                nodeKey = (container, nName)
-                currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
-
-                scaledSize = self.gridSize * currentScale
-                offset = (self.gridSize - scaledSize) / 2.0
-
-                nLogX = (container.gridX + node.gridX) * self.gridSize + offset
-                nLogY = (container.gridY + node.gridY) * self.gridSize + offset
-
-                nWx0, nWy0 = self.toWindowSpace(nLogX, nLogY)
-                nWx1, nWy1 = self.toWindowSpace(nLogX + scaledSize, nLogY + scaledSize)
-
-                pinRadius = (scaledSize * 0.25) * self.zoom
-                isNodeHovered = (self.hoveredNode == (container, nName))
-
-                if isNodeHovered or currentScale > 0.6:
-                    glowPoints = self.createRoundedRectPoints(nWx0, nWy0, nWx1, nWy1, pinRadius, angle=container.angle, center=centerWin)
-                    self.canvas.create_polygon(
-                        glowPoints, fill="", outline="#FFFFFF", width=int(2 * self.zoom), tags="nodeGlow"
-                    )
-
-                node.canvasId = self.drawRoundedRect(
-                    nWx0, nWy0, nWx1, nWy1,
-                    radius=pinRadius,
-                    fill=node.bg_color,
-                    outline=node.border_color,
-                    width=borderWidth,
-                    tags=("node",),
-                    angle=container.angle,
-                    center=centerWin
-                )
-
-                nodeCenterLogX, nodeCenterLogY = self.getNodeCenterLogicalSpace(container, nName)
-                textWinX, textWinY = self.toWindowSpace(nodeCenterLogX, nodeCenterLogY)
-
-                scaledFontSize = int(4 * self.zoom * currentScale)
-
-                if scaledFontSize > 0:
-                    self.canvas.create_text(
-                        textWinX,
-                        textWinY,
-                        fill="white",
-                        font=("Arial", scaledFontSize, "bold"),
-                        text=node.name,
-                        tags="node"
-                    )
-
-        self.canvas.tag_lower("connection")
+        render_containers = self.getRenderOrderedContainers()
+        for container in render_containers:
+            self.renderContainer(container)
         self.canvas.tag_lower("gridLine")
+        self.renderConnectingLine()
 
     def animateNodeScale(self, container: ContainerModel, nName: str, targetScale: float):
         nodeKey = (container, nName)
-
         def stepAnimation():
             currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
             if abs(currentScale - targetScale) < 0.02:
                 self.nodeScaleAnim[nodeKey] = targetScale
                 self.activeAnimators.discard(nodeKey)
-                self.renderAll()
+                self.scheduleRender()
                 return
-
             newScale = currentScale + (targetScale - currentScale) * 0.35
             self.nodeScaleAnim[nodeKey] = newScale
-            self.renderAll()
+            self.scheduleRender()
             self.after(16, stepAnimation)
-
         if nodeKey not in self.activeAnimators:
             self.activeAnimators.add(nodeKey)
             stepAnimation()
@@ -685,12 +626,23 @@ class NodeEditor(Frame):
             logX, logY = self.toLogicalSpace(event.x, event.y)
             snappedX, snappedY = self.snapToMidGrid(logX, logY)
             branch["waypoints"][wpIdx] = (snappedX, snappedY)
-            self.renderAll()
+            self.scheduleRender()
             return
 
-        self.hoveredNode = self.findNodeAtPosition(event.x, event.y, maxDistance=8)
-        self.hoveredWaypoint = self.findWaypointAtPosition(event.x, event.y, maxDistance=6)
-        self.hoveredConnectionSegment = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5)
+        render_order = self.getRenderOrderedContainers()
+        new_hoveredNode = self.findNodeAtPosition(event.x, event.y, maxDistance=8, render_order=render_order)
+        new_hoveredWaypoint = self.findWaypointAtPosition(event.x, event.y, maxDistance=6, render_order=render_order)
+        new_hoveredConnectionSegment = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5, render_order=render_order)
+        
+        needs_redraw = False
+        current_hover_state = (new_hoveredNode, new_hoveredWaypoint, new_hoveredConnectionSegment)
+        if self.last_hover_state != current_hover_state:
+            needs_redraw = True
+            self.last_hover_state = current_hover_state
+
+        self.hoveredNode = new_hoveredNode
+        self.hoveredWaypoint = new_hoveredWaypoint
+        self.hoveredConnectionSegment = new_hoveredConnectionSegment
 
         for container in self.containers:
             for nName, node in container.nodes.items():
@@ -699,129 +651,99 @@ class NodeEditor(Frame):
                 if self.nodeScaleAnim.get(nodeKey, 0.6) != targetScale:
                     self.animateNodeScale(container, nName, targetScale)
 
-        self.connectingMousePos = (event.x, event.y)
-        self.renderAll()
+        if self.connectingStart:
+            self.connectingMousePos = (event.x, event.y)
+            needs_redraw = True
+        if needs_redraw:
+            self.scheduleRender()
 
     def onRightClick(self, event):
         if self.connectingStart:
             self.connectingStart = None
             self.connectingWaypoints.clear()
-            self.renderAll()
+            self.scheduleRender()
             return
-
-        wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
+        render_order = self.getRenderOrderedContainers()
+        wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8, render_order=render_order)
         if wp:
             connIdx, branch, wpIdx = wp
             self.removeWaypointFromBranch(branch, wpIdx)
             self.hoveredWaypoint = None
-            self.renderAll()
+            self.scheduleRender()
             return
-
-        seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5)
+        seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5, render_order=render_order)
         if seg:
             connIdx = seg[0]
             self.connections.pop(connIdx)
             self.selectedConnectionIndex = None
             self.hoveredConnectionSegment = None
-            self.renderAll()
+            self.scheduleRender()
             return
-
         container = self.findContainerAtWindowPos(event.x, event.y)
         if container:
             self.deleteContainer(container)
-            self.renderAll()
+            self.scheduleRender()
             return
 
     def onPress(self, event):
         self.canvas.focus_set()
-        nodeAtPress = self.findNodeAtPosition(event.x, event.y, maxDistance=10)
-
+        render_order = self.getRenderOrderedContainers()
+        nodeAtPress = self.findNodeAtPosition(event.x, event.y, maxDistance=10, render_order=render_order)
         if nodeAtPress:
             if not self.connectingStart:
-                self.connectingStart = {
-                    "mode": "new_tree",
-                    "from": nodeAtPress
-                }
+                self.connectingStart = {"mode": "new_tree", "from": nodeAtPress}
                 self.connectingWaypoints = []
+                self.connectingMousePos = (event.x, event.y)
             else:
                 if self.connectingStart["mode"] == "new_tree":
                     wps = list(self.connectingWaypoints)
-                    self.connections.append({
-                        "from": self.connectingStart["from"],
-                        "branches": [
-                            {
-                                "waypoints": wps,
-                                "to": nodeAtPress,
-                                "sub_branches": []
-                            }
-                        ],
-                        "Activated": True
-                    })
+                    self.connections.append({"from": self.connectingStart["from"], "branches": [{"waypoints": wps, "to": nodeAtPress, "sub_branches": []}], "Activated": True})
                 elif self.connectingStart["mode"] == "branch_tree":
                     parentBranch = self.connectingStart["parentBranch"]
                     tapIdx = self.connectingStart["tapIdx"]
-
-                    newBranch = {
-                        "tap_waypoint_idx": tapIdx,
-                        "waypoints": list(self.connectingWaypoints),
-                        "to": nodeAtPress,
-                        "sub_branches": []
-                    }
+                    newBranch = {"tap_waypoint_idx": tapIdx, "waypoints": list(self.connectingWaypoints), "to": nodeAtPress, "sub_branches": []}
                     parentBranch.setdefault("sub_branches", []).append(newBranch)
-
                 self.connectingStart = None
                 self.connectingWaypoints.clear()
-            self.renderAll()
+            self.scheduleRender()
             return
 
         if event.state & 0x0001:
-            wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
+            wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8, render_order=render_order)
             if wp and not self.connectingStart:
                 connIdx, branch, wpIdx = wp
-                self.connectingStart = {
-                    "mode": "branch_tree",
-                    "connIdx": connIdx,
-                    "parentBranch": branch,
-                    "tapIdx": wpIdx
-                }
+                self.connectingStart = {"mode": "branch_tree", "connIdx": connIdx, "parentBranch": branch, "tapIdx": wpIdx}
                 self.connectingWaypoints = []
-                self.renderAll()
+                self.connectingMousePos = (event.x, event.y)
+                self.scheduleRender()
                 return
-
-            seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=6)
+            seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=6, render_order=render_order)
             if seg and not self.connectingStart:
                 connIdx, parent_branch, segIdx, projX, projY = seg
                 snapped = self.snapToMidGrid(projX, projY)
-
                 self.insertWaypointInBranch(parent_branch, segIdx, snapped)
-
-                self.connectingStart = {
-                    "mode": "branch_tree",
-                    "connIdx": connIdx,
-                    "parentBranch": parent_branch,
-                    "tapIdx": segIdx
-                }
+                self.connectingStart = {"mode": "branch_tree", "connIdx": connIdx, "parentBranch": parent_branch, "tapIdx": segIdx}
                 self.connectingWaypoints = []
-                self.renderAll()
+                self.connectingMousePos = (event.x, event.y)
+                self.scheduleRender()
                 return
 
-        wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
+        wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8, render_order=render_order)
         if wp and not self.connectingStart:
             connIdx, branch, wpIdx = wp
             self.selectedConnectionIndex = connIdx
             self.draggingWaypoint = (connIdx, branch, wpIdx)
-            self.renderAll()
+            self.scheduleRender()
             return
 
-        seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5)
+        seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5, render_order=render_order)
         if seg and not self.connectingStart:
             connIdx, branch, segIdx, projX, projY = seg
             snapped = self.snapToMidGrid(projX, projY)
-
             self.selectedConnectionIndex = connIdx
             self.insertWaypointInBranch(branch, segIdx, snapped)
             self.draggingWaypoint = (connIdx, branch, segIdx)
-            self.renderAll()
+            self.scheduleRender()
             return
 
         if self.connectingStart:
@@ -829,7 +751,8 @@ class NodeEditor(Frame):
             snapped = self.snapToMidGrid(logX, logY)
             if not self.connectingWaypoints or self.connectingWaypoints[-1] != snapped:
                 self.connectingWaypoints.append(snapped)
-            self.renderAll()
+            self.connectingMousePos = (event.x, event.y)
+            self.scheduleRender()
             return
 
         container = self.findContainerAtWindowPos(event.x, event.y)
@@ -839,17 +762,15 @@ class NodeEditor(Frame):
             self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
             self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
             self.selectedConnectionIndex = None
-
             if container in self.containers:
                 self.containers.remove(container)
                 self.containers.append(container)
-
-            self.renderAll()
+            self.scheduleRender()
             return
 
         self.selectedContainer = None
         self.selectedConnectionIndex = None
-        self.renderAll()
+        self.scheduleRender()
 
     def onDrag(self, event):
         if self.draggingWaypoint:
@@ -857,12 +778,12 @@ class NodeEditor(Frame):
             logX, logY = self.toLogicalSpace(event.x, event.y)
             snappedX, snappedY = self.snapToMidGrid(logX, logY)
             branch["waypoints"][wpIdx] = (snappedX, snappedY)
-            self.renderAll()
+            self.scheduleRender()
             return
 
         if self.connectingStart:
             self.connectingMousePos = (event.x, event.y)
-            self.renderAll()
+            self.scheduleRender()
             return
 
         if self.selectedContainer:
@@ -871,7 +792,7 @@ class NodeEditor(Frame):
             newGridY = math.floor((mouseLogY / self.gridSize) - self.dragOffsetGridY)
             self.selectedContainer.gridX = newGridX
             self.selectedContainer.gridY = newGridY
-            self.renderAll()
+            self.scheduleRender()
 
     def onRelease(self, event):
         self.draggingWaypoint = None
@@ -881,16 +802,12 @@ class NodeEditor(Frame):
             zoom_factor = 1.1
         else:
             zoom_factor = 0.9
-
         mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-
         self.zoom *= zoom_factor
-
         cx, cy, _, _ = self.getCenter()
         self.panX = event.x - cx - (mouseLogX * self.zoom)
         self.panY = event.y - cy - (mouseLogY * self.zoom)
-
-        self.renderAll()
+        self.scheduleRender()
 
     def startPan(self, event):
         self.dragStartX = event.x
@@ -903,7 +820,7 @@ class NodeEditor(Frame):
         self.panY += dy
         self.dragStartX = event.x
         self.dragStartY = event.y
-        self.renderAll()
+        self.scheduleRender()
 
 
 if __name__ == "__main__":
@@ -914,17 +831,14 @@ if __name__ == "__main__":
     editor = NodeEditor(root)
     editor.pack(fill=BOTH, expand=True)
 
-    c1 = editor.addContainer("Container 1", gridX=-2, gridY=-2, gridW=3, gridH=2, bg_color="#2D3748")
-    c1.addNode("A", 0, 0)
-    c1.addNode("B", 2, 1)
+    c1 = editor.addContainer("Cell 1", 2, 2, gridW=2, gridH=2, bg_color="#2D3748")
+    c1.addNode("in", 0, 0)
+    c1.addNode("out", 1, 1)
 
-    c2 = editor.addContainer("Transparent Container", gridX=3, gridY=1, gridW=3, gridH=2, bg_color="transparent", border_color="transparent")
-    c2.addNode("C", 0, 0)
-    
-    script = """
-draw_rect(x + 5, y + 5, x + w - 5, y + h - 5, fill="#4A5568", outline="#A0AEC0")
-"""
-    c2.addChild("Icon", 1.0, 0.5, 1.0, 1.0, python_script=script)
+    c2 = editor.addContainer("Cell 2", 6, 2, gridW=3, gridH=2, bg_color="#2D3748")
+    c2.addNode("in", 0, 0)
 
-    editor.renderAll()
+    editor.addConnection(c1, "out", c2, "in")
+
+    editor.scheduleRender()
     root.mainloop()
