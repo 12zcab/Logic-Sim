@@ -58,11 +58,11 @@ class LogicSimApp:
         module_dir = os.path.dirname(module_data["__path__"])
         
         for component_name in component_names:
-            pyicon_path, loadingObj, loadingContainer = self.get_component_data(
+            pyicon_path, loadingObj = self.get_component_data(
                 module_dir, components_obj, component_name
             )
             bt = self.sub_toolbar.add_button(component_name, pyicon_path)
-            bt.config(command=loadingContainer)
+            bt.config(command=loadingObj)
             
         self.sub_toolbar.force_update()
 
@@ -74,12 +74,9 @@ class LogicSimApp:
         if icon_data.get("path"):
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
         loadingObjfunc = lambda name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path)
-        loadingContainerfunc = lambda name=component_name, defn=component_def, dir_path=module_dir: loadContainer(name, defn, self.node_editor, dir_path)
-        self.constructor_to_container[globals()[component_def["constructor"]].__name__] = loadingContainerfunc
-        return pyicon_path, loadingObjfunc, loadingContainerfunc
+        return pyicon_path, loadingObjfunc
 
 if __name__ == "__main__":
     root = Tk()
     app = LogicSimApp(root)
-    createVerilogObjAndContainer(app.node_editor,"register.v")
     root.mainloop()
