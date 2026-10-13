@@ -68,7 +68,8 @@ if __name__ == "__main__":
             
     try:
         netlist_data = parse_verilog_to_pure_gates(target_register_path)
-        with open("output.json", "w") as f:
+        with open("output.json", "w") as f:   
             json.dump(netlist_data, f, indent=4)
     except Exception as error:
-        print(f"[-] Error happened : {error}", file=sys.stderr)    
+        print(f"[-] Error happened : {error}", file=sys.stderr)  
+   

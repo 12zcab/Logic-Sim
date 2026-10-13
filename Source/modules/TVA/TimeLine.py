@@ -6,6 +6,9 @@
 
 # Can be accessed by Gui Engine i think
 
+# bruh wrong stuff
+# iGNORE IT 
+
 from Source.gui import *
 from core.object import *
 
@@ -20,7 +23,7 @@ class ParallelContainer:
         for BoxRequested in self.List:
             Found = self.Container[BoxRequested]
 
-            if not Found:
+            if not Found: 
                 print("Require the box in container")
 
             print("Execute")
@@ -49,4 +52,4 @@ class Comparison:
                             print(f" {key1} : {item1} / {item2}  [from {Box1.Name} and {Box2.name}]")
                             Different.append(key1)
 
-        return Different         
+        return Different 
