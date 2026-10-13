@@ -1,10 +1,17 @@
+# Disclaimer: 
+# YES, THIS SCRIPT IS MOSTLY WRITTEN BY AI
+# I AM SORRY BUT I REALLY DONT KNOW HOW TO DO THIS PART
+# I ALREADY SPENT 1.5WEEKS ON THE nodeEngine :|
+# By 12zcab :|
+
+
 import tkinter as tk
 from tkinter import ttk
 import math
 import uuid
 from typing import List, Dict, Set, Optional, Tuple, Callable
 
-def rotate_point(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
+def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
     rad = math.radians(angle)
     cos_a, sin_a = math.cos(rad), math.sin(rad)
     nx = cos_a * (px - cx) - sin_a * (py - cy) + cx
@@ -25,9 +32,9 @@ class Pin:
     def abs_pos(self) -> Tuple[float, float]:
         return (self.owner.x + self.rel_x, self.owner.y + self.rel_y)
 
-    def contains_point(self, wx: float, wy: float, anim_val: float = 0.0, tolerance: float = 2.0) -> bool:
+    def contains_point(self, wx: float, wy: float, anim_val: float = 0.0, tolerance: float = 0.2) -> bool:
         px, py = self.abs_pos
-        pr_world = (5.5 + 2.5 * anim_val) + tolerance
+        pr_world = (0.275 + 0.125 * anim_val) + tolerance
         return (px - pr_world) <= wx <= (px + pr_world) and (py - pr_world) <= wy <= (py + pr_world)
 
 class NodeObject:
@@ -37,8 +44,8 @@ class NodeObject:
         title: str,
         x: float,
         y: float,
-        width: float = 140,
-        height: float = 90,
+        width: float = 4,
+        height: float = 3,
         bg_color: Optional[str] = None,
         border_color: Optional[str] = None,
         graphic_code: Optional[str] = None,
@@ -46,10 +53,10 @@ class NodeObject:
     ):
         self.id = node_id
         self.title = title
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
+        self.x = float(round(x * 2.0) / 2.0)
+        self.y = float(round(y * 2.0) / 2.0)
+        self.width = float(round(width * 2.0) / 2.0)
+        self.height = float(round(height * 2.0) / 2.0)
         self.bg_color = bg_color
         self.border_color = border_color
         self.graphic_code = graphic_code
@@ -60,7 +67,10 @@ class NodeObject:
         if self.graphic_code:
             self.compiled_code = compile(self.graphic_code, f"<node_graphic_{self.id}>", "exec")
 
-    def add_pin(self, name: str, rel_x: float, rel_y: float, color: Optional[str] = None) -> Pin:
+    def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None) -> Pin:
+        # Offsets by 0.5 for cell-center pins (e.g. [-1, 0] -> [-0.5, 0.5])
+        rel_x = cell_x + 0.5
+        rel_y = cell_y + 0.5
         pin = Pin(self, name, rel_x, rel_y, color)
         self.pins.append(pin)
         return pin
@@ -68,7 +78,7 @@ class NodeObject:
     def contains_point(self, wx: float, wy: float) -> bool:
         cx = self.x + self.width / 2.0
         cy = self.y + self.height / 2.0
-        unrot_x, unrot_y = rotate_point(wx, wy, cx, cy, -self.angle)
+        unrot_x, unrot_y = rotatePoint(wx, wy, cx, cy, -self.angle)
         return (self.x <= unrot_x <= self.x + self.width) and (self.y <= unrot_y <= self.y + self.height)
 
     def get_pin_at(self, wx: float, wy: float, anim_states: Optional[Dict[object, float]] = None) -> Optional[Pin]:
@@ -288,7 +298,7 @@ class NetEngine:
             s1_a, s1_b = path1[i], path1[i + 1]
             for j in range(len(path2) - 1):
                 s2_a, s2_b = path2[j], path2[j + 1]
-                if nodeEditor._dist_segment_to_segment(s1_a, s1_b, s2_a, s2_b) < 2.5:
+                if NodeEditor._dist_segment_to_segment(s1_a, s1_b, s2_a, s2_b) < 0.15:
                     return True
         return False
 
@@ -296,15 +306,15 @@ class NetEngine:
         if self.event_callback:
             self.event_callback(event_type, net, pin)
 
-class nodeEditor(ttk.Frame):
-    def __init__(self, parent, grid_size: float = 20.0, *args, **kwargs):
+class NodeEditor(ttk.Frame):
+    def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
 
-        self.grid_size = float(grid_size)
-        self.wire_grid_size = self.grid_size / 2.0
+        self.grid_size = 1.0
+        self.wire_grid_size = 0.5
         self.snap_enabled = True
-        self.min_zoom = 0.05
-        self.max_zoom = 15.0
+        self.min_zoom = 2.0
+        self.max_zoom = 150.0
 
         self.colors = {
             "bg": "#090d16",
@@ -329,7 +339,7 @@ class nodeEditor(ttk.Frame):
 
         self.pan_x: float = 0.0
         self.pan_y: float = 0.0
-        self.zoom: float = 1.0
+        self.zoom: float = 35.0
 
         self.selected_object: Optional[object] = None
         self.hovered_object: Optional[object] = None
@@ -340,7 +350,6 @@ class nodeEditor(ttk.Frame):
         self.current_mouse_world: Tuple[float, float] = (0.0, 0.0)
         self.active_wire: Optional[Wire] = None
 
-        # Stable Edge Pushing State Variables
         self.drag_wire_initial_path: Optional[List[Tuple[float, float]]] = None
         self.drag_wire_segment_index: Optional[int] = None
 
@@ -392,9 +401,9 @@ class nodeEditor(ttk.Frame):
         cy = node.height / 2.0
 
         for pin in node.pins:
-            nx, ny = rotate_point(pin.rel_x, pin.rel_y, cx, cy, angle_deg)
-            pin.rel_x = round(nx, 2)
-            pin.rel_y = round(ny, 2)
+            nx, ny = rotatePoint(pin.rel_x, pin.rel_y, cx, cy, angle_deg)
+            pin.rel_x = round(nx * 2.0) / 2.0
+            pin.rel_y = round(ny * 2.0) / 2.0
 
         node.angle = (node.angle + angle_deg) % 360.0
         node.x = self.snap_node_coord(node.x)
@@ -464,10 +473,12 @@ class nodeEditor(ttk.Frame):
         return None
 
     def snap_node_coord(self, val: float) -> float:
-        return round(val / self.grid_size) * self.grid_size if self.snap_enabled else val
+        # Snaps to 0.5 step increments (e.g. 0.0, 0.5, 1.0, 1.5...)
+        return float(round(val * 2.0) / 2.0) if self.snap_enabled else val
 
     def snap_wire_coord(self, val: float) -> float:
-        return round(val / self.wire_grid_size) * self.wire_grid_size if self.snap_enabled else val
+        # Snaps wires to both grid lines (integers) and cell centers (half steps)
+        return float(round(val * 2.0) / 2.0) if self.snap_enabled else val
 
     def snap_wire_point(self, wx: float, wy: float) -> Tuple[float, float]:
         target_pin = self._hit_test_pin(wx, wy)
@@ -483,7 +494,7 @@ class nodeEditor(ttk.Frame):
 
     def _draw_rounded_rect(self, x1: float, y1: float, x2: float, y2: float, radius: Optional[float] = None, **kwargs):
         if radius is None:
-            radius = (0.3 * self.grid_size) * self.zoom
+            radius = 0.25 * self.zoom
         if radius <= 0:
             return self.canvas.create_rectangle(x1, y1, x2, y2, **kwargs)
         w, h = abs(x2 - x1), abs(y2 - y1)
@@ -509,20 +520,20 @@ class nodeEditor(ttk.Frame):
         w = self.canvas.winfo_width() or 1000
         h = self.canvas.winfo_height() or 700
 
-        grid_step = self.grid_size * self.zoom
-        if grid_step < 8:
+        grid_step = self.zoom
+        if grid_step < 6:
             return
 
-        min_wx = math.floor((-self.pan_x / self.zoom) / self.grid_size) * self.grid_size
-        max_wx = math.ceil(((w - self.pan_x) / self.zoom) / self.grid_size) * self.grid_size
-        min_wy = math.floor((-self.pan_y / self.zoom) / self.grid_size) * self.grid_size
-        max_wy = math.ceil(((h - self.pan_y) / self.zoom) / self.grid_size) * self.grid_size
+        min_wx = math.floor((-self.pan_x / self.zoom))
+        max_wx = math.ceil(((w - self.pan_x) / self.zoom))
+        min_wy = math.floor((-self.pan_y / self.zoom))
+        max_wy = math.ceil(((h - self.pan_y) / self.zoom))
 
-        dot_count = ((max_wx - min_wx) / self.grid_size) * ((max_wy - min_wy) / self.grid_size)
-        if dot_count > 1200:
+        dot_count = (max_wx - min_wx + 1) * (max_wy - min_wy + 1)
+        if dot_count > 2500:
             return
 
-        dot_r = 1.5 * self.zoom
+        dot_r = max(1.5, 2.0 * (self.zoom / 30.0))
         curr_wx = min_wx
         while curr_wx <= max_wx:
             sx = curr_wx * self.zoom + self.pan_x
@@ -530,12 +541,12 @@ class nodeEditor(ttk.Frame):
             while curr_wy <= max_wy:
                 sy = curr_wy * self.zoom + self.pan_y
                 self.canvas.create_oval(sx - dot_r, sy - dot_r, sx + dot_r, sy + dot_r, fill=self.colors["grid"], outline="")
-                curr_wy += self.grid_size
-            curr_wx += self.grid_size
+                curr_wy += 1
+            curr_wx += 1
 
     def _draw_nodes(self):
         selected_net = self.get_selected_net()
-        corner_r = (0.3 * self.grid_size) * self.zoom
+        corner_r = 0.25 * self.zoom
 
         for node in self.nodes:
             sx, sy = self.world_to_screen(node.x, node.y)
@@ -544,7 +555,7 @@ class nodeEditor(ttk.Frame):
             is_selected = (node == self.selected_object)
             is_hovered = (node == self.hovered_object)
 
-            if node.bg_color or node.border_color:
+            if (not node.bg_color in [None, "transparent"]) or (not node.border_color in [None, "transparent"]):
                 node_anim = self._get_anim_val(node, is_selected or is_hovered)
                 if is_selected:
                     border_col = self.colors["border_select"]
@@ -555,11 +566,9 @@ class nodeEditor(ttk.Frame):
                 else:
                     border_col = node.border_color
                     border_w = 2.0 if border_col else 0.0
-
-                so = 5.0 * self.zoom
+                so = 0.25 * self.zoom
                 if node.bg_color:
                     self._draw_rounded_rect(sx + so, sy + so, sx + sw + so, sy + sh + so, radius=corner_r, fill=self.colors["shadow"], outline="")
-
                 bg_fill = node.bg_color if node.bg_color else ""
                 b_out = border_col if border_col else ""
                 self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, fill=bg_fill, outline=b_out, width=border_w)
@@ -572,11 +581,13 @@ class nodeEditor(ttk.Frame):
                     "y": sy,
                     "w": sw,
                     "h": sh,
+                    "cx": sx + sw / 2.0,
+                    "cy": sy + sh / 2.0,
                     "angle": node.angle,
                     "is_selected": is_selected,
                     "tags": tags,
                     "zoom": self.zoom,
-                    "rotate_point": rotate_point,
+                    "rotatePoint": rotatePoint,
                     "math": math
                 }
                 exec(node.compiled_code, exec_scope)
@@ -588,7 +599,7 @@ class nodeEditor(ttk.Frame):
                 is_pin_active = is_pin_hovered or (pin == self.selected_object and not self.active_wire)
 
                 pin_anim = self._get_anim_val(pin, is_pin_active)
-                pr = (5.5 + 2.5 * pin_anim) * self.zoom
+                pr = (0.28 + 0.1 * pin_anim) * self.zoom
 
                 if is_pin_hovered:
                     pin_col = self.colors["pin_hover"]
@@ -601,21 +612,21 @@ class nodeEditor(ttk.Frame):
                 else:
                     pin_col = self.colors["pin_default"]
 
-                pin_r = (0.3 * self.grid_size) * self.zoom
+                pin_r = 0.12 * self.zoom
                 self._draw_rounded_rect(
                     psx - pr, psy - pr, psx + pr, psy + pr,
-                    radius=pin_r, fill=pin_col, outline="#ffffff", width=1.5 if is_pin_active else 1.0,
+                    radius=pin_r, fill=pin_col, outline="#666666", width=1.5 if is_pin_active else 1.0,
                     tags=f"node_{node.id}"
                 )
 
-                font_size = int(8 * self.zoom)
+                font_size = int(max(7, 10 * (self.zoom / 35.0)))
                 if font_size > 0:
                     align = "w" if pin.rel_x < node.width / 2.0 else "e"
-                    offset = (pr + 6 * self.zoom) if align == "w" else -(pr + 6 * self.zoom)
-                    text_col = "#ffffff" if is_pin_hovered else "#94a3b8"
+                    offset = (pr + 6 * (self.zoom / 35.0)) if align == "w" else -(pr + 6 * (self.zoom / 35.0))
+                    text_col = "#ffffff" if is_pin_hovered else "#38bdf8"
                     self.canvas.create_text(
                         psx + offset, psy, text=pin.name, fill=text_col, anchor=align,
-                        font=("Consolas", font_size), tags=f"node_{node.id}"
+                        font=("Consolas", font_size, "bold"), tags=f"node_{node.id}"
                     )
 
     def _draw_wires(self):
@@ -644,7 +655,7 @@ class nodeEditor(ttk.Frame):
                 color = wire.color
                 width = wire.width
 
-            self.canvas.create_line(*flat_pts, fill=color, width=width * self.zoom, smooth=False)
+            self.canvas.create_line(*flat_pts, fill=color, width=width * (self.zoom / 35.0), smooth=False)
 
         if self.active_wire:
             path = self.active_wire.get_full_path()
@@ -663,12 +674,12 @@ class nodeEditor(ttk.Frame):
                 s_pts = [self.world_to_screen(pt[0], pt[1]) for pt in ortho_path]
                 flat_s = [c for pt in s_pts for c in pt]
                 if len(flat_s) >= 4:
-                    self.canvas.create_line(*flat_s, fill=self.active_wire.color, width=2.5 * self.zoom, dash=(6, 4))
+                    self.canvas.create_line(*flat_s, fill=self.active_wire.color, width=2.5 * (self.zoom / 35.0), dash=(6, 4))
 
     def _draw_instructions(self):
         h = self.canvas.winfo_height() or 700
         text = (
-            "Strict 90° Symmetric Edge-Main Controls:\n"
+            "Strict 90° Edge-Main Controls (Dual Edge/Center 0.5 Grid):\n"
             "• L-Click: Select Net / Drag Node / Shift Edge\n"
             "• R Key: Rotate Selected/Hovered Node\n"
             "• Double Click Edge: Insert Z-Shape Step\n"
@@ -679,8 +690,8 @@ class nodeEditor(ttk.Frame):
             "• M-Click + Drag: Pan Canvas | Scroll: Zoom"
         )
         x1, y1 = 12, h - 135
-        x2, y2 = 330, h - 12
-        corner_r = (0.3 * self.grid_size) * self.zoom
+        x2, y2 = 380, h - 12
+        corner_r = 0.25 * self.zoom
         self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, fill=self.colors["instruction_bg"], outline="#334155")
         self.canvas.create_text(x1 + 10, y1 + 61, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8))
 
@@ -719,7 +730,7 @@ class nodeEditor(ttk.Frame):
         tx2 = tx1 + box_w
         ty2 = ty1 + box_h
 
-        corner_r = (0.3 * self.grid_size) * self.zoom
+        corner_r = 0.25 * self.zoom
         self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5)
 
         curr_y = ty1 + 14
@@ -780,7 +791,7 @@ class nodeEditor(ttk.Frame):
 
     def _get_wire_segment_at(self, wire: Wire, wx: float, wy: float) -> Optional[int]:
         path = wire.get_full_path()
-        threshold = (wire.width / 2.0) + (3.0 / self.zoom)
+        threshold = ((wire.width / 2.0) + 3.0) / self.zoom
         for i in range(len(path) - 1):
             p1, p2 = path[i], path[i + 1]
             if self._dist_to_segment((wx, wy), p1, p2) <= threshold:
@@ -971,11 +982,11 @@ class nodeEditor(ttk.Frame):
                 mid_y = self.snap_wire_coord(wy)
 
                 if is_horizontal:
-                    v1 = (mid_x - self.grid_size, p1[1])
-                    v2 = (mid_x + self.grid_size, p1[1])
+                    v1 = (mid_x - 0.5, p1[1])
+                    v2 = (mid_x + 0.5, p1[1])
                 else:
-                    v1 = (p1[0], mid_y - self.grid_size)
-                    v2 = (p1[0], mid_y + self.grid_size)
+                    v1 = (p1[0], mid_y - 0.5)
+                    v2 = (p1[0], mid_y + 0.5)
 
                 new_path = path[:seg_idx + 1] + [v1, v2] + path[seg_idx + 1:]
                 clicked_wire.sync_vertices_from_path(new_path)
@@ -1090,7 +1101,7 @@ class nodeEditor(ttk.Frame):
 
     def _hit_test_wire(self, wx: float, wy: float) -> Tuple[Optional[Wire], Optional[int]]:
         for wire in self.wires:
-            threshold = (wire.width / 2.0) + (3.0 / self.zoom)
+            threshold = ((wire.width / 2.0) + 3.0) / self.zoom
             path = wire.get_full_path()
             for i in range(len(path) - 1):
                 p1, p2 = path[i], path[i + 1]
@@ -1100,10 +1111,10 @@ class nodeEditor(ttk.Frame):
 
     @staticmethod
     def _dist_segment_to_segment(p1, p2, p3, p4) -> float:
-        d1 = nodeEditor._dist_to_segment(p1, p3, p4)
-        d2 = nodeEditor._dist_to_segment(p2, p3, p4)
-        d3 = nodeEditor._dist_to_segment(p3, p1, p2)
-        d4 = nodeEditor._dist_to_segment(p4, p1, p2)
+        d1 = NodeEditor._dist_to_segment(p1, p3, p4)
+        d2 = NodeEditor._dist_to_segment(p2, p3, p4)
+        d3 = NodeEditor._dist_to_segment(p3, p1, p2)
+        d4 = NodeEditor._dist_to_segment(p4, p1, p2)
         return min(d1, d2, d3, d4)
 
     @staticmethod
@@ -1124,10 +1135,10 @@ class nodeEditor(ttk.Frame):
         title: str,
         x: float,
         y: float,
-        width: float = 140,
-        height: float = 90,
-        bg_color: Optional[str] = "#1e293b",
-        border_color: Optional[str] = "#64748b",
+        width: float = 4,
+        height: float = 3,
+        bg_color: Optional[str] = "transparent",
+        border_color: Optional[str] = "transparent",
         graphic_code: Optional[str] = None,
         angle: float = 0.0
     ) -> NodeObject:
@@ -1171,7 +1182,7 @@ class nodeEditor(ttk.Frame):
     def reset_view(self):
         self.pan_x = 0.0
         self.pan_y = 0.0
-        self.zoom = 1.0
+        self.zoom = 35.0
         self.redraw_all()
 
     def _handle_net_event(self, event_type: str, net: Net, pin: Pin):
@@ -1181,36 +1192,62 @@ class nodeEditor(ttk.Frame):
             self._emit("disconnect", net, pin)
 
 
-GATE_PYICON_CODE = """
-cx = x + w / 2.0
-cy = y + h / 2.0
+NAND_GATE_PYICON_CODE = """
+import math
 
-y_pin = y + h * (1.5 / 3.0)
+u = zoom
 
-x_gate_left = x + w * (1.0 / 4.0)
-x_gate_right = x + w * (3.0 / 4.0)
+y_in0 = y + 0.5 * u
+y_out = y + 1.5 * u
+y_in1 = y + 2.5 * u
 
-pts = [
-    (x_gate_left, y_pin - h * (1.2 / 3.0)),
-    (x_gate_right, y_pin),
-    (x_gate_left, y_pin + h * (1.2 / 3.0))
-]
+x_gate_back = x + 1.0 * u
+x_gate_flat_end = x + 2.0 * u
 
-line_in = [(x, y_pin), (x_gate_left, y_pin)]
-line_out = [(x_gate_right, y_pin), (x + w, y_pin)]
+y_top = y + 0.0 * u
+y_bot = y + 3.0 * u
+y_mid = y + 1.5 * u
 
-pts = [rotate_point(px, py, cx, cy, angle) for px, py in pts]
-line_in = [rotate_point(px, py, cx, cy, angle) for px, py in line_in]
-line_out = [rotate_point(px, py, cx, cy, angle) for px, py in line_out]
+rx = 0.8 * u
+ry = (y_bot - y_top) / 2.0
+arc_center_x = x_gate_flat_end
+arc_center_y = y_mid
 
-stroke_w = max(2, int(min(w, h) * 0.05))
-select_w = stroke_w + max(2, int(min(w, h) * 0.04))
+pts = [(x_gate_back, y_top), (x_gate_flat_end, y_top)]
+num_arc_pts = 16
+for i in range(num_arc_pts + 1):
+    a = (math.pi / 2.0) - (i / num_arc_pts) * math.pi
+    px = arc_center_x + rx * math.cos(a)
+    py = arc_center_y - ry * math.sin(a)
+    pts.append((px, py))
 
-flat_line_in = [coord for pt in line_in for coord in pt]
-flat_line_out = [coord for pt in line_out for coord in pt]
+pts.extend([(x_gate_flat_end, y_bot), (x_gate_back, y_bot)])
 
-canvas.create_line(*flat_line_in, fill="#FFFFFF", width=stroke_w, tags=tags)
-canvas.create_line(*flat_line_out, fill="#FFFFFF", width=stroke_w, tags=tags)
+gate_tip_x = arc_center_x + rx
+r_bubble = 0.2 * u
+cx_bubble = gate_tip_x + r_bubble
+
+line_in0 = [(x - 0.5 * u, y_in0), (x_gate_back, y_in0)]
+line_in1 = [(x - 0.5 * u, y_in1), (x_gate_back, y_in1)]
+line_out = [(cx_bubble + r_bubble, y_out), (x + 4.5 * u, y_out)]
+
+pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
+line_in0 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in0]
+line_in1 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in1]
+line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
+
+bubble_center = rotatePoint(cx_bubble, y_mid, cx, cy, angle)
+
+stroke_w = max(2, int(u * 0.08))
+select_w = stroke_w + max(2, int(u * 0.06))
+
+flat_line0 = [coord for pt in line_in0 for coord in pt]
+flat_line1 = [coord for pt in line_in1 for coord in pt]
+flat_out = [coord for pt in line_out for coord in pt]
+
+canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
+canvas.create_line(*flat_out, fill="#FFFFFF", width=stroke_w, tags=tags)
 
 flat_pts = [coord for pt in pts for coord in pt]
 
@@ -1224,6 +1261,14 @@ if is_selected:
         smooth=False,
         tags=tags
     )
+    canvas.create_oval(
+        bubble_center[0] - r_bubble - select_w / 2, bubble_center[1] - r_bubble - select_w / 2,
+        bubble_center[0] + r_bubble + select_w / 2, bubble_center[1] + r_bubble + select_w / 2,
+        fill="",
+        outline="#00E5FF",
+        width=stroke_w,
+        tags=tags
+    )
 
 canvas.create_polygon(
     flat_pts,
@@ -1234,37 +1279,42 @@ canvas.create_polygon(
     smooth=False,
     tags=tags
 )
+
+canvas.create_oval(
+    bubble_center[0] - r_bubble, bubble_center[1] - r_bubble,
+    bubble_center[0] + r_bubble, bubble_center[1] + r_bubble,
+    fill="#181818",
+    outline="#FFFFFF",
+    width=stroke_w,
+    tags=tags
+)
 """
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("Node Editor - Robust Stable Edge Pushing")
+    root.title("Node Editor - Dual Edge/Center 0.5 Grid Alignment")
     root.geometry("1100x700")
 
-    app = nodeEditor(root, grid_size=20)
+    app = NodeEditor(root)
     app.pack(fill=tk.BOTH, expand=True)
 
     app.bind_event("connect", lambda net, pin: print(f"[EVENT] Connected Pin {pin.owner.title}:{pin.name} to {net.name}"))
     app.bind_event("disconnect", lambda net, pin: print(f"[EVENT] Disconnected Pin {pin.owner.title}:{pin.name} from {net.name}"))
 
-    gate_node = app.create_node(
-        title="Buffer Gate",
-        x=220,
-        y=140,
-        width=120,
-        height=80,
-        bg_color=None,
-        border_color=None,
-        graphic_code=GATE_PYICON_CODE
+    # NAND Gate Node (size: [4, 3], pins: A[-1, 0], B[-1, 2], Y[4, 1])
+    nand_gate = app.create_node(
+        title="Nand Gate",
+        x=5,
+        y=5,
+        width=4,
+        height=3,
+        bg_color="transparent",
+        border_color="transparent",
+        graphic_code=NAND_GATE_PYICON_CODE
     )
-    gate_node.add_pin("IN", -8, 40, color="#ef4444")
-    gate_node.add_pin("OUT", 128, 40, color="#38bdf8")
-
-    mcu = app.create_node("MCU", 80, 80, 120, 80, bg_color="#1e293b", border_color="#3b82f6")
-    mcu.add_pin("TX", 128, 40, color="#38bdf8")
-
-    sensor = app.create_node("Sensor", 420, 80, 120, 80, bg_color="#1e293b", border_color="#10b981")
-    sensor.add_pin("RX", -8, 40, color="#ef4444")
+    nand_gate.add_pin("A", -1, 0, color="#1d2536")
+    nand_gate.add_pin("B", -1, 2, color="#1d2536")
+    nand_gate.add_pin("Y", 4, 1, color="#1d2536")
 
     app.engine.rebuild_nets(app.wires, app.nodes)
     app.redraw_all()

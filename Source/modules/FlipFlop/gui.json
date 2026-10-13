@@ -24,8 +24,6 @@
             },
             "children": {
                 "pyIcon": {
-                    "position":[0,0],
-                    "size":[3,5],
                     "path":"PP0_DFF.pyIcon"
                 }
             }

@@ -2,7 +2,7 @@ import os
 from tkinter import Tk, PanedWindow, VERTICAL, RAISED, BOTH
 from node.nodeEngine import *
 from toolbar.toolbar import *
-from connector import *
+from simulation import *
 
 class LogicSimApp:
     def __init__(self, root):
@@ -27,7 +27,7 @@ class LogicSimApp:
 
         self.toolbar = ToolBar(master=self.paned_window)
         self.sub_toolbar = ToolBar(master=self.paned_window)
-        self.node_editor = NodeEditor(master=self.paned_window)
+        self.node_editor = NodeEditor(self.paned_window)
 
         self.paned_window.add(self.toolbar, minsize=40, height=80)
         self.paned_window.add(self.sub_toolbar, minsize=40, height=80)
@@ -69,7 +69,6 @@ class LogicSimApp:
     def get_component_data(self, module_dir, components_obj, component_name):
         component_def = getComponentDefinition(components_obj, component_name)
         pyicon_path = None
-        
         icon_data = component_def.get("children", {}).get("pyIcon", {})
         if icon_data.get("path"):
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
