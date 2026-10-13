@@ -170,4 +170,4 @@ class Module(Component):
             io.futureValue = False
     def update(self):
         for block in self.child.values():
-            block.update() 
+            block.update()  

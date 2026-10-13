@@ -25,11 +25,8 @@ def doLog(self):
 
     # Collect the data for prediction (ig, since when does logic simulator have )
     Snap.ComponentState(NetObjs)
+
    
-
-
 ## SUMMARIZE CHANGES FOR GUI 
-    
- 
- 
-   
+
+         

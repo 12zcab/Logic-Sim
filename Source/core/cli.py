@@ -87,7 +87,4 @@ while True:
             varVault = {}
             mainBox = SimBox([])
         case _:
-            print(safeEval(safetyReplace(inString,varVault)))
-            
-            
-
+            print(safeEval(safetyReplace(inString,varVault)))  

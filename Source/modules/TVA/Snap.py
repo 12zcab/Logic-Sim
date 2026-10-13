@@ -4,7 +4,7 @@ from MutanterFile import Mutanter
 from Verilog import *
 from LogicGate import *
 from SimpleCLIIO import *
-from DataLogger import *
+from DataLogger import *  
 from Data import DataHandler
 
 # Collect the state of Component wanted for prediction (all will be better)

@@ -71,4 +71,4 @@ if __name__ == "__main__":
         with open("output.json", "w") as f:
             json.dump(netlist_data, f, indent=4)
     except Exception as error:
-        print(f"[-] Error happened : {error}", file=sys.stderr) 
+        print(f"[-] Error happened : {error}", file=sys.stderr)    
