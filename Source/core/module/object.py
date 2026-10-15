@@ -23,9 +23,9 @@ class IO:
     def Value(self):
         return self._Value
     @Value.setter
-    def Value(self,val, strength=Strength.STRONG, Delay=0):
+    def Value(self,val, strength=Strength.STRONG, Delay=1):
         self.setPower(val, strength, Delay)
-    def setPower(self, val, strength=Strength.STRONG, Delay=0):
+    def setPower(self, val, strength=Strength.STRONG, Delay=1):
         """Schedules events automatically on tracked SimBox without passing arguments."""
         sim = self.simBox
         if sim and hasattr(sim, "scheduler"):
@@ -45,7 +45,11 @@ class IO:
             return None
         raise TypeError(f"Cannot connect IO to {type(other)}")
 
-    def connectNet(self, net):
+    def connectNet(self, net,force=False):
+        if force:
+            self.Net = net
+            net.add(self)
+            return
         if net is None:
             return
         if self.Net == net:
@@ -83,10 +87,10 @@ class IO:
             self.Net.mergeNets(target_net)
             subject.connectNet(self.Net)
 class Net:
-    def __init__(self, Name=None):
+    def __init__(self, Name=None, value=Logic.Z):
         self._IO = []
         self._Name = Name
-        self._Value = Logic.Z
+        self._Value = value
         self._Strength = Strength.HIGHZ
         self.merged_into = None
 
@@ -137,6 +141,39 @@ class Net:
         if io in root_net._IO:
             root_net._IO.remove(io)
     def resolve(self):
+        root_net = self.root
+        ios = root_net._IO
+        if not ios:
+            valChanged = (root_net._Value != Logic.Z or root_net._Strength != Strength.HIGHZ)
+            root_net._Value = Logic.Z
+            root_net._Strength = Strength.HIGHZ
+            return valChanged
+            
+        maxStr = max(io.driveStr for io in ios)
+        if maxStr == Strength.HIGHZ:
+            newVal = root_net._Value if root_net._Value != Logic.Z else Logic.ZERO
+            newStr = Strength.HIGHZ
+        else:
+            firstVal = None
+            newVal = None
+            for io in ios:
+                if io.driveStr == maxStr:
+                    if firstVal is None:
+                        firstVal = io.driveVal
+                    elif io.driveVal != firstVal:
+                        newVal = Logic.X
+                        break
+            if newVal is None:
+                newVal = firstVal
+            newStr = maxStr
+
+        valChanged = (root_net._Value != newVal or root_net._Strength != newStr)
+        root_net._Value = newVal
+        root_net._Strength = newStr
+        for io in ios:
+            io._Value = newVal
+
+        return valChanged
         root_net = self.root
         ios = root_net._IO
         if not ios:
@@ -240,9 +277,14 @@ class SimBox:
         for obj in Objects:
             self.addObject(obj)
     def addObject(self, obj):
+        print("SimBox Added Obj:")
+        print(obj)
         obj.parent = self
         if obj not in self.Objects:
             self.Objects.append(obj)
+    def removeObject(self, obj):
+        if obj in self.Objects:
+            self.Objects.remove(obj)
     def expandNet(self):
         flat_objects = []
         flat_nets = []

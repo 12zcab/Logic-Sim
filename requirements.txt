@@ -11,4 +11,4 @@ random
 collections
 yowasp_yosys
 wasmtime
-pydot
+bidict

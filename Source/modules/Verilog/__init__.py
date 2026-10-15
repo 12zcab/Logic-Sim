@@ -171,32 +171,6 @@ def parseFileIntoObject(filename):
         print("  " + "=" * 70 + "\n")
     return [resultModules[0],inputPinsForEach[0],outputPinsForEach[0]]
 
-def createVerilogObjAndContainer(editor,filePath):
-    parsed = parseFileIntoObject(filePath)
-    module = parsed[0]
-    inputPins = parsed[1]
-    outputPins = parsed[2]
-    container = editor.addContainer(module.Name,0,0,4,max(len(inputPins),len(outputPins))*2 + 1)
-    for index in range(len(inputPins)):
-        container.addNode(inputPins[index].Name,-1,index * 2 + 1)
-    for index in range(len(outputPins)):
-        container.addNode(outputPins[index].Name,4,index * 2 + 1)
-    container.addChild("name",0,(max(len(inputPins),len(outputPins))*2 + 1),4,1,
-"""
-import math
-cx = x + w / 2.0
-cy = y + h / 2.0
-txt_x, txt_y = rotatePoint(cx, cy, cx, cy, angle)
-font_size = round(int(h * 0.5))
-if font_size > 0:
-    canvas.create_text(
-        txt_x, txt_y,
-        text='""" + module.Name + """', fill="#FFFFFF", anchor="center",
-        font=("Arial", font_size, "bold"), tags=tags
-    )
-""")
-    return [module,container]
-
 #analyse_file("register.v")
 """
 create register parseFileIntoObject("register.v")

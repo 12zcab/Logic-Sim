@@ -38,7 +38,7 @@ def getComponentDefinition(componentsDescription, componentName):
 
 
 def loadObject(name, objDescription, node_editor, jsonpath):
-    object = globals()[objDescription['constructor']](Name=name)
+    obj = globals()[objDescription['constructor']](Name=name)
     pyIcon = None
     if objDescription["children"].get("pyIcon"):
         with open(os.path.join(jsonpath,objDescription["children"]["pyIcon"]["path"]), 'r') as iconFile:
@@ -55,4 +55,4 @@ def loadObject(name, objDescription, node_editor, jsonpath):
     )
     for key,value in objDescription["pins"].items():
         node.add_pin(key, value["position"][0], value["position"][1], color="#222222")
-    return object
+    return [obj,node]

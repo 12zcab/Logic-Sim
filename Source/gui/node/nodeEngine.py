@@ -68,7 +68,6 @@ class NodeObject:
             self.compiled_code = compile(self.graphic_code, f"<node_graphic_{self.id}>", "exec")
 
     def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None) -> Pin:
-        # Offsets by 0.5 for cell-center pins (e.g. [-1, 0] -> [-0.5, 0.5])
         rel_x = cell_x + 0.5
         rel_y = cell_y + 0.5
         pin = Pin(self, name, rel_x, rel_y, color)
@@ -179,14 +178,18 @@ class Net:
         self.name = name or f"NET_{net_id[:6].upper()}"
         self.wires: Set[Wire] = set()
         self.pins: Set[Pin] = set()
+    def setColor(self,color):
+        for wire in self.wires:
+            wire.color = color
 
 class NetEngine:
-    def __init__(self, event_callback: Optional[Callable[[str, Net, Pin], None]] = None):
+    def __init__(self, event_callback: Optional[Callable[[str, Net, Optional[Pin]], None]] = None):
         self.nets: Dict[str, Net] = {}
         self.event_callback = event_callback
 
     def rebuild_nets(self, wires: List[Wire], nodes: List[NodeObject]):
         old_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
+        old_net_ids = set(self.nets.keys())
 
         for wire in wires:
             wire.net = None
@@ -281,6 +284,19 @@ class NetEngine:
                     p.net = net
                 new_nets[net_id] = net
 
+        new_net_ids = set(new_nets.keys())
+
+        destroyed_net_ids = old_net_ids - new_net_ids
+        for net_id in destroyed_net_ids:
+            old_net = self.nets.get(net_id)
+            if old_net:
+                self._notify_event("NET_DESTROY", old_net, None)
+
+        created_net_ids = new_net_ids - old_net_ids
+        for net_id in created_net_ids:
+            new_net = new_nets[net_id]
+            self._notify_event("NET_CREATE", new_net, None)
+
         self.nets = new_nets
 
         new_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
@@ -302,7 +318,7 @@ class NetEngine:
                     return True
         return False
 
-    def _notify_event(self, event_type: str, net: Net, pin: Pin):
+    def _notify_event(self, event_type: str, net: Net, pin: Optional[Pin]):
         if self.event_callback:
             self.event_callback(event_type, net, pin)
 
@@ -358,6 +374,8 @@ class NodeEditor(ttk.Frame):
         self._event_listeners: Dict[str, List[Callable[..., None]]] = {
             "connect": [],
             "disconnect": [],
+            "net_create": [],
+            "net_destroy": [],
             "select": [],
             "hover": [],
             "node_add": [],
@@ -473,11 +491,9 @@ class NodeEditor(ttk.Frame):
         return None
 
     def snap_node_coord(self, val: float) -> float:
-        # Snaps to 0.5 step increments (e.g. 0.0, 0.5, 1.0, 1.5...)
         return float(round(val * 2.0) / 2.0) if self.snap_enabled else val
 
     def snap_wire_coord(self, val: float) -> float:
-        # Snaps wires to both grid lines (integers) and cell centers (half steps)
         return float(round(val * 2.0) / 2.0) if self.snap_enabled else val
 
     def snap_wire_point(self, wx: float, wy: float) -> Tuple[float, float]:
@@ -619,13 +635,11 @@ class NodeEditor(ttk.Frame):
                     tags=f"node_{node.id}"
                 )
 
-                font_size = int(max(7, 10 * (self.zoom / 35.0)))
+                font_size = int(max(6, 8 * (self.zoom / 35.0)))
                 if font_size > 0:
-                    align = "w" if pin.rel_x < node.width / 2.0 else "e"
-                    offset = (pr + 6 * (self.zoom / 35.0)) if align == "w" else -(pr + 6 * (self.zoom / 35.0))
-                    text_col = "#ffffff" if is_pin_hovered else "#38bdf8"
+                    text_col = "#000000" if is_pin_hovered else "#ffffff"
                     self.canvas.create_text(
-                        psx + offset, psy, text=pin.name, fill=text_col, anchor=align,
+                        psx, psy, text=pin.name, fill=text_col, anchor="center",
                         font=("Consolas", font_size, "bold"), tags=f"node_{node.id}"
                     )
 
@@ -1185,11 +1199,15 @@ class NodeEditor(ttk.Frame):
         self.zoom = 35.0
         self.redraw_all()
 
-    def _handle_net_event(self, event_type: str, net: Net, pin: Pin):
+    def _handle_net_event(self, event_type: str, net: Net, pin: Optional[Pin]):
         if event_type == "CONNECT":
             self._emit("connect", net, pin)
         elif event_type == "DISCONNECT":
             self._emit("disconnect", net, pin)
+        elif event_type == "NET_CREATE":
+            self._emit("net_create", net)
+        elif event_type == "NET_DESTROY":
+            self._emit("net_destroy", net)
 
 
 NAND_GATE_PYICON_CODE = """
@@ -1298,10 +1316,11 @@ if __name__ == "__main__":
     app = NodeEditor(root)
     app.pack(fill=tk.BOTH, expand=True)
 
+    app.bind_event("net_create", lambda net: print(f"[EVENT] Net Created: {net.name} (ID: {net.id})"))
+    app.bind_event("net_destroy", lambda net: print(f"[EVENT] Net Destroyed: {net.name} (ID: {net.id})"))
     app.bind_event("connect", lambda net, pin: print(f"[EVENT] Connected Pin {pin.owner.title}:{pin.name} to {net.name}"))
     app.bind_event("disconnect", lambda net, pin: print(f"[EVENT] Disconnected Pin {pin.owner.title}:{pin.name} from {net.name}"))
 
-    # NAND Gate Node (size: [4, 3], pins: A[-1, 0], B[-1, 2], Y[4, 1])
     nand_gate = app.create_node(
         title="Nand Gate",
         x=5,

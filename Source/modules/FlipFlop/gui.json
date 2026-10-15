@@ -1,14 +1,5 @@
 {
     "name": "FlipFlop",
-    "modules": {
-        "DFF(PP0)":{
-            "constructor":"PP0_DFF",
-            "pins": {
-                "Input": ["D","C","R"],
-                "Output": ["Q","QM"]
-            }
-        }
-    },
     "components":{
         "DFF(PP0)":{
             "constructor":"PP0_DFF",
