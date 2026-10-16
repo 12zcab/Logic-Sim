@@ -1,5 +1,5 @@
 from modules import *
-from core.object import *
+from core.module.object import *
 import json
 
 
@@ -26,8 +26,9 @@ class WorkSpace:
         
     def GhostResult(self, BoxInfo : list, Box2Info : list = None ):
         with open("History.JSON", "r") as Read:
-            if Read.BoxInfo[1].BoxInfo[2].BoxInfo[3]:
-                return Read.BoxInfo[1].BoxInfo[2]
+            Data = json.load(Read)
+            if Data.BoxInfo[1].BoxInfo[2].BoxInfo[3]:
+                return Data.BoxInfo[1].BoxInfo[2]  
 
 class ComponentInputter:
     def __init__(self, Component):
