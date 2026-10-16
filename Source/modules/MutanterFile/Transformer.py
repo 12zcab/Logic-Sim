@@ -4,7 +4,7 @@
 from pathlib import Path
 import types, importlib
 import Mutanter
-import Transformer
+import Source.modules.MutanterFile.Transformer as Transformer
 
 # For different type of folder
 
