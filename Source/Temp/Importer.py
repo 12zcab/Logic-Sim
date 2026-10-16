@@ -117,7 +117,7 @@ class Handler():
                     if hasattr(Receiver, f"{Import}"):
                         delattr(Receiver, f"{Import}")
        
- 
+   
     def Modification(self, YesNo, Receiver, ModInfo=None): 
 
         for Import, TargetInfo in ModInfo:
