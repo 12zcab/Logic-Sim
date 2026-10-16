@@ -182,6 +182,7 @@ class Net:
         for wire in self.wires:
             wire.color = color
 
+
 class NetEngine:
     def __init__(self, event_callback: Optional[Callable[[str, Net, Optional[Pin]], None]] = None):
         self.nets: Dict[str, Net] = {}
@@ -189,8 +190,7 @@ class NetEngine:
 
     def rebuild_nets(self, wires: List[Wire], nodes: List[NodeObject]):
         old_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
-        old_net_ids = set(self.nets.keys())
-
+        
         for wire in wires:
             wire.net = None
         for node in nodes:
@@ -220,7 +220,7 @@ class NetEngine:
                     add_edge(w1, w2)
 
         visited = set()
-        new_nets: Dict[str, Net] = {}
+        raw_components: List[Tuple[Set[Pin], Set[Wire]]] = []
 
         for node in nodes:
             for pin in node.pins:
@@ -245,18 +245,10 @@ class NetEngine:
                             queue.append(neighbor)
 
                 if component_pins or component_wires:
-                    net_id = str(uuid.uuid4())[:8]
-                    net = Net(net_id)
-                    net.pins = component_pins
-                    net.wires = component_wires
-                    for p in component_pins:
-                        p.net = net
-                    for w in component_wires:
-                        w.net = net
-                    new_nets[net_id] = net
+                    raw_components.append((component_pins, component_wires))
 
         for wire in wires:
-            if wire not in visited and wire.net is None:
+            if wire not in visited:
                 queue = [wire]
                 visited.add(wire)
                 comp_wires: Set[Wire] = set()
@@ -274,28 +266,42 @@ class NetEngine:
                             visited.add(neighbor)
                             queue.append(neighbor)
 
+                if comp_pins or comp_wires:
+                    raw_components.append((comp_pins, comp_wires))
+
+        existing_net_lookup = {}
+        for net in self.nets.values():
+            key = (frozenset(net.pins), frozenset(net.wires))
+            existing_net_lookup[key] = net
+
+        new_nets: Dict[str, Net] = {}
+        matched_net_ids = set()
+
+        for comp_pins, comp_wires in raw_components:
+            key = (frozenset(comp_pins), frozenset(comp_wires))
+            if key in existing_net_lookup:
+                net = existing_net_lookup[key]
+                matched_net_ids.add(net.id)
+            else:
                 net_id = str(uuid.uuid4())[:8]
                 net = Net(net_id)
                 net.pins = comp_pins
                 net.wires = comp_wires
-                for w in comp_wires:
-                    w.net = net
-                for p in comp_pins:
-                    p.net = net
-                new_nets[net_id] = net
+                self._notify_event("NET_CREATE", net, None)
 
-        new_net_ids = set(new_nets.keys())
+            net.pins = comp_pins
+            net.wires = comp_wires
+            for p in comp_pins:
+                p.net = net
+            for w in comp_wires:
+                w.net = net
+            new_nets[net.id] = net
 
-        destroyed_net_ids = old_net_ids - new_net_ids
+        destroyed_net_ids = set(self.nets.keys()) - matched_net_ids
         for net_id in destroyed_net_ids:
             old_net = self.nets.get(net_id)
             if old_net:
                 self._notify_event("NET_DESTROY", old_net, None)
-
-        created_net_ids = new_net_ids - old_net_ids
-        for net_id in created_net_ids:
-            new_net = new_nets[net_id]
-            self._notify_event("NET_CREATE", new_net, None)
 
         self.nets = new_nets
 
@@ -321,6 +327,7 @@ class NetEngine:
     def _notify_event(self, event_type: str, net: Net, pin: Optional[Pin]):
         if self.event_callback:
             self.event_callback(event_type, net, pin)
+
 
 class NodeEditor(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):

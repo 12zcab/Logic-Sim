@@ -40,9 +40,10 @@ def getComponentDefinition(componentsDescription, componentName):
 def loadObject(name, objDescription, node_editor, jsonpath):
     obj = globals()[objDescription['constructor']](Name=name)
     pyIcon = None
-    if objDescription["children"].get("pyIcon"):
-        with open(os.path.join(jsonpath,objDescription["children"]["pyIcon"]["path"]), 'r') as iconFile:
-            pyIcon = iconFile.read()
+    if objDescription.get("children"):
+        if objDescription["children"].get("pyIcon"):
+            with open(os.path.join(jsonpath,objDescription["children"]["pyIcon"]["path"]), 'r') as iconFile:
+                pyIcon = iconFile.read()
     node = node_editor.create_node(
         title=name,
         x=0,

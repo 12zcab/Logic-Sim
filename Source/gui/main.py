@@ -25,7 +25,7 @@ class LogicSimApp:
         self.simBox.stepDeltaLoop()
         self.simBox.scheduler.advanceToNext()
         self.updateNetStates()
-        self.root.after(100, self.updateMainApp)
+        self.root.after(1, self.updateMainApp)
     def updateNetStates(self):
         updated = False
         for net in self.simBox.Nets:
@@ -64,24 +64,24 @@ class LogicSimApp:
         self.node_editor.bind_event("connect", lambda net, pin: self.connectPinEvent(net,pin))
         self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net,pin))
         self.node_editor.bind_event("node_delete", lambda node: self.deleteLogicObj(node))
+        self.node_editor.bind_event("select", lambda obj: self.handle_node_click(obj))
+    def handle_node_click(self, obj):
+        if isinstance(obj, NodeObject):
+            logic_obj = self.logicToNode.inv.get(obj)
+            if getattr(logic_obj, "onclick", None):
+                logic_obj.onclick()
     def guiPinToLogicPin(self,guiPin):
+        print("guiPin:",guiPin)
+        print("is mapped to:",self.logicToNode.inv[guiPin.owner].IO[guiPin.name])
+        print("With Name:",guiPin.name)
         return self.logicToNode.inv[guiPin.owner].IO[guiPin.name]
     def createNetEvent(self,net):
-        print("Created Net")
-        print(net)
-        print("Now Net List:")
         self.logicNetToNodeNet[Net(value=Logic.ZERO)] = net
-        print(*self.logicNetToNodeNet.keys())
-        print(*self.logicNetToNodeNet.values())
         self.simBox.expandNet()
     def destroyNetEvent(self,net):
-        print("Destroyed Net")
-        print(net)
         del self.logicNetToNodeNet.inv[net]
         self.simBox.expandNet()
     def connectPinEvent(self, net, pin):
-        print("Connected Pin")
-        print(net, pin)
         logic_io = self.guiPinToLogicPin(pin)
         
         sim_net = self.logicNetToNodeNet.inv.get(net)
@@ -98,8 +98,6 @@ class LogicSimApp:
         self.simBox.expandNet()
 
     def disconnectPinEvent(self, net, pin):
-        print("Disconnected Pin")
-        print(net, pin)
         logic_io = self.guiPinToLogicPin(pin)
         
         logic_io.disconnectNet()
@@ -117,7 +115,6 @@ class LogicSimApp:
         self.simBox.addObject(logicObj)
         self.logicToNode[logicObj] = nodeObj
     def deleteLogicObj(self,node):
-        print("deleted objLogic")
         self.simBox.removeObject(self.logicToNode.inv[node])
         del self.logicToNode.inv[node]
     def load_all(self):
