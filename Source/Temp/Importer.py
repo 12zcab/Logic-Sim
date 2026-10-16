@@ -8,7 +8,7 @@
 # this make things easy to reuse. Like processor for same script, import yet different purpose each time
 
 import pkgutil, importlib
-import Temp.Data, copy
+import copy
 
 def Initize():
     pass

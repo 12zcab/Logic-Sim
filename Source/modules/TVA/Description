@@ -1,0 +1,34 @@
+TVA 
+
+------------------------------------------------------------------------------------------------------------------------------------
+Prediction.py
+XmenDayOfFuturePast.py
+
+It can "predict' the future and for the first mode of TimeLine.py
+It retreive old data
+------------------------------------------------------------------------------------------------------------------------------------
+TimeLine.py
+
+Purpose:
+It acts as a purpose that allow the parallel execution of the same simbox while allowing the communciation between them
+
+First mode:
+Pull data from past or future into current 
+
+Second mode:
+Running parallel simulation while allowing them inter communciation
+
+ModeUsage:
+Second Mode allow the comparsion while provide an environment for parallel working state ( Better organization)
+Idea:
+Gui that create parallel layers and can connect to each other
+
+First Mode allow sth fun and unusual and 4th dimention ig 
+
+------------------------------------------------------------------------------------------------------------------------------------
+Snap.py
+
+Get data of simbox 
+
+"Snap" the photo of current state 
+
