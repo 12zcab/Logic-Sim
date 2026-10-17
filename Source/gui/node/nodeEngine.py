@@ -13,7 +13,7 @@ def rotatePoint(x: float, y: float, cx: float, cy: float, angle_deg: float) -> T
     nx = cx + (x - cx) * cos_a - (y - cy) * sin_a
     ny = cy + (x - cx) * sin_a + (y - cy) * cos_a
     return nx, ny
-
+   
 
 class ChildrenModel:
     def __init__(self, name: str, grid_x: float, grid_y: float, grid_w: float = 1.0, grid_h: float = 1.0,
@@ -39,8 +39,8 @@ class NodeModel:
 
 class ContainerModel:
     def __init__(self, parent_editor, name: str, grid_x: float, grid_y: float,
-                 grid_w: float = 1.0, grid_h: float = 1.0,
-                 bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0):
+        grid_w: float = 1.0, grid_h: float = 1.0,
+        bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0):
         self.parent = parent_editor
         self.name = name
         self.gridX = float(grid_x)
@@ -65,11 +65,11 @@ class ContainerModel:
                  python_script: str = "") -> ChildrenModel:
         child = ChildrenModel(name, gridX, gridY, gridW, gridH, python_script=python_script)
         self.children[name] = child
-        return child
+        return child 
 
 
 class NodeEditor(Frame):
-    def __init__(self, master=None):
+    def __init__(self, master=None):  
         super().__init__(master)
 
         self.canvas = Canvas(self, bg="#181818", highlightthickness=0)

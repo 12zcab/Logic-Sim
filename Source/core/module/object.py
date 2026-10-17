@@ -17,10 +17,10 @@ class IO:
     @property
     def simBox(self):
         if self.parent:
-            return self.parent.simBox
+            return self.parent.simBox 
         return None
     @property
-    def Value(self):
+    def Value(self): 
         return self._Value
     @Value.setter
     def Value(self,val, strength=Strength.STRONG, Delay=0):

@@ -1,0 +1,120 @@
+{
+  "logicGatesRegistry": {
+    "primitives": [
+      {
+        "type": "BUFFER",
+        "description": "Passes the input directly to the output with a slight delay.",
+        "inputs": ["A"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 1}, "outputs": {"Q": 1}}
+        ]
+      },
+      {
+        "type": "NOT",
+        "description": "Inverts the input signal.",
+        "inputs": ["A"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 1}, "outputs": {"Q": 0}}
+        ]
+      },
+      {
+        "type": "AND",
+        "description": "Outputs 1 only if all inputs are 1.",
+        "inputs": ["A", "B"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 1, "B": 0}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 1}}
+        ]
+      },
+      {
+        "type": "OR",
+        "description": "Outputs 1 if at least one input is 1.",
+        "inputs": ["A", "B"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 1, "B": 0}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 1}}
+        ]
+      },
+      {
+        "type": "XOR",
+        "description": "Outputs 1 if the inputs are different.",
+        "inputs": ["A", "B"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 1, "B": 0}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 0}}
+        ]
+      }
+    ],
+    "universals": [
+      {
+        "type": "NAND",
+        "description": "Inverted AND gate. Universal gate capable of building any circuit.",
+        "inputs": ["A", "B"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 1, "B": 0}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 0}}
+        ]
+      },
+      {
+        "type": "NOR",
+        "description": "Inverted OR gate. Universal gate capable of building any circuit.",
+        "inputs": ["A", "B"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 1, "B": 0}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 0}}
+        ]
+      },
+      {
+        "type": "XNOR",
+        "description": "Inverted XOR gate. Outputs 1 if inputs are identical.",
+        "inputs": ["A", "B"],
+        "outputs": ["Q"],
+        "truthTable": [
+          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 1, "B": 0}, "outputs": {"Q": 0}},
+          {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 1}}
+        ]
+      }
+    ],
+    "example_composites": [
+      {
+        "type": "HALF_ADDER",
+        "description": "Adds two single binary digits.",
+        "inputs": ["A", "B"],
+        "outputs": ["Sum", "Carry"],
+        "internalComponents": [
+          { "id": "xor_1", "type": "XOR" },
+          { "id": "and_1", "type": "AND" }
+        ],
+        "internalConnections": [
+          { "from": "parent.inputs.A", "to": "xor_1.inputs.A" },
+          { "from": "parent.inputs.B", "to": "xor_1.inputs.B" },
+          { "from": "parent.inputs.A", "to": "and_1.inputs.A" },
+          { "from": "parent.inputs.B", "to": "and_1.inputs.B" },
+          { "from": "xor_1.outputs.Q", "to": "parent.outputs.Sum" },
+          { "from": "and_1.outputs.Q", "to": "parent.outputs.Carry" }
+        ]
+      }
+    ]
+  }
+}
