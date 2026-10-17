@@ -28,6 +28,20 @@
                     "path":"Lamp.pyIcon"
                 }
             }
+        },
+        "1 Hz":{
+            "constructor":"OneHertz",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1.5,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"PulseGenerator.pyIcon"
+                }
+            }
         }
     }
 }

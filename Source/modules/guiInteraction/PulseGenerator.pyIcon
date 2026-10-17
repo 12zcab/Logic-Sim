@@ -1,0 +1,123 @@
+import math
+
+is_on = False
+if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
+    if hasattr(node.metadata, "state"):
+        is_on = bool(node.metadata.state)
+
+# Main container box dimensions
+box_w = w * (3.0 / 5.0)
+box_h = h * (3.0 / 5.0)
+box_x1 = x + (w - box_w) / 2.0
+box_y1 = y + (h - box_h) / 2.0
+box_x2 = box_x1 + box_w
+box_y2 = box_y1 + box_h
+
+center_x = x + w / 2.0
+center_y = y + h / 2.0
+
+corners = [
+    (box_x1, box_y1),
+    (box_x2, box_y1),
+    (box_x2, box_y2),
+    (box_x1, box_y2)
+]
+
+shadow_offset = box_w * 0.06
+shadow_corners = [
+    (box_x1 + shadow_offset, box_y1 + shadow_offset),
+    (box_x2 + shadow_offset, box_y1 + shadow_offset),
+    (box_x2 + shadow_offset, box_y2 + shadow_offset),
+    (box_x1 + shadow_offset, box_y2 + shadow_offset)
+]
+
+rot_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in corners]
+rot_shadow_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in shadow_corners]
+
+flat_box = [coord for pt in rot_corners for coord in pt]
+flat_shadow = [coord for pt in rot_shadow_corners for coord in pt]
+
+stroke_w = max(2, int(min(box_w, box_h) * 0.05))
+select_w = stroke_w + max(2, int(min(box_w, box_h) * 0.04))
+
+# Selection highlight
+if is_selected:
+    canvas.create_polygon(
+        flat_box,
+        fill="",
+        outline="#38bdf8",
+        width=select_w,
+        smooth=True,
+        splinesteps=32,
+        tags=tags
+    )
+
+# Drop shadow
+canvas.create_polygon(
+    flat_shadow,
+    fill="#000000",
+    outline="",
+    smooth=True,
+    splinesteps=32,
+    tags=tags
+)
+
+# Body background and border
+bg_fill = "#1e293b" if is_on else "#111111"
+border_color = "#38bdf8" if is_on else "#444444"
+
+canvas.create_polygon(
+    flat_box,
+    fill=bg_fill,
+    outline=border_color,
+    width=stroke_w,
+    smooth=True,
+    splinesteps=32,
+    tags=tags
+)
+
+# Square wave (pulse) symbol geometry
+wave_w = box_w * 0.55
+wave_h = box_h * 0.30
+wave_x1 = center_x - wave_w / 2.0
+y_low = center_y + wave_h / 2.0
+y_high = center_y - wave_h / 2.0
+step_x = wave_w / 4.0
+
+wave_pts_raw = [
+    (wave_x1, y_low),
+    (wave_x1, y_high),
+    (wave_x1 + step_x, y_high),
+    (wave_x1 + step_x, y_low),
+    (wave_x1 + 2 * step_x, y_low),
+    (wave_x1 + 2 * step_x, y_high),
+    (wave_x1 + 3 * step_x, y_high),
+    (wave_x1 + 3 * step_x, y_low),
+    (wave_x1 + 4 * step_x, y_low)
+]
+
+rot_wave_pts = [rotatePoint(px, py, cx, cy, angle) for px, py in wave_pts_raw]
+flat_wave = [coord for pt in rot_wave_pts for coord in pt]
+
+wave_color = "#38bdf8" if is_on else "#64748b"
+wave_stroke = max(2, int(stroke_w * 0.8))
+
+canvas.create_line(
+    flat_wave,
+    fill=wave_color,
+    width=wave_stroke,
+    tags=tags
+)
+
+# Pulse label/indicator
+font_size = int(6 * (zoom / 35.0))
+if font_size > 0:
+    label_pt = rotatePoint(center_x, center_y + box_h * 0.32, cx, cy, angle)
+    text_color = "#38bdf8" if is_on else "#64748b"
+    canvas.create_text(
+        label_pt[0], label_pt[1],
+        text="PULSE",
+        fill=text_color,
+        font=("Consolas", font_size, "bold"),
+        tags=tags
+    )

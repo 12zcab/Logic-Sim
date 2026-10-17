@@ -3,7 +3,6 @@ from modules import *
 from .parser import *
 import re
 from collections import defaultdict
-from gui.node.nodeEngine import *
 
 def analyse_file(filename):
     data = parse_verilog_to_pure_gates(os.path.abspath(filename))
@@ -36,7 +35,7 @@ def analyse_file(filename):
     print("\n\n")
     
     
-def parseFileIntoObject(filename):
+def parseFileIntoObject(filename,objonly = True):
     data = parse_verilog_to_pure_gates(os.path.abspath(filename))
     data = BetterDict(data)
     
@@ -169,6 +168,8 @@ def parseFileIntoObject(filename):
         print(f"    - Floating Module IOs      : {floating_ios}")
         print(f"    - Isolated Nets            : {isolated_nets}")
         print("  " + "=" * 70 + "\n")
+    if objonly:
+        return resultModules[0]
     return [resultModules[0],inputPinsForEach[0],outputPinsForEach[0]]
 
 #analyse_file("register.v")

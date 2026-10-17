@@ -180,7 +180,9 @@ class Net:
         self.name = name or f"NET_{net_id[:6].upper()}"
         self.wires: Set[Wire] = set()
         self.pins: Set[Pin] = set()
-
+    def setAllPinColor(self,color):
+        for pin in self.pins:
+            pin.color = color
     def setColor(self, color):
         for wire in self.wires:
             wire.color = color
@@ -519,8 +521,6 @@ class NodeEditor(ttk.Frame):
         self.grid_size = 1.0
         self.wire_grid_size = 0.5
         self.snap_enabled = True
-        self.min_zoom = 2.0
-        self.max_zoom = 150.0
 
         self.colors = {
             "bg": "#090d16",
@@ -558,6 +558,8 @@ class NodeEditor(ttk.Frame):
 
         self.drag_wire_initial_path: Optional[List[Tuple[float, float]]] = None
         self.drag_wire_segment_index: Optional[int] = None
+
+        self._grep_press_callback: Optional[Callable[[float, float], None]] = None
 
         self.anim_states: Dict[object, float] = {}
 
@@ -597,6 +599,9 @@ class NodeEditor(ttk.Frame):
 
         self._animate_loop()
 
+    def grepNextPressGridPos(self, returnfunction: Callable[[float, float], None]):
+        self._grep_press_callback = returnfunction
+
     def _on_key_press(self, event):
         if event.keysym.lower() == 'r':
             target_node = None
@@ -611,7 +616,6 @@ class NodeEditor(ttk.Frame):
     def rotate_node(self, node: NodeObject, angle_deg: float = 90.0):
         cx = node.width / 2.0
         cy = node.height / 2.0
-
         for pin in node.pins:
             nx, ny = rotatePoint(pin.rel_x, pin.rel_y, cx, cy, angle_deg)
             pin.rel_x = round(nx * 2.0) / 2.0
@@ -1022,6 +1026,15 @@ class NodeEditor(ttk.Frame):
     def _on_left_click(self, event):
         self.canvas.focus_set()
         wx, wy = self.screen_to_world(event.x, event.y)
+
+        if self._grep_press_callback is not None:
+            callback = self._grep_press_callback
+            self._grep_press_callback = None
+            grid_x = self.snap_wire_coord(wx)
+            grid_y = self.snap_wire_coord(wy)
+            callback(grid_x, grid_y)
+            return
+
         self.drag_start_pos = (event.x, event.y)
         is_shift = bool(event.state & 0x0001)
 
@@ -1241,7 +1254,7 @@ class NodeEditor(ttk.Frame):
 
     def _on_mouse_wheel(self, event):
         factor = 1.12 if event.delta > 0 else 0.88
-        new_zoom = max(self.min_zoom, min(self.max_zoom, self.zoom * factor))
+        new_zoom = self.zoom * factor
 
         mx, my = event.x, event.y
         self.pan_x = mx - (mx - self.pan_x) * (new_zoom / self.zoom)
@@ -1365,6 +1378,7 @@ class NodeEditor(ttk.Frame):
         self.nodes.append(node)
         self._emit("node_add", node)
         self.redraw_all()
+        self.engine.rebuild_nets(self.wires, self.nodes)
         return node
 
     def delete_node(self, node: NodeObject):
@@ -1400,6 +1414,7 @@ class NodeEditor(ttk.Frame):
         self.redraw_all()
 
     def _handle_net_event(self, event_type: str, net: Net, pin: Optional[Pin]):
+        pin_name = f"{pin.owner.title}:{pin.name}" if pin else "None"
         if event_type == "CONNECT":
             self._emit("connect", net, pin)
         elif event_type == "DISCONNECT":

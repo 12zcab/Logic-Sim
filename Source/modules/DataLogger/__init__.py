@@ -1,25 +1,19 @@
-# from core import *
-# from tabulate import tabulate
+from core import *
+from tabulate import tabulate
 
 
-# def Logger(Name,IOArray,MonitoredIO):
-#     DictIO = {}     
-#     for i in range(len(IOArray)):
-#         DictIO[IOArray[i]] = IO(IOArray[i])
-#         DictIO[IOArray[i]].connect(MonitoredIO[i])
-#     obj = Component(Name,DictIO,doLog)
+def Logger(Name,IOArray,MonitoredIO):
+    DictIO = {}     
+    for i in range(len(IOArray)):
+        DictIO[IOArray[i]] = IO(IOArray[i])
+        DictIO[IOArray[i]].connect(MonitoredIO[i])
+    obj = Component(Name,DictIO,doLog)
 
-#     return obj  
+    return obj  
 
-# def doLog(self):
-#     data = [[]]
-#     for IOObj in self.IO.values():
-#         data[0].append(IOObj.Value)
-#     print(str(self.Name) + "===" + str(self.simBox.scheduler.currentTime))
-#     print(tabulate(data, headers=self.IO.k eys(), tablefmt="grid"))
-
-
-
-## SUMMARIZE CHANGES FOR GUI  
- 
-    
+def doLog(self):
+    data = [[]]
+    for IOObj in self.IO.values():
+        data[0].append(IOObj.Value)
+    print(str(self.Name) + "===" + str(self.simBox.scheduler.currentTime))
+    print(tabulate(data, headers=self.IO.keys(), tablefmt="grid"))

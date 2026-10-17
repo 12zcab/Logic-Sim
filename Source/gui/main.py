@@ -1,10 +1,30 @@
 import os
 from tkinter import Tk, PanedWindow, VERTICAL, RAISED, BOTH
+from bidict import bidict
+
 from node.nodeEngine import *
 from toolbar.toolbar import *
-from simulation import *
+from loader import *
 from core import *
-from bidict import bidict
+from core.module.object import Net as SimNet, IO, Component, Module, SimBox, Logic, Strength
+
+
+# def inspect_module_nets(module_obj):
+#     print(f"\n================ Module Net Mapping: {module_obj.Name} ================")
+#     print("--- External Boundary Pins ---")
+#     for name, io_pin in module_obj.IO.items():
+#         root_net = io_pin.Net
+#         connected_ios = [p.get_full_name() for p in root_net.IO] if root_net else []
+#         print(f"  Pin {name:<5} | Root Net: {root_net.Name if root_net else 'None':<15} | Connected IOs: {connected_ios}")
+    
+#     if hasattr(module_obj, "child"):
+#         print("\n--- Inner Child Components ---")
+#         for child_name, child_obj in module_obj.child.items():
+#             for pin_name, io_pin in child_obj.IO.items():
+#                 root_net = io_pin.Net
+#                 connected_ios = [p.get_full_name() for p in root_net.IO] if root_net else []
+#                 print(f"  {child_name}.{pin_name:<5} | Root Net: {root_net.Name if root_net else 'None':<15} | Connected IOs: {connected_ios}")
+#     print("======================================================================\n")
 
 
 class LogicSimApp:
@@ -21,26 +41,26 @@ class LogicSimApp:
         self.simBox.init()
         self.logicToNode = bidict({})
         self.logicNetToNodeNet = bidict({})
+
     def updateMainApp(self):
         self.simBox.stepDeltaLoop()
         self.simBox.scheduler.advanceToNext()
         self.updateNetStates()
+        self.node_editor.redraw_all()
         self.root.after(1, self.updateMainApp)
     def updateNetStates(self):
-        updated = False
-        for net in self.simBox.Nets:
-            if self.logicNetToNodeNet.get(net):
-                if net._Value == Logic.ONE:
-                    self.logicNetToNodeNet[net].setColor("#38bdf8")
-                    updated = True
-                elif net._Value == Logic.X:
-                    self.logicNetToNodeNet[net].setColor("#f8bd38")
-                    updated = True
-                else:
-                    self.logicNetToNodeNet[net].setColor("#333333")
-                    updated = True
-        if updated:
-            self.node_editor.redraw_all()
+        for sim_net, gui_net in list(self.logicNetToNodeNet.items()):
+            val = sim_net.Value
+            if val == Logic.ONE:
+                gui_net.setColor("#38bdf8")
+                gui_net.setAllPinColor("#38bdf8")
+            elif val == Logic.X:
+                gui_net.setColor("#f8bd38")
+                gui_net.setAllPinColor("#f8bd38")
+            else:
+                gui_net.setColor("#222222")
+                gui_net.setAllPinColor("#222222")
+
     def setup_ui(self):
         self.paned_window = PanedWindow(
             self.root,
@@ -61,63 +81,76 @@ class LogicSimApp:
         
         self.node_editor.bind_event("net_create", lambda net: self.createNetEvent(net))
         self.node_editor.bind_event("net_destroy", lambda net: self.destroyNetEvent(net))
-        self.node_editor.bind_event("connect", lambda net, pin: self.connectPinEvent(net,pin))
-        self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net,pin))
+        self.node_editor.bind_event("connect", lambda net, pin: self.connectPinEvent(net, pin))
+        self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net, pin))
         self.node_editor.bind_event("node_delete", lambda node: self.deleteLogicObj(node))
         self.node_editor.bind_event("select", lambda obj: self.handle_node_click(obj))
+
     def handle_node_click(self, obj):
         if isinstance(obj, NodeObject):
             logic_obj = self.logicToNode.inv.get(obj)
-            if getattr(logic_obj, "onclick", None):
-                logic_obj.onclick()
-    def guiPinToLogicPin(self,guiPin):
+            if logic_obj:
+                if getattr(logic_obj, "onclick", None):
+                    logic_obj.onclick()
+
+    def guiPinToLogicPin(self, guiPin):
         return self.logicToNode.inv[guiPin.owner].IO[guiPin.name]
-    def createNetEvent(self,net):
-        self.logicNetToNodeNet[Net(value=Logic.ZERO)] = net
+
+    def createNetEvent(self, net):
+        sim_net = SimNet(value=Logic.ZERO)
+        self.logicNetToNodeNet[sim_net] = net
         self.simBox.expandNet()
-    def destroyNetEvent(self,net):
-        del self.logicNetToNodeNet.inv[net]
+
+    def destroyNetEvent(self, net):
+        if net in self.logicNetToNodeNet.inv:
+            del self.logicNetToNodeNet.inv[net]
         self.simBox.expandNet()
+
     def connectPinEvent(self, net, pin):
         logic_io = self.guiPinToLogicPin(pin)
-        
         sim_net = self.logicNetToNodeNet.inv.get(net)
-        
-        logic_io.connectNet(sim_net, force=True)
-        
-        if logic_io.Net:
-            logic_io.Net.resolve()
-            
-        if logic_io.parent:
-            if hasattr(logic_io.parent, "update"):
-                logic_io.parent.update()
-                
+        if sim_net:
+            logic_io.connectNet(sim_net)
+            sim_net.resolve()
+        if logic_io.parent and hasattr(logic_io.parent, "update"):
+            logic_io.parent.update()
         self.simBox.expandNet()
 
     def disconnectPinEvent(self, net, pin):
         logic_io = self.guiPinToLogicPin(pin)
-        
+        sim_net = self.logicNetToNodeNet.inv.get(net)
         logic_io.disconnectNet()
-        
-        if net and self.logicNetToNodeNet.inv.get(net):
-            self.logicNetToNodeNet.inv.get(net).resolve()
-            
+        if sim_net:
+            sim_net.resolve()
         if logic_io.Net:
             logic_io.Net.resolve()
+
         if logic_io.parent and hasattr(logic_io.parent, "update"):
             logic_io.parent.update()
-            
         self.simBox.expandNet()
-    def addLogic(self,logicObj,nodeObj):
+
+    def addLogic(self, logicObj, nodeObj):
         self.simBox.addObject(logicObj)
         self.logicToNode[logicObj] = nodeObj
-    def deleteLogicObj(self,node):
-        self.simBox.removeObject(self.logicToNode.inv[node])
-        del self.logicToNode.inv[node]
+
+    def deleteLogicObj(self, node):
+        logic_obj = self.logicToNode.inv.get(node)
+        if logic_obj:
+            for io in logic_obj.IO.values():
+                net = io.Net
+                if net:
+                    net.remove(io)
+                    net.resolve()
+                    
+            self.simBox.removeObject(logic_obj)
+            del self.logicToNode.inv[node]
+            self.simBox.expandNet()
+            
     def load_all(self):
         self.load_modules()
         for modName in list(reversed(self.all_jsons)):
             self.switch_module(modName)
+
     def load_modules(self):
         module_jsons = guiJsonPaths()
         
@@ -146,21 +179,27 @@ class LogicSimApp:
             bt = self.sub_toolbar.add_button(component_name, pyicon_path)
             bt.config(command=lambda loader=loadingObj: self.spawnFromButton(loader))
         self.sub_toolbar.force_update()
-    def spawnFromButton(self,loadingObj):
-        returnstuff = loadingObj()
+
+    def spawnFromButton(self, loader):
+        self.root.config(cursor="plus");
+        self.node_editor.grepNextPressGridPos(
+            lambda x, y: self.spawnObject(loader, x, y)
+        )
+    def spawnObject(self,loader,x,y):
+        root.config(cursor="arrow")
+        returnstuff = loader(x,y)
         logicObj = returnstuff[0]
         nodeObj = returnstuff[1]
-        self.addLogic(logicObj,nodeObj)
-
+        self.addLogic(logicObj, nodeObj)
     def get_component_data(self, module_dir, components_obj, component_name):
         component_def = getComponentDefinition(components_obj, component_name)
         pyicon_path = None
         icon_data = component_def.get("children", {}).get("pyIcon", {})
         if icon_data.get("path"):
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
-        loadingObjfunc = lambda name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path)
+        loadingObjfunc = lambda x,y,name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path,x,y)
         return pyicon_path, loadingObjfunc
-    
+
 if __name__ == "__main__":
     root = Tk()
     app = LogicSimApp(root)

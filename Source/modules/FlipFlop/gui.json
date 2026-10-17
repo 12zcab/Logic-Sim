@@ -18,6 +18,23 @@
                     "path":"PP0_DFF.pyIcon"
                 }
             }
+        },
+        "DFF":{
+            "constructor":"BasicDFF",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"DFF.pyIcon"
+                }
+            }
         }
     }
 }

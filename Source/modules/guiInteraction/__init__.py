@@ -1,5 +1,5 @@
 from core import *
-
+import time
 class Switch(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("Y")], self.update)
@@ -16,3 +16,23 @@ class Lamp(Component):
         self.state = False
     def update(self):
         self.state = (self.IO.A.Value == Logic.ONE)
+
+
+class OneHertz(Component):
+    def __init__(self, Name):
+        super().__init__(Name, [IO("Y")], self.update)
+        self.state = False
+        self.lastupdate = None
+        self.IO.Y.Value = Logic.ZERO
+    def update(self):
+        pass
+    def perdeltatick(self):
+        now = time.perf_counter_ns()
+        if self.lastupdate is None:
+            self.lastupdate = now
+            return
+        TOGGLE_INTERVAL_NS = 500_000_000
+        if (now - self.lastupdate) >= TOGGLE_INTERVAL_NS:
+            self.lastupdate += TOGGLE_INTERVAL_NS
+            self.state = not self.state
+            self.IO.Y.Value = Logic.ONE if self.state else Logic.ZERO

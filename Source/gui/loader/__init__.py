@@ -37,7 +37,7 @@ def getComponentDefinition(componentsDescription, componentName):
     return componentsDescription.get(componentName)
 
 
-def loadObject(name, objDescription, node_editor, jsonpath):
+def loadObject(name, objDescription, node_editor, jsonpath,x=0,y=0):
     obj = globals()[objDescription['constructor']](Name=name)
     pyIcon = None
     if objDescription.get("children"):
@@ -46,8 +46,8 @@ def loadObject(name, objDescription, node_editor, jsonpath):
                 pyIcon = iconFile.read()
     node = node_editor.create_node(
         title=name,
-        x=0,
-        y=0,
+        x=x,
+        y=y,
         width=objDescription['size'][0],
         height=objDescription['size'][1],
         bg_color=objDescription['color'],
