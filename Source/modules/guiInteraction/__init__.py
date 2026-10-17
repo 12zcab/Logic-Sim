@@ -9,3 +9,10 @@ class Switch(Component):
     def onclick(self):
         self.state = not self.state
         self.update()
+        
+class Lamp(Component):
+    def __init__(self, Name):
+        super().__init__(Name, [IO("A")], self.update)
+        self.state = False
+    def update(self):
+        self.state = (self.IO.A.Value == Logic.ONE)

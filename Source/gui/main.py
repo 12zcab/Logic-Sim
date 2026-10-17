@@ -71,9 +71,6 @@ class LogicSimApp:
             if getattr(logic_obj, "onclick", None):
                 logic_obj.onclick()
     def guiPinToLogicPin(self,guiPin):
-        print("guiPin:",guiPin)
-        print("is mapped to:",self.logicToNode.inv[guiPin.owner].IO[guiPin.name])
-        print("With Name:",guiPin.name)
         return self.logicToNode.inv[guiPin.owner].IO[guiPin.name]
     def createNetEvent(self,net):
         self.logicNetToNodeNet[Net(value=Logic.ZERO)] = net

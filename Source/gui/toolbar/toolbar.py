@@ -79,7 +79,7 @@ class ToolBarButton(Canvas):
             offset_y = (
                 ((h * 0.60) - icon_h) / 2 if self.text else (h - icon_h) / 2
             )
-
+            calculated_zoom = min(icon_w / 4.0, icon_h / 3.0)
             icon_scope = {
                 "canvas": self,
                 "x": offset_x,
@@ -87,6 +87,7 @@ class ToolBarButton(Canvas):
                 "w": icon_w,
                 "h": icon_h,
                 "angle": 0,
+                "zoom": calculated_zoom,
                 "cx": offset_x + icon_w / 2,
                 "cy": offset_y + icon_h / 2,
                 "is_selected": False,

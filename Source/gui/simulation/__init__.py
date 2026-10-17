@@ -52,7 +52,8 @@ def loadObject(name, objDescription, node_editor, jsonpath):
         height=objDescription['size'][1],
         bg_color=objDescription['color'],
         border_color=objDescription['bcolor'],
-        graphic_code=pyIcon
+        graphic_code=pyIcon,
+        metadata=obj
     )
     for key,value in objDescription["pins"].items():
         node.add_pin(key, value["position"][0], value["position"][1], color="#222222")

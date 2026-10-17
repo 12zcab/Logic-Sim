@@ -277,8 +277,6 @@ class SimBox:
         for obj in Objects:
             self.addObject(obj)
     def addObject(self, obj):
-        print("SimBox Added Obj:")
-        print(obj)
         obj.parent = self
         if obj not in self.Objects:
             self.Objects.append(obj)

@@ -49,7 +49,8 @@ class NodeObject:
         bg_color: Optional[str] = None,
         border_color: Optional[str] = None,
         graphic_code: Optional[str] = None,
-        angle: float = 0.0
+        angle: float = 0.0,
+        metadata: Optional[object] = None
     ):
         self.id = node_id
         self.title = title
@@ -61,6 +62,7 @@ class NodeObject:
         self.border_color = border_color
         self.graphic_code = graphic_code
         self.angle = angle
+        self.metadata = metadata
         self.pins: List[Pin] = []
 
         self.compiled_code = None
@@ -178,10 +180,10 @@ class Net:
         self.name = name or f"NET_{net_id[:6].upper()}"
         self.wires: Set[Wire] = set()
         self.pins: Set[Pin] = set()
-    def setColor(self,color):
+
+    def setColor(self, color):
         for wire in self.wires:
             wire.color = color
-
 
 class NetEngine:
     def __init__(self, event_callback: Optional[Callable[[str, Net, Optional[Pin]], None]] = None):
@@ -329,6 +331,187 @@ class NetEngine:
             self.event_callback(event_type, net, pin)
 
 
+# --- PyIcon Shape Recorder & Hit Testing Helpers ---
+class PyIconRecorder:
+    def __init__(self):
+        self.shapes = []
+
+    def create_polygon(self, *coords, **kwargs):
+        pts = self._flatten_coords(coords)
+        smooth = kwargs.get("smooth", False)
+        if smooth:
+            if len(pts) == 4:
+                xs = [p[0] for p in pts]
+                ys = [p[1] for p in pts]
+                x1, x2 = min(xs), max(xs)
+                y1, y2 = min(ys), max(ys)
+                self.shapes.append(("oval", (x1, y1, x2, y2), kwargs))
+                return
+            else:
+                pts = smooth_polygon(pts, iterations=2)
+        self.shapes.append(("polygon", pts, kwargs))
+
+    def create_oval(self, x1, y1, x2, y2, **kwargs):
+        self.shapes.append(("oval", (x1, y1, x2, y2), kwargs))
+
+    def create_line(self, *coords, **kwargs):
+        pts = self._flatten_coords(coords)
+        self.shapes.append(("line", pts, kwargs))
+
+    def create_rectangle(self, x1, y1, x2, y2, **kwargs):
+        pts = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
+        self.shapes.append(("polygon", pts, kwargs))
+
+    def create_text(self, x, y, text="", **kwargs):
+        font = kwargs.get("font", ("Consolas", 10))
+        font_size = 10
+        if isinstance(font, (list, tuple)) and len(font) > 1:
+            try:
+                font_size = int(font[1])
+            except:
+                pass
+        w_est = max(10.0, len(str(text)) * font_size * 0.7)
+        h_est = max(10.0, font_size * 1.4)
+        anchor = kwargs.get("anchor", "center")
+        
+        x1, y1 = x - w_est / 2.0, y - h_est / 2.0
+        x2, y2 = x + w_est / 2.0, y + h_est / 2.0
+        if anchor in ("w", "nw", "sw"):
+            x1, x2 = x, x + w_est
+        elif anchor in ("e", "ne", "se"):
+            x1, x2 = x - w_est, x
+        if anchor in ("n", "nw", "ne"):
+            y1, y2 = y, y + h_est
+        elif anchor in ("s", "sw", "se"):
+            y1, y2 = y - h_est, y
+
+        self.shapes.append(("text", (x1, y1, x2, y2), kwargs))
+
+    @staticmethod
+    def _flatten_coords(coords):
+        if len(coords) == 1 and isinstance(coords[0], (list, tuple)):
+            coords = coords[0]
+        pts = []
+        for i in range(0, len(coords), 2):
+            if i + 1 < len(coords):
+                pts.append((float(coords[i]), float(coords[i+1])))
+        return pts
+
+
+def smooth_polygon(pts, iterations=2):
+    curr = pts
+    for _ in range(iterations):
+        next_pts = []
+        n = len(curr)
+        for i in range(n):
+            p0 = curr[i]
+            p1 = curr[(i + 1) % n]
+            q = (0.75 * p0[0] + 0.25 * p1[0], 0.75 * p0[1] + 0.25 * p1[1])
+            r = (0.25 * p0[0] + 0.75 * p1[0], 0.25 * p0[1] + 0.75 * p1[1])
+            next_pts.append(q)
+            next_pts.append(r)
+        curr = next_pts
+    return curr
+
+
+def point_in_polygon(x: float, y: float, poly: list) -> bool:
+    n = len(poly)
+    if n < 3:
+        return False
+    inside = False
+    p1x, p1y = poly[0]
+    for i in range(1, n + 1):
+        p2x, p2y = poly[i % n]
+        if y > min(p1y, p2y):
+            if y <= max(p1y, p2y):
+                if x <= max(p1x, p2x):
+                    if p1y != p2y:
+                        xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                    if p1x == p2x or x <= xinters:
+                        inside = not inside
+        p1x, p1y = p2x, p2y
+    return inside
+
+
+def point_near_segment(px, py, v, w) -> float:
+    vx, vy = v
+    wx, wy = w
+    l2 = (wx - vx) ** 2 + (wy - vy) ** 2
+    if l2 == 0:
+        return math.hypot(px - vx, py - vy)
+    t = max(0.0, min(1.0, ((px - vx) * (wx - vx) + (py - vy) * (wy - vy)) / l2))
+    proj_x = vx + t * (wx - vx)
+    proj_y = vy + t * (wy - vy)
+    return math.hypot(px - proj_x, py - proj_y)
+
+
+def point_near_polygon_outline(x: float, y: float, poly: list, threshold: float) -> bool:
+    n = len(poly)
+    for i in range(n):
+        p1 = poly[i]
+        p2 = poly[(i + 1) % n]
+        if point_near_segment(x, y, p1, p2) <= threshold:
+            return True
+    return False
+
+
+def point_near_polyline(x: float, y: float, pts: list, threshold: float) -> bool:
+    for i in range(len(pts) - 1):
+        if point_near_segment(x, y, pts[i], pts[i+1]) <= threshold:
+            return True
+    return False
+
+
+def hit_test_shapes(px: float, py: float, shapes: list, tolerance: float = 3.0) -> bool:
+    for shape_type, data, kwargspx in shapes:
+        fill = kwargspx.get("fill", "")
+        outline = kwargspx.get("outline", "")
+        width = float(kwargspx.get("width", 1))
+
+        has_fill = bool(fill and str(fill).lower() not in ("", "transparent", "none"))
+        has_outline = bool(outline and str(outline).lower() not in ("", "transparent", "none"))
+
+        if shape_type == "polygon":
+            pts = data
+            inside = False
+            if has_fill and point_in_polygon(px, py, pts):
+                inside = True
+            if not inside and has_outline and point_near_polygon_outline(px, py, pts, width + tolerance):
+                inside = True
+            if inside:
+                return True
+
+        elif shape_type == "oval":
+            x1, y1, x2, y2 = data
+            cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+            rx, ry = abs(x2 - x1) / 2.0, abs(y2 - y1) / 2.0
+            if rx <= 0 or ry <= 0:
+                continue
+            norm = ((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2
+            inside = False
+            if has_fill and norm <= 1.0:
+                inside = True
+            if not inside and has_outline:
+                dist_to_edge = abs(math.hypot(px - cx, py - cy) - (rx + ry) / 2.0)
+                if dist_to_edge <= (width / 2.0 + tolerance):
+                    inside = True
+            if inside:
+                return True
+
+        elif shape_type == "line":
+            pts = data
+            if has_outline or has_fill:
+                if point_near_polyline(px, py, pts, width + tolerance):
+                    return True
+
+        elif shape_type == "text":
+            x1, y1, x2, y2 = data
+            if x1 <= px <= x2 and y1 <= py <= y2:
+                return True
+
+    return False
+# ----------------------------------------------------
+
 class NodeEditor(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -395,14 +578,18 @@ class NodeEditor(ttk.Frame):
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         self.canvas.bind("<Configure>", lambda e: self.redraw_all())
+        
+        # Bind single, double, and triple clicks uniformly to handle rapid clicking as click events
         self.canvas.bind("<ButtonPress-1>", self._on_left_click)
+        self.canvas.bind("<Double-Button-1>", self._on_left_click)
+        self.canvas.bind("<Triple-Button-1>", self._on_left_click)
+
         self.canvas.bind("<B1-Motion>", self._on_left_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_left_release)
         self.canvas.bind("<ButtonPress-3>", self._on_right_click)
         self.canvas.bind("<ButtonPress-2>", self._on_middle_press)
         self.canvas.bind("<B2-Motion>", self._on_middle_drag)
         self.canvas.bind("<Motion>", self._on_mouse_move)
-        self.canvas.bind("<Double-Button-1>", self._on_double_click)
         self.canvas.bind("<MouseWheel>", self._on_mouse_wheel)
 
         self.canvas.focus_set()
@@ -611,7 +798,9 @@ class NodeEditor(ttk.Frame):
                     "tags": tags,
                     "zoom": self.zoom,
                     "rotatePoint": rotatePoint,
-                    "math": math
+                    "math": math,
+                    "node": node,
+                    "metadata": node.metadata
                 }
                 exec(node.compiled_code, exec_scope)
 
@@ -642,7 +831,7 @@ class NodeEditor(ttk.Frame):
                     tags=f"node_{node.id}"
                 )
 
-                font_size = int(max(6, 8 * (self.zoom / 35.0)))
+                font_size = int(8 * (self.zoom / 35.0))
                 if font_size > 0:
                     text_col = "#000000" if is_pin_hovered else "#ffffff"
                     self.canvas.create_text(
@@ -701,9 +890,8 @@ class NodeEditor(ttk.Frame):
         h = self.canvas.winfo_height() or 700
         text = (
             "Strict 90° Edge-Main Controls (Dual Edge/Center 0.5 Grid):\n"
-            "• L-Click: Select Net / Drag Node / Shift Edge\n"
+            "• L-Click / Rapid-Click: Select Net / Toggle Node / Drag\n"
             "• R Key: Rotate Selected/Hovered Node\n"
-            "• Double Click Edge: Insert Z-Shape Step\n"
             "• Shift + L-Click: Branch Sub-Wire from Edge / Pin\n"
             "• R-Click: Delete Node or Full Wire\n"
             "• Shift + R-Click: Cut Wire Segment (Net Split)\n"
@@ -840,7 +1028,8 @@ class NodeEditor(ttk.Frame):
         clicked_pin = self._hit_test_pin(wx, wy)
         clicked_node = self._hit_test_node(wx, wy)
         clicked_wire, seg_idx = self._hit_test_wire(wx, wy)
-
+        if clicked_node:
+            self.nodes.append(self.nodes.pop(self.nodes.index(clicked_node)))
         if is_shift:
             if clicked_wire:
                 branch_pos = self._get_nearest_point_on_wire(clicked_wire, wx, wy)
@@ -989,30 +1178,6 @@ class NodeEditor(ttk.Frame):
 
         self.redraw_all()
 
-    def _on_double_click(self, event):
-        wx, wy = self.screen_to_world(event.x, event.y)
-        clicked_wire, seg_idx = self._hit_test_wire(wx, wy)
-
-        if clicked_wire and seg_idx is not None:
-            path = clicked_wire.get_full_path()
-            if 0 <= seg_idx < len(path) - 1:
-                p1, p2 = path[seg_idx], path[seg_idx + 1]
-                is_horizontal = (abs(p1[1] - p2[1]) < 1e-3)
-
-                mid_x = self.snap_wire_coord(wx)
-                mid_y = self.snap_wire_coord(wy)
-
-                if is_horizontal:
-                    v1 = (mid_x - 0.5, p1[1])
-                    v2 = (mid_x + 0.5, p1[1])
-                else:
-                    v1 = (p1[0], mid_y - 0.5)
-                    v2 = (p1[0], mid_y + 0.5)
-
-                new_path = path[:seg_idx + 1] + [v1, v2] + path[seg_idx + 1:]
-                clicked_wire.sync_vertices_from_path(new_path)
-                self.redraw_all()
-
     def _delete_wire_segment(self, wire: Wire, seg_idx: int):
         path = wire.get_full_path()
         if len(path) < 2:
@@ -1099,16 +1264,42 @@ class NodeEditor(ttk.Frame):
     def _hit_test_node(self, wx: float, wy: float) -> Optional[NodeObject]:
         sx, sy = self.world_to_screen(wx, wy)
         for node in reversed(self.nodes):
-            if node.bg_color is not None or node.border_color is not None:
+            has_bg = node.bg_color is not None and node.bg_color.lower() not in ("", "transparent")
+            has_border = node.border_color is not None and node.border_color.lower() not in ("", "transparent")
+
+            if has_bg or has_border:
                 if node.contains_point(wx, wy):
                     return node
-            else:
-                items = self.canvas.find_overlapping(sx - 2, sy - 2, sx + 2, sy + 2)
-                node_tag = f"node_{node.id}"
-                for item in items:
-                    tags = self.canvas.gettags(item)
-                    if node_tag in tags:
+
+            if node.compiled_code:
+                sw, sh = node.width * self.zoom, node.height * self.zoom
+                nsx, nsy = self.world_to_screen(node.x, node.y)
+                recorder = PyIconRecorder()
+                exec_scope = {
+                    "canvas": recorder,
+                    "x": nsx,
+                    "y": nsy,
+                    "w": sw,
+                    "h": sh,
+                    "cx": nsx + sw / 2.0,
+                    "cy": nsy + sh / 2.0,
+                    "angle": node.angle,
+                    "is_selected": (node == self.selected_object),
+                    "tags": (),
+                    "zoom": self.zoom,
+                    "rotatePoint": rotatePoint,
+                    "math": math,
+                    "node": node,
+                    "metadata": node.metadata
+                }
+                try:
+                    exec(node.compiled_code, exec_scope)
+                    if hit_test_shapes(sx, sy, recorder.shapes, tolerance=3.0):
                         return node
+                except Exception:
+                    pass
+
+            if has_bg or has_border:
                 if node.contains_point(wx, wy):
                     return node
         return None
@@ -1161,13 +1352,15 @@ class NodeEditor(ttk.Frame):
         bg_color: Optional[str] = "transparent",
         border_color: Optional[str] = "transparent",
         graphic_code: Optional[str] = None,
-        angle: float = 0.0
+        angle: float = 0.0,
+        metadata: Optional[object] = None
     ) -> NodeObject:
         sx = self.snap_node_coord(x)
         sy = self.snap_node_coord(y)
         node = NodeObject(
             f"node_{len(self.nodes)+1}", title, sx, sy, width, height,
-            bg_color=bg_color, border_color=border_color, graphic_code=graphic_code, angle=angle
+            bg_color=bg_color, border_color=border_color, graphic_code=graphic_code, angle=angle,
+            metadata=metadata
         )
         self.nodes.append(node)
         self._emit("node_add", node)
@@ -1215,7 +1408,6 @@ class NodeEditor(ttk.Frame):
             self._emit("net_create", net)
         elif event_type == "NET_DESTROY":
             self._emit("net_destroy", net)
-
 
 NAND_GATE_PYICON_CODE = """
 import math
