@@ -1,4 +1,4 @@
-from core.object import *
+from core.module.object import *
 from Verilog import *
 from LogicGate import *
 from FlipFlop import *
@@ -26,3 +26,5 @@ class History:
             return Data
         else:
             print("Retreive unsuccessful")
+
+              

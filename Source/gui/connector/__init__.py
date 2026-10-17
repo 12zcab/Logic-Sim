@@ -37,4 +37,4 @@ def loadObject(name,objDescription, node_editor,jsonpath):
         container.addChild("pyIcon",objDescription.get("children").get("svg").get("position")[0],objDescription.get("children").get("svg").get("position")[1],objDescription.get("children").get("svg").get("size")[0],objDescription.get("children").get("svg").get("size")[1],python_script=python_script)
     for pinName, pinDescription in objDescription.get("pins").items():
         container.addNode(pinName,pinDescription.get("position")[0],pinDescription.get("position")[1])
-    return [object,container]
+    return [object,container]  

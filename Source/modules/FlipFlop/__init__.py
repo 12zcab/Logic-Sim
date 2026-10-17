@@ -73,12 +73,12 @@ class PP0_DFF(Module):
         ModuleIO = [Pin_D, Pin_CLK, Pin_RST, Pin_Q, Pin_QM]
         NotCLK   = NotGate("ClkInv")
         NotRST   = NotGate("RstInv")
-        M_NandS  = NandGate3("M_SIn")
+        M_NandS  = NandGate3("M_SIn")  
         M_NandR  = NandGate("M_RIn")
         M_NotD   = NotGate("M_DInv")
         M_NandQ  = NandGate("M_QY")
         M_NandQM = NandGate3("M_QMY")
-        S_NandS  = NandGate3("S_SIn")
+        S_NandS  = NandGate3("S_SIn")   
         S_NandR  = NandGate("S_RIn")
         S_NandQ  = NandGate("S_QY")
         S_NandQM = NandGate3("S_QMY")
@@ -129,12 +129,12 @@ def dff_behavioral_update(comp):
             qm_val = Logic.ZERO if d_val == Logic.ONE else Logic.ONE
             comp.IO.Q.setPower(d_val, strength=Strength.STRONG, Delay=0)
             comp.IO.QM.setPower(qm_val, strength=Strength.STRONG, Delay=0)
-    comp._prev_clk = curr_clk
+    comp._prev_clk = curr_clk  
 
 class PP0_DFF_behave(Component):
     def __init__(self, Name):
-        super().__init__(
-            Name,
+        super().__init__(   
+            Name, 
             [IO("D"), IO("C"), IO("R"), IO("Q"), IO("QM")],
-            updateFunction=dff_behavioral_update
-        )
+            updateFunction=dff_behavioral_update 
+        )     

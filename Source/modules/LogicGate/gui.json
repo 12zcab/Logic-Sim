@@ -54,7 +54,7 @@
             }
         },
         "Nand Gate":{
-            "constructor":"NandGate",
+            "constructor":"NandGate",  
             "size": [4,3],
             "color": "transparent",
             "bcolor": "transparent",

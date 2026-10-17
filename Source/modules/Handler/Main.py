@@ -65,12 +65,8 @@ class InputReaction:
         Default[Step]
         Step += 1  
         self.ExecuteWorkFlow(Step)
-  
-    def TimeWaiting(self):
-        pass    
-    
-        
 
+  
 class BoxObject:
     def __init__(self, SimBox : SimBox):
         self.SimBox = SimBox
