@@ -27,23 +27,35 @@ For more Details of how to use Cli interface, please read Docs/Cli.md and Docs/A
         - enum  err just some value enums
         - object  Logic Objects
     - '__init__'.py  Importer and some testing stuff
-- Gui  WIP a GUI Editor :DDDD
+- Gui
+    - node  an Ai(Mostly) generate Node Based Editor Engine
+    - simulation WIP  (Probly will soon be moved to main.py)
+    - toolbar  (a Simple Tkinter Button Toolbar that is scalable)
+    - main.py  Main GUI Program with Tkinter
 - modules
     - DataLogger  Basic DataLogger Module
     - FlipFlop  Basic FlipFlop Components made with LogicGate module
     - LogicGate  Basic LogicGate Module
     - SimpleCLIIO Basic Command Line Interface Input Output Module
-    - Verilog Basic Verilog Component Import (YES YOU DID NOT SAW IT WRONG IT NOW HV VERILOG SUPPORTTTT)
+    - Verilog  Basic Verilog Component Import (YES YOU DID NOT SAW IT WRONG IT NOW HV VERILOG SUPPORTTTT)
     - '__init__'.py  Importer :D
 
-- cli.py the basic command line interface!
-- app.py currently empty, but later will for init.ing the app
+More About Modules:
+Modules basically consist of 3 parts:
+1.```__init__.py``` and other python files with object definition
+2.GUI.json with definition for the node editor render.
+3.pyIcon files: a kinda special python executable script that describe rendering process of Tkinter Canvas
+
+- cli.py the basic command line interface for debugging (mostly)
+- app.py currently almost empty, but later will for init.ing the app
 - cleanpycache.py a small script to clean all the caches before we upload stuff XD
 - register.v a small verilog thing for verilog test!
 
 - target.md  a note written in day 1 :O
 - bootstrap.py a loader for the exe file so that the exe can directly execute the code
 - improvements.md a record of brainstorm with Ai that contains some suggestions for us to try implement later
-- Readme.md  WELP U R READING ME RN
+- Readme.md  WELP U R READING ME RN -_-
 - build.bat erm yah the script i use to build the project
 - bootstrap.exe  pyinstaller compiled directly executable exe! 
+- requirements.txt  for pip install
+- setupDev.bat  setting up developing environment you need for editing this project and build it yourself

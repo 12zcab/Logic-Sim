@@ -1,9 +1,10 @@
 from core import *
-from modules.LogicGate import *
-from modules.FlipFlop import *
+from modules import *
 from .parser import *
 import re
 from collections import defaultdict
+from gui.node.nodeEngine import *
+
 def analyse_file(filename):
     data = parse_verilog_to_pure_gates(os.path.abspath(filename))
     data = BetterDict(data)
@@ -44,9 +45,13 @@ def parseFileIntoObject(filename):
     print("=" * 80)
     
     resultModules = []
+    inputPinsForEach = []
+    outputPinsForEach = []
     for moduleKey, moduleValue in data["modules"].items():
         print(f"\n[+] Building Module: '{moduleKey}'")
         IOArray = []
+        inputPins = []
+        outputPins = []
         InnerBlocks = []
         Nets = {}
         def get_net(bit_id):
@@ -68,6 +73,10 @@ def parseFileIntoObject(filename):
                 net = get_net(bits[0])
                 ind_io.connectNet(net)
                 IOArray.append(ind_io)
+                if direction == "input":
+                    inputPins.append(ind_io)
+                else:
+                    outputPins.append(ind_io)
                 print(f"    -> Pin '{portKey}' linked to Net '{net.Name}' [ID: {hex(id(net))}]")
             else:
                 for i, bit_id in enumerate(bits):
@@ -76,6 +85,10 @@ def parseFileIntoObject(filename):
                     net = get_net(bit_id)
                     ind_io.connectNet(net)
                     IOArray.append(ind_io)
+                    if direction == "input":
+                        inputPins.append(ind_io)
+                    else:
+                        outputPins.append(ind_io)
                     print(f"    -> Pin '{io_name}' linked to Net '{net.Name}' [ID: {hex(id(net))}]")
 
         print("\n  --- [2/3] Instantiating Logic Cells ---")
@@ -115,6 +128,8 @@ def parseFileIntoObject(filename):
 
         mod = Module(str(moduleKey), IOArray, InnerBlocks)
         resultModules.append(mod)
+        inputPinsForEach.append(inputPins)
+        outputPinsForEach.append(outputPins)
         print("\n  " + "=" * 70)
         print("  NETLIST TOPOLOGY AUDIT REPORT")
         print("  " + "=" * 70)
@@ -154,11 +169,9 @@ def parseFileIntoObject(filename):
         print(f"    - Floating Module IOs      : {floating_ios}")
         print(f"    - Isolated Nets            : {isolated_nets}")
         print("  " + "=" * 70 + "\n")
-
-    return resultModules[0]
+    return [resultModules[0],inputPinsForEach[0],outputPinsForEach[0]]
 
 #analyse_file("register.v")
-
 """
 create register parseFileIntoObject("register.v")
 create clkbt keyboard_button("clk","[")

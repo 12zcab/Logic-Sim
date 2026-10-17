@@ -1,0 +1,23 @@
+{
+    "name": "FlipFlop",
+    "components":{
+        "DFF(PP0)":{
+            "constructor":"PP0_DFF",
+            "size": [3,5],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "R": {"position":[-1,4]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,4]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"PP0_DFF.pyIcon"
+                }
+            }
+        }
+    }
+}

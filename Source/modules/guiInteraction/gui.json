@@ -1,0 +1,33 @@
+{
+    "name": "GUI",
+    "components":{
+        "Switch":{
+            "constructor":"Switch",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1.5,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Switch.pyIcon"
+                }
+            }
+        },
+        "Lamp":{
+            "constructor":"Lamp",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"position":[1.5,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Lamp.pyIcon"
+                }
+            }
+        }
+    }
+}

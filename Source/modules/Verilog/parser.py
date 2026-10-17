@@ -6,11 +6,6 @@ from typing import Dict, Any
 from yowasp_yosys import run_yosys
 import json
 def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = None) -> Dict[str, Any]:
-    """
-    Synthesizes Verilog to a pure gate-level JSON netlist.
-    All DFFs, latches, and multiplexers (MUXes) are lowered into 
-    elementary logic gates ($_AND_, $_OR_, $_NOT_, $_NAND_, etc.).
-    """
     if not os.path.isabs(verilog_absolute_path):
         raise ValueError(f"Not Absolute Path: {verilog_absolute_path}")
     
