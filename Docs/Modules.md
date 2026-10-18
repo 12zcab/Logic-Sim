@@ -22,4 +22,7 @@ BasicDFF is just the simplist D-Type FlipFlop in the world.
 the PP0 one is the DDF_PP0 in Yosys Standard for Verilog import.
 the PP0_behave one works same as PP0 but no longer maintained (it was written before module obejct exists iirc :||)
 ## Verilog
-it contains a Parser module and currently it only have one function
+it contains a Parser module and currently it only have one function (parse Verilog File into a module)
+## GUI Components
+it have Lamp, Switch and a Pulse Generator for GUI Interaction
+More components will be added in the future :D
