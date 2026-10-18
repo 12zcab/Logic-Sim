@@ -15,9 +15,7 @@
 Logic-Sim is a easy to use logic simulator written with pure python aiming for high modularization and Simple-to-use.
 
 # How to try it?
-Please download the whole Github Repo as Zip or clone it and execute the bootstrap.exe with internal_libs folder and Source folder together at the same time
-If you want to try Verilog Import than you can use the register.v (Verilog tests are all done with this specific file,we will test if other verilog works too later)
-For more Details of how to use Cli interface, please read Docs/Cli.md and Docs/App.md THANKYYOUUU
+Please download and unzip the latest Release and execute the bootstrap.exe with internal_libs folder and Source folder together at the same time
 
 # How can I modify this project?
 ## Setup Environment:
