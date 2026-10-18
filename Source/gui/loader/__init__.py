@@ -5,7 +5,6 @@ import json
 import os
 import math
 import re
-import pydot
 from pathlib import Path
 
 

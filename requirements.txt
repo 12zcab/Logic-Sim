@@ -1,3 +1,4 @@
+pyinstaller
 svglib
 pillow
 reportlab
@@ -12,3 +13,4 @@ collections
 yowasp_yosys
 wasmtime
 bidict
+tkinter

@@ -19,6 +19,12 @@ Please download the whole Github Repo as Zip or clone it and execute the bootstr
 If you want to try Verilog Import than you can use the register.v (Verilog tests are all done with this specific file,we will test if other verilog works too later)
 For more Details of how to use Cli interface, please read Docs/Cli.md and Docs/App.md THANKYYOUUU
 
+# How can I modify this project?
+## Setup Environment:
+You can use setupDev.bat in project Source to install the directory so that modules can be correctly  imported
+## Build:
+To build it,just delete the internal_lib and build_cache and execute build.bat
+
 # Functions Implemented Now:
 - Core
     - module
