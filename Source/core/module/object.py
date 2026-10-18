@@ -77,14 +77,25 @@ class IO:
             target_net.add(self)
 
     def disconnectNet(self):
+        """Cleanly unbind from the external net and restore default internal state."""
+        # Unlink from merged net
         if hasattr(self, '_module_net') and self._module_net:
-            mod_root = self._module_net.root
-            if mod_root.merged_into:
-                parent_gui = mod_root.merged_into
-                for io in list(mod_root.IO):
+            base_net = self._module_net
+            if base_net.merged_into:
+                parent_gui = base_net.merged_into.root
+                for io in list(base_net._IO):
                     if io in parent_gui._IO:
                         parent_gui._IO.remove(io)
-                mod_root.merged_into = None
+                base_net.merged_into = None
+            else:
+                if self.Net:
+                    self.Net.remove(self)
+
+        # Reset driving strength back to High-Z if this isn't an active driver
+        if not hasattr(self, "is_driver") or not self.is_driver:
+            self.driveStr = Strength.HIGHZ
+            self.driveVal = Logic.X
+            self._Value = Logic.ZERO
 
 
 class Net:
@@ -202,6 +213,7 @@ class Net:
                 root_self._IO.append(io)
         root_other.merged_into = root_self
 
+
 class Component:
     def __init__(self, Name, IOArray, updateFunction=None):
         self.Name = Name
@@ -225,7 +237,8 @@ class Component:
     def update(self):
         if self.updateFunction:
             self.updateFunction(self)
-
+    def forceUpdate(self):
+        self.update()
     def getNet(self):
         NetArray = []
         for io in self.IO.values():
@@ -262,7 +275,13 @@ class Module(Component):
 
     def update(self):
         pass
-
+    def forceUpdate(self):
+        if hasattr(self, "child"):
+            for child in self.child.values():
+                if hasattr(child, "forceUpdate"):
+                    child.forceUpdate()
+                elif hasattr(child, "update"):
+                    child.update()
 
 class SimBox:
     def __init__(self, Objects, MAX_DELTA_CYCLES=50):
@@ -320,13 +339,13 @@ class SimBox:
             for io in net.IO:
                 io._Value = initVal
         for obj in self.Objects:
-            if hasattr(obj,"update"):
+            if hasattr(obj, "update"):
                 obj.update()
         self.stepDeltaLoop()
 
     def stepDeltaLoop(self):
         for obj in self.Objects:
-            if hasattr(obj,"perdeltatick"):
+            if hasattr(obj, "perdeltatick"):
                 obj.perdeltatick()
         while self.scheduler.hasCurrentEvent():
             next_delta = min(self.scheduler.queue[self.scheduler.currentTime].keys())
@@ -348,5 +367,5 @@ class SimBox:
                         if io.parent and not isinstance(io.parent, Module):
                             affectedComponent.add(io.parent)
             for comp in affectedComponent:
-                if hasattr(comp,"update"):
+                if hasattr(comp, "update"):
                     comp.update()

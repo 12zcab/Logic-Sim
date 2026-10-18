@@ -5,11 +5,13 @@
 # By 12zcab :|
 
 
+
 import tkinter as tk
 from tkinter import ttk
 import math
 import uuid
 from typing import List, Dict, Set, Optional, Tuple, Callable
+from PIL import Image, ImageDraw, ImageTk
 
 def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
     rad = math.radians(angle)
@@ -174,22 +176,24 @@ class Wire:
         else:
             self.vertices = simplified[1:-1]
 
-class Net:
+class WireNet:
     def __init__(self, net_id: str, name: str = ""):
         self.id = net_id
         self.name = name or f"NET_{net_id[:6].upper()}"
         self.wires: Set[Wire] = set()
         self.pins: Set[Pin] = set()
-    def setAllPinColor(self,color):
+
+    def setAllPinColor(self, color):
         for pin in self.pins:
             pin.color = color
+
     def setColor(self, color):
         for wire in self.wires:
             wire.color = color
 
 class NetEngine:
-    def __init__(self, event_callback: Optional[Callable[[str, Net, Optional[Pin]], None]] = None):
-        self.nets: Dict[str, Net] = {}
+    def __init__(self, event_callback: Optional[Callable[[str, WireNet, Optional[Pin]], None]] = None):
+        self.nets: Dict[str, WireNet] = {}
         self.event_callback = event_callback
 
     def rebuild_nets(self, wires: List[Wire], nodes: List[NodeObject]):
@@ -278,7 +282,8 @@ class NetEngine:
             key = (frozenset(net.pins), frozenset(net.wires))
             existing_net_lookup[key] = net
 
-        new_nets: Dict[str, Net] = {}
+        new_nets: Dict[str, WireNet] = {}
+        created_nets: List[WireNet] = []
         matched_net_ids = set()
 
         for comp_pins, comp_wires in raw_components:
@@ -288,10 +293,8 @@ class NetEngine:
                 matched_net_ids.add(net.id)
             else:
                 net_id = str(uuid.uuid4())[:8]
-                net = Net(net_id)
-                net.pins = comp_pins
-                net.wires = comp_wires
-                self._notify_event("NET_CREATE", net, None)
+                net = WireNet(net_id)
+                created_nets.append(net)
 
             net.pins = comp_pins
             net.wires = comp_wires
@@ -301,6 +304,13 @@ class NetEngine:
                 w.net = net
             new_nets[net.id] = net
 
+        new_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
+
+        for pin, old_net in old_pin_net_map.items():
+            new_net = new_pin_net_map.get(pin)
+            if old_net != new_net and old_net is not None:
+                self._notify_event("DISCONNECT", old_net, pin)
+
         destroyed_net_ids = set(self.nets.keys()) - matched_net_ids
         for net_id in destroyed_net_ids:
             old_net = self.nets.get(net_id)
@@ -309,14 +319,13 @@ class NetEngine:
 
         self.nets = new_nets
 
-        new_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
+        for net in created_nets:
+            self._notify_event("NET_CREATE", net, None)
+
         for pin, old_net in old_pin_net_map.items():
             new_net = new_pin_net_map.get(pin)
-            if old_net != new_net:
-                if old_net is not None:
-                    self._notify_event("DISCONNECT", old_net, pin)
-                if new_net is not None:
-                    self._notify_event("CONNECT", new_net, pin)
+            if old_net != new_net and new_net is not None:
+                self._notify_event("CONNECT", new_net, pin)
 
     @staticmethod
     def _paths_touch(path1: List[Tuple[float, float]], path2: List[Tuple[float, float]]) -> bool:
@@ -328,12 +337,10 @@ class NetEngine:
                     return True
         return False
 
-    def _notify_event(self, event_type: str, net: Net, pin: Optional[Pin]):
+    def _notify_event(self, event_type: str, net: WireNet, pin: Optional[Pin]):
         if self.event_callback:
             self.event_callback(event_type, net, pin)
 
-
-# --- PyIcon Shape Recorder & Hit Testing Helpers ---
 class PyIconRecorder:
     def __init__(self):
         self.shapes = []
@@ -399,7 +406,6 @@ class PyIconRecorder:
                 pts.append((float(coords[i]), float(coords[i+1])))
         return pts
 
-
 def smooth_polygon(pts, iterations=2):
     curr = pts
     for _ in range(iterations):
@@ -414,7 +420,6 @@ def smooth_polygon(pts, iterations=2):
             next_pts.append(r)
         curr = next_pts
     return curr
-
 
 def point_in_polygon(x: float, y: float, poly: list) -> bool:
     n = len(poly)
@@ -434,7 +439,6 @@ def point_in_polygon(x: float, y: float, poly: list) -> bool:
         p1x, p1y = p2x, p2y
     return inside
 
-
 def point_near_segment(px, py, v, w) -> float:
     vx, vy = v
     wx, wy = w
@@ -446,7 +450,6 @@ def point_near_segment(px, py, v, w) -> float:
     proj_y = vy + t * (wy - vy)
     return math.hypot(px - proj_x, py - proj_y)
 
-
 def point_near_polygon_outline(x: float, y: float, poly: list, threshold: float) -> bool:
     n = len(poly)
     for i in range(n):
@@ -456,13 +459,11 @@ def point_near_polygon_outline(x: float, y: float, poly: list, threshold: float)
             return True
     return False
 
-
 def point_near_polyline(x: float, y: float, pts: list, threshold: float) -> bool:
     for i in range(len(pts) - 1):
         if point_near_segment(x, y, pts[i], pts[i+1]) <= threshold:
             return True
     return False
-
 
 def hit_test_shapes(px: float, py: float, shapes: list, tolerance: float = 3.0) -> bool:
     for shape_type, data, kwargspx in shapes:
@@ -512,7 +513,6 @@ def hit_test_shapes(px: float, py: float, shapes: list, tolerance: float = 3.0) 
                 return True
 
     return False
-# ----------------------------------------------------
 
 class NodeEditor(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
@@ -580,8 +580,7 @@ class NodeEditor(ttk.Frame):
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         self.canvas.bind("<Configure>", lambda e: self.redraw_all())
-        
-        # Bind single, double, and triple clicks uniformly to handle rapid clicking as click events
+
         self.canvas.bind("<ButtonPress-1>", self._on_left_click)
         self.canvas.bind("<Double-Button-1>", self._on_left_click)
         self.canvas.bind("<Triple-Button-1>", self._on_left_click)
@@ -625,9 +624,10 @@ class NodeEditor(ttk.Frame):
         node.x = self.snap_node_coord(node.x)
         node.y = self.snap_node_coord(node.y)
 
-        self.engine.rebuild_nets(self.wires, self.nodes)
+        self.rebuild_nets()
         self.redraw_all()
-
+    def rebuild_nets(self):
+        self.engine.rebuild_nets(self.wires, self.nodes)
     def _get_anim_val(self, key: object, is_active: bool) -> float:
         curr = self.anim_states.get(key, 0.0)
         target = 1.0 if is_active else 0.0
@@ -679,12 +679,12 @@ class NodeEditor(ttk.Frame):
         for cb in self._event_listeners.get(event_name, []):
             cb(*args, **kwargs)
 
-    def get_selected_net(self) -> Optional[Net]:
+    def get_selected_net(self) -> Optional[WireNet]:
         if isinstance(self.selected_object, Wire):
             return self.selected_object.net
         if isinstance(self.selected_object, Pin):
             return self.selected_object.net
-        if isinstance(self.selected_object, Net):
+        if isinstance(self.selected_object, WireNet):
             return self.selected_object
         return None
 
@@ -734,29 +734,25 @@ class NodeEditor(ttk.Frame):
         w = self.canvas.winfo_width() or 1000
         h = self.canvas.winfo_height() or 700
 
-        grid_step = self.zoom
-        if grid_step < 6:
+        if self.zoom < 6:
             return
 
-        min_wx = math.floor((-self.pan_x / self.zoom))
-        max_wx = math.ceil(((w - self.pan_x) / self.zoom))
-        min_wy = math.floor((-self.pan_y / self.zoom))
-        max_wy = math.ceil(((h - self.pan_y) / self.zoom))
+        min_wx = math.floor(-self.pan_x / self.zoom)
+        max_wx = math.ceil((w - self.pan_x) / self.zoom)
+        min_wy = math.floor(-self.pan_y / self.zoom)
+        max_wy = math.ceil((h - self.pan_y) / self.zoom)
 
-        dot_count = (max_wx - min_wx + 1) * (max_wy - min_wy + 1)
-        if dot_count > 2500:
-            return
+        grid_color = self.colors["grid"]
 
-        dot_r = max(1.5, 2.0 * (self.zoom / 30.0))
-        curr_wx = min_wx
-        while curr_wx <= max_wx:
-            sx = curr_wx * self.zoom + self.pan_x
-            curr_wy = min_wy
-            while curr_wy <= max_wy:
-                sy = curr_wy * self.zoom + self.pan_y
-                self.canvas.create_oval(sx - dot_r, sy - dot_r, sx + dot_r, sy + dot_r, fill=self.colors["grid"], outline="")
-                curr_wy += 1
-            curr_wx += 1
+        for wx in range(min_wx, max_wx + 1):
+            sx = wx * self.zoom + self.pan_x
+            self.canvas.create_line(sx, 0, sx, h, fill=grid_color, tags="grid")
+
+        for wy in range(min_wy, max_wy + 1):
+            sy = wy * self.zoom + self.pan_y
+            self.canvas.create_line(0, sy, w, sy, fill=grid_color, tags="grid")
+
+        self.canvas.tag_lower("grid")
 
     def _draw_nodes(self):
         selected_net = self.get_selected_net()
@@ -796,7 +792,7 @@ class NodeEditor(ttk.Frame):
                     "w": sw,
                     "h": sh,
                     "cx": sx + sw / 2.0,
-                    "cy": sy + sh / 2.0,
+                    "cy": nsy if (nsy := sy + sh / 2.0) else sy + sh / 2.0,
                     "angle": node.angle,
                     "is_selected": is_selected,
                     "tags": tags,
@@ -1065,7 +1061,7 @@ class NodeEditor(ttk.Frame):
                     created_wire = self.active_wire
                     self.active_wire = None
                     self.selected_object = created_wire
-                    self.engine.rebuild_nets(self.wires, self.nodes)
+                    self.rebuild_nets()
                     self._emit("wire_add", created_wire)
             else:
                 wire_snap = self._get_nearest_wire_in_editor(wx, wy, radius=12.0)
@@ -1077,7 +1073,7 @@ class NodeEditor(ttk.Frame):
                     created_wire = self.active_wire
                     self.active_wire = None
                     self.selected_object = created_wire
-                    self.engine.rebuild_nets(self.wires, self.nodes)
+                    self.rebuild_nets()
                     self._emit("wire_add", created_wire)
                 else:
                     snap_pos = self.snap_wire_point(wx, wy)
@@ -1163,7 +1159,7 @@ class NodeEditor(ttk.Frame):
                 self.drag_wire_segment_index = None
 
             self.drag_target = None
-            self.engine.rebuild_nets(self.wires, self.nodes)
+            self.rebuild_nets()
             self.redraw_all()
 
     def _on_right_click(self, event):
@@ -1187,7 +1183,7 @@ class NodeEditor(ttk.Frame):
                 elif clicked_wire:
                     self.delete_wire(clicked_wire)
 
-            self.engine.rebuild_nets(self.wires, self.nodes)
+            self.rebuild_nets()
 
         self.redraw_all()
 
@@ -1378,7 +1374,7 @@ class NodeEditor(ttk.Frame):
         self.nodes.append(node)
         self._emit("node_add", node)
         self.redraw_all()
-        self.engine.rebuild_nets(self.wires, self.nodes)
+        self.rebuild_nets()
         return node
 
     def delete_node(self, node: NodeObject):
@@ -1404,7 +1400,7 @@ class NodeEditor(ttk.Frame):
         self.wires.clear()
         self.selected_object = None
         self.hovered_object = None
-        self.engine.rebuild_nets(self.wires, self.nodes)
+        self.rebuild_nets()
         self.redraw_all()
 
     def reset_view(self):
@@ -1413,7 +1409,7 @@ class NodeEditor(ttk.Frame):
         self.zoom = 35.0
         self.redraw_all()
 
-    def _handle_net_event(self, event_type: str, net: Net, pin: Optional[Pin]):
+    def _handle_net_event(self, event_type: str, net: WireNet, pin: Optional[Pin]):
         pin_name = f"{pin.owner.title}:{pin.name}" if pin else "None"
         if event_type == "CONNECT":
             self._emit("connect", net, pin)
@@ -1549,7 +1545,7 @@ if __name__ == "__main__":
     nand_gate.add_pin("B", -1, 2, color="#1d2536")
     nand_gate.add_pin("Y", 4, 1, color="#1d2536")
 
-    app.engine.rebuild_nets(app.wires, app.nodes)
+    app.rebuild_nets()
     app.redraw_all()
 
     root.mainloop()
