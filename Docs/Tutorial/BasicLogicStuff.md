@@ -58,7 +58,7 @@ Finally, we can test this circuit by toggling the input buttons!
 ![11](IMG/8.png)
 
 ## T-Type FlipFlop
-![T-FlipFlop](IMG/T FlipFlop.png)
+![T-FlipFlop](IMG/TFlipFlop.png)
 
 Not yet finished
 :D
