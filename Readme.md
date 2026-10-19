@@ -45,9 +45,13 @@ To build it,just delete the internal_lib and build_cache and execute build.bat
     - '__init__'.py  Importer :D
 
 More About Modules:
+
 Modules basically consist of 3 parts:
+
 1.```__init__.py``` and other python files with object definition
+
 2.GUI.json with definition for the node editor render.
+
 3.pyIcon files: a kinda special python executable script that describe rendering process of Tkinter Canvas
 
 - cli.py the basic command line interface for debugging (mostly)
