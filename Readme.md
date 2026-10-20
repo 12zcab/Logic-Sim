@@ -7,10 +7,11 @@
 |_______ \____/\___  /|__|\___  >_______  /|__|__|_|  /
         \/    /_____/         \/        \/          \/ 
 </pre>
-### An Easy to use Logic Simulation Software
-#### Made By 12zcab and Walker
-#### Credit: MoonMinor for Pre3 week helping
-
+## An Easy to use Logic Simulation Software
+### Made By 12zcab and Walker
+### Credit
+#### 3rd prep-week Contributor : MoonMinor
+#### Day-1-Believer : @astrokoala23 for giving this project the first star
 
 # What is Logic-Sim?
 Logic-Sim is a easy to use logic simulator written with pure python aiming for high modularization and Simple-to-use.
