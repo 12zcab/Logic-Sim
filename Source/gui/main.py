@@ -45,22 +45,32 @@ class LogicSimApp:
                 gui_net.setAllPinColor("#222222")
 
     def setup_ui(self):
-        self.paned_window = PanedWindow(
+        self.upperToolbarPaned = PanedWindow(
             self.root,
             orient=VERTICAL,
             sashwidth=6,
             sashrelief=RAISED,
             bg="#2D2D2D"
         )
-        self.paned_window.pack(fill=BOTH, expand=True)
+        self.upperToolbarPaned.pack(fill=BOTH, expand=True)
 
-        self.toolbar = ToolBar(master=self.paned_window)
-        self.sub_toolbar = ToolBar(master=self.paned_window)
-        self.node_editor = NodeEditor(self.paned_window)
-
-        self.paned_window.add(self.toolbar, minsize=40, height=80)
-        self.paned_window.add(self.sub_toolbar, minsize=40, height=80)
-        self.paned_window.add(self.node_editor, minsize=200)
+        self.toolbar = ToolBar(master=self.upperToolbarPaned)
+        self.upperToolbarPaned.add(self.toolbar, minsize=40, height=80)
+        
+        self.lowerToolbarPaned = PanedWindow(
+            self.upperToolbarPaned,
+            orient=VERTICAL,
+            sashwidth=6,
+            sashrelief=RAISED,
+            bg="#2D2D2D"
+        )
+        self.upperToolbarPaned.add(self.lowerToolbarPaned, minsize=40, height=80)
+        self.upperToolbarPaned.pack(fill=BOTH, expand=True)
+        
+        self.sub_toolbar = ToolBar(master=self.lowerToolbarPaned)
+        self.node_editor = NodeEditor(self.lowerToolbarPaned)
+        self.lowerToolbarPaned.add(self.sub_toolbar, minsize=40, height=80)
+        self.lowerToolbarPaned.add(self.node_editor, minsize=200)
         
         self.node_editor.bind_event("net_create", lambda net: self.createNetEvent(net))
         self.node_editor.bind_event("net_destroy", lambda net: self.destroyNetEvent(net))

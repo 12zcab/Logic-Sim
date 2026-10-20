@@ -124,17 +124,25 @@ class ToolBarButton(Canvas):
             max_text_h = h * 0.25 if self.pyicon_path else h * 0.6
             max_text_w = w * 0.9
 
-            font_size = max(6, int(max_text_h))
-            test_font = tkFont.Font(
-                family="Arial", size=font_size, weight="bold"
-            )
+            low = 6
+            high = max(6, int(max_text_h))
+            best_size = low
 
-            while (
-                test_font.measure(self.text) > max_text_w
-                or test_font.metrics("linespace") > max_text_h
-            ) and font_size > 6:
-                font_size -= 1
-                test_font.configure(size=font_size)
+            test_font = tkFont.Font(family="Arial", size=high, weight="bold")
+
+            while low <= high:
+                mid = (low + high) // 2
+                test_font.configure(size=mid)
+                if (
+                    test_font.measure(self.text) <= max_text_w
+                    and test_font.metrics("linespace") <= max_text_h
+                ):
+                    best_size = mid
+                    low = mid + 1
+                else:
+                    high = mid - 1
+
+            test_font.configure(size=best_size)
 
             self.create_text(
                 w / 2,
