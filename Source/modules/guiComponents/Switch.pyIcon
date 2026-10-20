@@ -19,7 +19,6 @@ corners = [
     (box_x1, box_y2)
 ]
 
-# Fixed screen-space shadow offset (independent of rotation angle)
 shadow_offset = box_w * 0.06
 shadow_corners = [
     (box_x1 + shadow_offset, box_y1 + shadow_offset),
@@ -28,7 +27,6 @@ shadow_corners = [
     (box_x1 + shadow_offset, box_y2 + shadow_offset)
 ]
 
-# Rotate only the box corners, keeping the shadow fixed in screen space
 rot_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in corners]
 flat_box = [coord for pt in rot_corners for coord in pt]
 

@@ -5,7 +5,6 @@ if 'node' in globals() and node is not None and hasattr(node, 'metadata') and no
     if hasattr(node.metadata, "state"):
         is_on = bool(node.metadata.state)
 
-# Main container box dimensions
 box_w = w * (3.0 / 5.0)
 box_h = h * (3.0 / 5.0)
 box_x1 = x + (w - box_w) / 2.0
@@ -40,7 +39,6 @@ flat_shadow = [coord for pt in rot_shadow_corners for coord in pt]
 stroke_w = max(2, int(min(box_w, box_h) * 0.05))
 select_w = stroke_w + max(2, int(min(box_w, box_h) * 0.04))
 
-# Selection highlight
 if is_selected:
     canvas.create_polygon(
         flat_box,
@@ -52,7 +50,6 @@ if is_selected:
         tags=tags
     )
 
-# Drop shadow
 canvas.create_polygon(
     flat_shadow,
     fill="#000000",
@@ -62,7 +59,6 @@ canvas.create_polygon(
     tags=tags
 )
 
-# Body background and border
 bg_fill = "#1e293b" if is_on else "#111111"
 border_color = "#38bdf8" if is_on else "#444444"
 
@@ -76,7 +72,6 @@ canvas.create_polygon(
     tags=tags
 )
 
-# Square wave (pulse) symbol geometry
 wave_w = box_w * 0.55
 wave_h = box_h * 0.30
 wave_x1 = center_x - wave_w / 2.0
@@ -109,7 +104,6 @@ canvas.create_line(
     tags=tags
 )
 
-# Pulse label/indicator
 font_size = int(6 * (zoom / 35.0))
 if font_size > 0:
     label_pt = rotatePoint(center_x, center_y + box_h * 0.32, cx, cy, angle)

@@ -36,3 +36,16 @@ class OneHertz(Component):
             self.lastupdate += TOGGLE_INTERVAL_NS
             self.state = not self.state
             self.IO.Y.Value = Logic.ONE if self.state else Logic.ZERO
+            
+class VisualAnalyzer(Component):
+    def __init__(self, Name):
+        super().__init__(Name, [IO("A")], self.update)
+        self.keepTicks = 300
+        self.graph = []
+    def update(self):
+        pass
+    def perdeltatick(self):
+        value = 1 if self.IO.A.Value == Logic.ONE else 0
+        self.graph.append(value)
+        while len(self.graph) > self.keepTicks:
+            self.graph.pop(0)

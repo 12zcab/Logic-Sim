@@ -45,6 +45,21 @@
                     "size": [2,2]
                 }
             }
+        },
+        "Logic Analyzer":{
+            "constructor":"VisualAnalyzer",
+            "size": [10,5],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "A": {"position":[10,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Visualizer.pyIcon",
+                    "size": [10,5]
+                }
+            }
         }
     }
 }
