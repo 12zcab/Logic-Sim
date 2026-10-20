@@ -11,7 +11,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"Switch.pyIcon"
+                    "path":"Switch.pyIcon",
+                    "size": [2,2]
                 }
             }
         },
@@ -25,7 +26,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"Lamp.pyIcon"
+                    "path":"Lamp.pyIcon",
+                    "size": [2,2]
                 }
             }
         },
@@ -39,7 +41,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"PulseGenerator.pyIcon"
+                    "path":"PulseGenerator.pyIcon",
+                    "size": [2,2]
                 }
             }
         }

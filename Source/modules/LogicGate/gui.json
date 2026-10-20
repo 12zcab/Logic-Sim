@@ -12,7 +12,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"Buffer.pyIcon"
+                    "path":"Buffer.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -27,7 +28,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"NotGate.pyIcon"
+                    "path":"NotGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -43,7 +45,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"AndGate.pyIcon"
+                    "path":"AndGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -59,7 +62,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"NandGate.pyIcon"
+                    "path":"NandGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -75,7 +79,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"OrGate.pyIcon"
+                    "path":"OrGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -91,7 +96,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"NorGate.pyIcon"
+                    "path":"NorGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -107,7 +113,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"XorGate.pyIcon"
+                    "path":"XorGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -123,7 +130,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"XnorGate.pyIcon"
+                    "path":"XnorGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         },
@@ -140,7 +148,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"NandGate3.pyIcon"
+                    "path":"NandGate3.pyIcon",
+                    "size": [6,5]
                 }
             }
         },
@@ -156,7 +165,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"OrNotGate.pyIcon"
+                    "path":"OrNotGate.pyIcon",
+                    "size": [4,3]
                 }
             }
         }

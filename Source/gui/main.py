@@ -6,7 +6,7 @@ from gui.node.nodeEngine import *
 from gui.toolbar.toolbar import *
 from gui.loader import *
 from core import *
-from core.module.object import Net, IO, Component, Module, SimBox, Logic, Strength
+from core.module.object import *
 
 
 class LogicSimApp:
@@ -174,10 +174,10 @@ class LogicSimApp:
         module_dir = os.path.dirname(module_data["__path__"])
         
         for component_name in component_names:
-            pyicon_path, loadingObj = self.get_component_data(
+            pyIconPathRatio, loadingObj = self.get_component_data(
                 module_dir, components_obj, component_name
             )
-            bt = self.sub_toolbar.add_button(component_name, pyicon_path)
+            bt = self.sub_toolbar.add_button(component_name,pyIconPathRatio)
             bt.config(command=lambda loader=loadingObj: self.spawnFromButton(loader))
         self.sub_toolbar.force_update()
 
@@ -197,8 +197,12 @@ class LogicSimApp:
     def get_component_data(self, module_dir, components_obj, component_name):
         component_def = getComponentDefinition(components_obj, component_name)
         pyicon_path = None
-        icon_data = component_def.get("children", {}).get("pyIcon", {})
+        ratio = None
+        if "children" in component_def.keys():
+            if "pyIcon" in component_def["children"].keys():
+                icon_data = component_def.get("children", {}).get("pyIcon", {})
+                ratio = component_def.get("children", {}).get("pyIcon", {}).get("size")
         if icon_data.get("path"):
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
         loadingObjfunc = lambda x, y, name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path, x, y)
-        return pyicon_path, loadingObjfunc
+        return [pyicon_path,ratio], loadingObjfunc

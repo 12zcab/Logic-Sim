@@ -15,7 +15,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"PP0_DFF.pyIcon"
+                    "path":"PP0_DFF.pyIcon",
+                    "size": [3,5]
                 }
             }
         },
@@ -32,7 +33,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"DFF.pyIcon"
+                    "path":"DFF.pyIcon",
+                    "size": [3,3]
                 }
             }
         }
