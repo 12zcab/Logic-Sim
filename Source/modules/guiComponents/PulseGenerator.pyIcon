@@ -30,8 +30,8 @@ shadow_corners = [
     (box_x1 + shadow_offset, box_y2 + shadow_offset)
 ]
 
-rot_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in corners]
-rot_shadow_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in shadow_corners]
+rot_corners = [rotatePoint(px, py, cx, cy, 0) for px, py in corners]
+rot_shadow_corners = [rotatePoint(px, py, cx, cy, 0) for px, py in shadow_corners]
 
 flat_box = [coord for pt in rot_corners for coord in pt]
 flat_shadow = [coord for pt in rot_shadow_corners for coord in pt]
@@ -91,7 +91,7 @@ wave_pts_raw = [
     (wave_x1 + 4 * step_x, y_low)
 ]
 
-rot_wave_pts = [rotatePoint(px, py, cx, cy, angle) for px, py in wave_pts_raw]
+rot_wave_pts = [rotatePoint(px, py, cx, cy, 0) for px, py in wave_pts_raw]
 flat_wave = [coord for pt in rot_wave_pts for coord in pt]
 
 wave_color = "#38bdf8" if is_on else "#64748b"
@@ -106,7 +106,7 @@ canvas.create_line(
 
 font_size = int(6 * (zoom / 35.0))
 if font_size > 0:
-    label_pt = rotatePoint(center_x, center_y + box_h * 0.32, cx, cy, angle)
+    label_pt = rotatePoint(center_x, center_y + box_h * 0.32, cx, cy, 0)
     text_color = "#38bdf8" if is_on else "#64748b"
     canvas.create_text(
         label_pt[0], label_pt[1],

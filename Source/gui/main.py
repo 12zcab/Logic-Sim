@@ -5,6 +5,7 @@ from bidict import bidict
 from gui.node.nodeEngine import *
 from gui.toolbar.toolbar import *
 from gui.loader import *
+from gui.attribute.attributePanel import *
 from core import *
 from core.module.object import *
 
@@ -14,16 +15,16 @@ class LogicSimApp:
         self.root = root
         self.root.title("LogicSim GUI")
         self.root.geometry("900x700")
-        
+        self.logicToNode = bidict({})
+        self.logicNetToNodeNet = bidict({})
+        self.constructToDefin = {}
+        self.lastSelectedNode = None
         self.all_jsons = {}
         self.setup_ui()
         self.load_all()
         self.root.after(0, self.updateMainApp)
         self.simBox = SimBox([])
         self.simBox.init()
-        self.logicToNode = bidict({})
-        self.logicNetToNodeNet = bidict({})
-
     def updateMainApp(self):
         self.simBox.stepDeltaLoop()
         self.simBox.scheduler.advanceToNext()
@@ -68,9 +69,19 @@ class LogicSimApp:
         self.upperToolbarPaned.pack(fill=BOTH, expand=True)
         
         self.sub_toolbar = ToolBar(master=self.lowerToolbarPaned)
-        self.node_editor = NodeEditor(self.lowerToolbarPaned)
         self.lowerToolbarPaned.add(self.sub_toolbar, minsize=40, height=80)
-        self.lowerToolbarPaned.add(self.node_editor, minsize=200)
+        self.lowerMidToolbarPaned = PanedWindow(
+            self.lowerToolbarPaned,
+            orient=HORIZONTAL,
+            sashwidth=6,
+            sashrelief=RAISED,
+            bg="#2D2D2D"
+        )
+        self.lowerToolbarPaned.add(self.lowerMidToolbarPaned, minsize = 200)
+        self.node_editor = NodeEditor(self.lowerMidToolbarPaned)
+        self.attributePanel = AttributePanel(self.lowerMidToolbarPaned)
+        self.lowerMidToolbarPaned.add(self.node_editor, stretch="always")
+        self.lowerMidToolbarPaned.add(self.attributePanel, width=200, stretch="never")
         
         self.node_editor.bind_event("net_create", lambda net: self.createNetEvent(net))
         self.node_editor.bind_event("net_destroy", lambda net: self.destroyNetEvent(net))
@@ -84,7 +95,34 @@ class LogicSimApp:
             logic_obj = self.logicToNode.inv.get(obj)
             if logic_obj and getattr(logic_obj, "onclick", None):
                 logic_obj.onclick()
-
+            if not self.lastSelectedNode == obj:
+                self.loadAttributePanel(logic_obj,NodeObject)
+            else:
+                self.updateAttributePanel(logic_obj,NodeObject)
+            self.lastSelectedNode = obj
+    def loadAttributePanel(self,logicObject,nodeObject):
+        self.attributePanel.setTitle(logicObject.Name)
+        self.attributePanel.clearCategories()
+        definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
+        if definition:
+            for key in definition.keys():
+                cate = self.attributePanel.addCategory(key)
+                for key2 in definition[key].keys():
+                    attr = cate.addAttribute(key2,definition[key][key2]["type"],lambda value,logicObject=logicObject,definition=definition,key=key,key2=key2: self.updateAttribute(logicObject,definition,key,key2,value))
+                    attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
+    def updateAttributePanel(self,logicObject,nodeObject):
+        definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
+        if definition:
+            for key in definition.keys():
+                cate = self.attributePanel.categories[key]
+                for key2 in definition[key].keys():
+                    attr = cate.attributes[key2]
+                    attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
+    
+    def updateAttribute(self,logicObject,definition,key,key2,value):
+        setattr(logicObject,definition[key][key2]["attribute"],value)
+        if definition[key][key2].get("callFunc"):
+            getattr(logicObject,definition[key][key2]["callFunc"])()
     def guiPinToLogicPin(self, guiPin):
         return self.logicToNode.inv[guiPin.owner].IO[guiPin.name]
 
@@ -184,11 +222,12 @@ class LogicSimApp:
         module_dir = os.path.dirname(module_data["__path__"])
         
         for component_name in component_names:
-            pyIconPathRatio, loadingObj = self.get_component_data(
+            pyIconPathRatio, loadingObj , defin= self.get_component_data(
                 module_dir, components_obj, component_name
             )
             bt = self.sub_toolbar.add_button(component_name,pyIconPathRatio)
             bt.config(command=lambda loader=loadingObj: self.spawnFromButton(loader))
+            self.constructToDefin[defin.get("constructor")] = defin
         self.sub_toolbar.force_update()
 
     def spawnFromButton(self, loader):
@@ -215,4 +254,4 @@ class LogicSimApp:
         if icon_data.get("path"):
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
         loadingObjfunc = lambda x, y, name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path, x, y)
-        return [pyicon_path,ratio], loadingObjfunc
+        return [pyicon_path,ratio], loadingObjfunc,component_def

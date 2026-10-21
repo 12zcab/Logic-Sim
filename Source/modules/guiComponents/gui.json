@@ -14,6 +14,15 @@
                     "path":"Switch.pyIcon",
                     "size": [2,2]
                 }
+            },
+            "attributes": {
+                "State": {
+                    "Activated": {
+                        "attribute":"state",
+                        "type":"boolean",
+                        "callFunc": "update"
+                    }
+                }
             }
         },
         "Lamp":{
@@ -31,8 +40,8 @@
                 }
             }
         },
-        "1 Hz":{
-            "constructor":"OneHertz",
+        "Pulse Generator":{
+            "constructor":"PulseGenerator",
             "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
@@ -43,6 +52,14 @@
                 "pyIcon": {
                     "path":"PulseGenerator.pyIcon",
                     "size": [2,2]
+                }
+            },
+            "attributes": {
+                "Timing": {
+                    "Frequency(Hz)": {
+                        "attribute":"Frequency",
+                        "type":"float"
+                    }
                 }
             }
         },
