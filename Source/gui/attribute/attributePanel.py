@@ -18,6 +18,7 @@ class AttributeRow(Frame):
             self.inputWidget.pack(side="right", expand=True, fill="x", padx=5)
             self.inputWidget.bind("<FocusOut>", self.checkChange)
             self.inputWidget.bind("<Return>", self.checkChange)
+            self.inputWidget.bind("<KP_Enter>", self.checkChange)
             
         elif inputType.lower() == "integer":
             self.inputWidget = Spinbox(self, from_=0, to=100, bg="#333333", fg="white", buttonbackground="#222222")
@@ -25,6 +26,7 @@ class AttributeRow(Frame):
             self.inputWidget.config(command=lambda: self.checkChange(None))
             self.inputWidget.bind("<FocusOut>", self.checkChange)
             self.inputWidget.bind("<Return>", self.checkChange)
+            self.inputWidget.bind("<KP_Enter>", self.checkChange)
 
         elif inputType.lower() == "float":
             self.inputWidget = Spinbox(self, from_=0.0, to=100.0, increment=0.1, bg="#333333", fg="white", buttonbackground="#222222")
@@ -32,6 +34,7 @@ class AttributeRow(Frame):
             self.inputWidget.config(command=lambda: self.checkChange(None))
             self.inputWidget.bind("<FocusOut>", self.checkChange)
             self.inputWidget.bind("<Return>", self.checkChange)
+            self.inputWidget.bind("<KP_Enter>", self.checkChange)
             
         elif inputType.lower() == "boolean":
             self.inputWidget = BooleanVar(value=False)
@@ -74,12 +77,16 @@ class AttributeRow(Frame):
 
     def checkChange(self, event=None):
         currentValue = self.getWidgetValue()
+        value_changed = (currentValue != self.lastValue)
         
         if self.inputType.lower() in ["integer", "float"] and hasattr(self.inputWidget, 'delete'):
-            if str(currentValue) != self.inputWidget.get():
-                self.setValue(currentValue, trigger_recall=False)
+            raw_text = self.inputWidget.get()
+            formatted_text = str(currentValue)
+            if formatted_text != raw_text:
+                self.inputWidget.delete(0, "end")
+                self.inputWidget.insert(0, formatted_text)
 
-        if currentValue != self.lastValue:
+        if value_changed:
             self.lastValue = currentValue
             self.recallFunction(currentValue)
 
@@ -158,6 +165,7 @@ class AttributePanel(Frame):
         for categoryPanel in self.categories.values():
             categoryPanel.destroy()
         self.categories.clear()
+        self.setTitle("Attribute Panel")
 
 if __name__ == "__main__":
     root = Tk()

@@ -573,7 +573,8 @@ class NodeEditor(ttk.Frame):
             "node_add": [],
             "node_delete": [],
             "wire_add": [],
-            "wire_delete": []
+            "wire_delete": [],
+            "node_move": []
         }
 
         self.canvas = tk.Canvas(self, bg=self.colors["bg"], highlightthickness=0)
@@ -1108,8 +1109,12 @@ class NodeEditor(ttk.Frame):
             if isinstance(self.drag_target, NodeObject):
                 node = self.drag_target
                 ox, oy = self.drag_node_offset
-                node.x = self.snap_node_coord(wx - ox)
-                node.y = self.snap_node_coord(wy - oy)
+                new_x = self.snap_node_coord(wx - ox)
+                new_y = self.snap_node_coord(wy - oy)
+                if node.x != new_x or node.y != new_y:
+                    node.x = new_x
+                    node.y = new_y
+                    self._emit("node_move", node)
             elif isinstance(self.drag_target, Wire):
                 wire = self.drag_target
                 P = self.drag_wire_initial_path

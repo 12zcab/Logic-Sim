@@ -25,6 +25,28 @@ class LogicSimApp:
         self.root.after(0, self.updateMainApp)
         self.simBox = SimBox([])
         self.simBox.init()
+        self._nodeAttributes = {
+            "x":{
+                "attribute":"x",
+                "type":"float"
+            },
+            "y":{
+                "attribute":"y",
+                "type":"float"
+            },
+            "width":{
+                "attribute":"width",
+                "type":"float"
+            },
+            "height":{
+                "attribute":"height",
+                "type":"float"
+            },
+            "angle":{
+                "attribute":"angle",
+                "type":"integer"
+            }
+        }
     def updateMainApp(self):
         self.simBox.stepDeltaLoop()
         self.simBox.scheduler.advanceToNext()
@@ -89,28 +111,32 @@ class LogicSimApp:
         self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net, pin))
         self.node_editor.bind_event("node_delete", lambda node: self.deleteLogicObj(node))
         self.node_editor.bind_event("select", lambda obj: self.handle_node_click(obj))
-
+        self.node_editor.bind_event("node_move", lambda node: self.handle_node_move(node))
+    def handle_node_move(self,node):
+        self.updateNodeAttributePanel(self.logicToNode.inv.get(node),node)
     def handle_node_click(self, obj):
         if isinstance(obj, NodeObject):
             logic_obj = self.logicToNode.inv.get(obj)
             if logic_obj and getattr(logic_obj, "onclick", None):
                 logic_obj.onclick()
             if not self.lastSelectedNode == obj:
-                self.loadAttributePanel(logic_obj,NodeObject)
+                self.loadAttributePanel(logic_obj,obj)
             else:
-                self.updateAttributePanel(logic_obj,NodeObject)
+                self.updateAttributePanel(logic_obj,obj)
             self.lastSelectedNode = obj
     def loadAttributePanel(self,logicObject,nodeObject):
-        self.attributePanel.setTitle(logicObject.Name)
         self.attributePanel.clearCategories()
+        self.attributePanel.setTitle(logicObject.Name)
         definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
         if definition:
             for key in definition.keys():
                 cate = self.attributePanel.addCategory(key)
                 for key2 in definition[key].keys():
-                    attr = cate.addAttribute(key2,definition[key][key2]["type"],lambda value,logicObject=logicObject,definition=definition,key=key,key2=key2: self.updateAttribute(logicObject,definition,key,key2,value))
+                    attr = cate.addAttribute(key2,definition[key][key2]["type"],lambda value,logicObject=logicObject,definition=definition,key=key,key2=key2: self.updateAttribute(logicObject,definition[key][key2],value))
                     attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
+        self.loadNodeAttributePanel(logicObject,nodeObject)
     def updateAttributePanel(self,logicObject,nodeObject):
+        self.attributePanel.setTitle(logicObject.Name)
         definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
         if definition:
             for key in definition.keys():
@@ -118,11 +144,25 @@ class LogicSimApp:
                 for key2 in definition[key].keys():
                     attr = cate.attributes[key2]
                     attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
-    
-    def updateAttribute(self,logicObject,definition,key,key2,value):
-        setattr(logicObject,definition[key][key2]["attribute"],value)
-        if definition[key][key2].get("callFunc"):
-            getattr(logicObject,definition[key][key2]["callFunc"])()
+        self.updateNodeAttributePanel(logicObject,nodeObject)
+    def loadNodeAttributePanel(self,logicObject,nodeObject):
+        nodeCate = self.attributePanel.addCategory("Node Data")
+        #nodeCate.addAttribute("x","float",lambda value,obj=nodeObject: self.updateAttribute(obj,{"type":"integer","attribute":"x"},value)).setValue(getattr(nodeObject,"x") ,trigger_recall = False)
+        for attributeLabel in self._nodeAttributes.keys():
+            nodeCate.addAttribute(attributeLabel,self._nodeAttributes[attributeLabel]["type"],lambda value,obj=nodeObject,spec=self._nodeAttributes[attributeLabel]: self.updateAttribute(obj,spec,value)).setValue(getattr(nodeObject,self._nodeAttributes[attributeLabel]["attribute"]) ,trigger_recall = False)
+    def updateNodeAttributePanel(self,logicObject,nodeObject):
+        if "Node Data" in self.attributePanel.categories.keys():
+            nodeCate = self.attributePanel.categories["Node Data"]
+            #x = nodeCate.attributes["x"]
+            #x.setValue(getattr(nodeObject,"x") ,trigger_recall = False)
+            for attributeLabel in self._nodeAttributes.keys():
+                nodeCate.attributes[attributeLabel].setValue(getattr(nodeObject,self._nodeAttributes[attributeLabel]["attribute"]) ,trigger_recall = False)
+        else:
+            self.loadNodeAttributePanel(logicObject,nodeObject)
+    def updateAttribute(self,logicObject,spec,value):
+        setattr(logicObject,spec["attribute"],value)
+        if spec.get("callFunc"):
+            getattr(logicObject,spec["callFunc"])()
     def guiPinToLogicPin(self, guiPin):
         return self.logicToNode.inv[guiPin.owner].IO[guiPin.name]
 
@@ -180,6 +220,8 @@ class LogicSimApp:
         self.node_editor.rebuild_nets()
     def deleteLogicObj(self, node):
         logic_obj = self.logicToNode.inv.get(node)
+        if node == self.lastSelectedNode:
+            self.attributePanel.clearCategories()
         if logic_obj:
             for io in logic_obj.IO.values():
                 net = io.Net
