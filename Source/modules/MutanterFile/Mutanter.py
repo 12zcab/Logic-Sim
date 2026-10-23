@@ -4,6 +4,7 @@
 # I have used AI to help me check errors 
 # Son, this thing can self destruct
 
+import sys
 import importlib
 import importlib.util
 import logging
@@ -20,7 +21,10 @@ logging.basicConfig(level=logging.INFO)
 class Loader:
     @staticmethod
     def LoadModule(TargetName):
-        FoundItems = []
+        FoundItems = [] 
+        if TargetName == "All":
+           TargetName = list(sys.builtin_module_names) + [mod.name for mod in pkgutil.iter_modules()]
+  
         if isinstance(TargetName, str):
             TargetName = [TargetName]
 
@@ -173,26 +177,24 @@ class Handler:
 
     def __init__(self):
         self.DataHandler = DataHandler.Handler()
-        self.ConLog = {}
+        self.ConLog = {} 
         self.ChangeLog = {}
-        self.CloneLog = []
+        self.CloneLog = [] 
 
-    def Connect(self, Info):
-        for Target, Imports in Info:
+    def Connect(self, Infos):
+        FoundList = Loader.LoadModule(Infos["Targets"])
+        Found = FoundList[0]
+        ImportList = Loader.LoadModule(Infos["Imports"])
+        Imports = ImportList[0]
+
+        for Target in Found:
             for Import in Imports:
-                FoundList = Loader.LoadModule(Target)
-                if not FoundList:
-                    continue
-                Found = FoundList[0]
-  
-                if not hasattr(Found, Import):
-                    imported_mods = Loader.LoadModule(Import)
-                    if imported_mods:
-                        setattr(Found, Import, imported_mods[0])
-                        found_name = getattr(Found, "__name__", str(Target))
-                        self.ConLog.setdefault(found_name, []).append(Import)
-                else:
-                    print(f"No need to connect '{Import}' to '{Target}'")
+                Name = Infos["Names"][Import.__name__]
+
+                if Name == False:
+                    Name = Import.__name__
+
+                setattr(Target, Name, Import)
 
     def Disconnect(self, ListInfo):
         for Target, Imports in ListInfo:

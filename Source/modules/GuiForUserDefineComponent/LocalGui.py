@@ -11,28 +11,30 @@ class BlocksGui:
     def __init__(self):
         pass
 
-    def CreateGui(self): 
-        pass
- 
+    def CreateGui(self, GraphInfo): 
+        self.PinNumber = GraphInfo["Pins"].size()
+        self.Logics = GraphInfo["Logics"]
+        BlockDefiner.a 
+   
     def CopyChosen(self):  
-        pass
+        pass 
 
-    def DeleteChosen(self):  
+    def DeleteChosen(self):   
         pass    
 
-    def Create():   
+    def Create():    
         pass    
 
-    def DeleteCreated():  
+    def DeleteCreated():   
         pass 
     
 class ScriptGui:    
   
-    def __init__(self):
-        pass 
-  
-    def CreateGui(self):
+    def __init__(self): 
+        pass   
+   
+    def CreateGui(self):   
         pass
-
+  
     def SendContent(self):
         pass

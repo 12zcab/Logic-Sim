@@ -17,6 +17,8 @@ Handler.disconnect(Info)
 
 Info = {"MyModule1.py" = {"Module2.py", "Calculator.py"}} for example
 
+Info = {"Targets", "Type", "Modules" = [], "Atalis" = {} }
+
 ------------------------------------------------------------------------------------------------------------------------------------
 HandleAttachment:
 

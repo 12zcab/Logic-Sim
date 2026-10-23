@@ -33,14 +33,14 @@
           {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 1}}
         ]
       },
-      {
+      {  
         "type": "OR",
         "description": "Outputs 1 if at least one input is 1.",
         "inputs": ["A", "B"],
         "outputs": ["Q"],
         "truthTable": [
-          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 0}},
-          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 1}},
+          {"inputs": {"A": 0, "B": 0}, "outputs": {"Q": 0}},  
+          {"inputs": {"A": 0, "B": 1}, "outputs": {"Q": 1}}, 
           {"inputs": {"A": 1, "B": 0}, "outputs": {"Q": 1}},
           {"inputs": {"A": 1, "B": 1}, "outputs": {"Q": 1}}
         ]

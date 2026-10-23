@@ -31,7 +31,7 @@ for modulePath in moduleJsons:
         componentDefinition = getComponentDefinition(componentsObj, componentName)
         bt = toolbar.add_button(componentName)
         bt.config(command=lambda name=componentName, defn=componentDefinition, dir_path=module_dir: 
-            loadObject(name, defn, node_editor, dir_path)
+            loadObject(name, defn, node_editor, dir_path)  
         )
 
-root.mainloop()
+root.mainloop() 
