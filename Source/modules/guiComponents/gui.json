@@ -25,21 +25,6 @@
                 }
             }
         },
-        "Lamp":{
-            "constructor":"Lamp",
-            "size": [2,2],
-            "color": "transparent",
-            "bcolor": "transparent",
-            "pins": {
-                "A": {"position":[1.5,0.5]}
-            },
-            "children": {
-                "pyIcon": {
-                    "path":"Lamp.pyIcon",
-                    "size": [2,2]
-                }
-            }
-        },
         "Pulse Generator":{
             "constructor":"PulseGenerator",
             "size": [2,2],

@@ -1096,8 +1096,7 @@ class NodeEditor(ttk.Frame):
                     self.drag_wire_segment_index = seg_idx
             else:
                 self.selected_object = None
-
-        self._emit("select", self.selected_object)
+        self._emit("select", self.selected_object,wx, wy)
         self.redraw_all()
 
     def _on_left_drag(self, event):

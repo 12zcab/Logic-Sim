@@ -21,3 +21,10 @@ class SevenSegment(Component):
         self.F = True if self.IO.F.Value == (Logic.ONE if self.ActivateLevel else Logic.ZERO) else False
         self.G = True if self.IO.G.Value == (Logic.ONE if self.ActivateLevel else Logic.ZERO) else False
         self.DP = True if self.IO.DP.Value == (Logic.ONE if self.ActivateLevel else Logic.ZERO) else False
+        
+class Lamp(Component):
+    def __init__(self, Name):
+        super().__init__(Name, [IO("A")], self.update)
+        self.state = False
+    def update(self):
+        self.state = (self.IO.A.Value == Logic.ONE)

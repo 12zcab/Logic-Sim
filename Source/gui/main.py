@@ -110,15 +110,19 @@ class LogicSimApp:
         self.node_editor.bind_event("connect", lambda net, pin: self.connectPinEvent(net, pin))
         self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net, pin))
         self.node_editor.bind_event("node_delete", lambda node: self.deleteLogicObj(node))
-        self.node_editor.bind_event("select", lambda obj: self.handle_node_click(obj))
+        self.node_editor.bind_event("select", lambda obj,rx,ry: self.handle_node_click(obj,rx,ry))
         self.node_editor.bind_event("node_move", lambda node: self.handle_node_move(node))
     def handle_node_move(self,node):
         self.updateNodeAttributePanel(self.logicToNode.inv.get(node),node)
-    def handle_node_click(self, obj):
+    def handle_node_click(self, obj,ax,ay):
+        if obj == None:
+            self.attributePanel.clearCategories()
+            self.lastSelectedNode = None
+            return
         if isinstance(obj, NodeObject):
             logic_obj = self.logicToNode.inv.get(obj)
             if logic_obj and getattr(logic_obj, "onclick", None):
-                logic_obj.onclick()
+                logic_obj.onclick(ax-obj.x,ay-obj.y)
             if not self.lastSelectedNode == obj:
                 self.loadAttributePanel(logic_obj,obj)
             else:
