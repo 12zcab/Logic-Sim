@@ -1,0 +1,27 @@
+{
+    "name": "Display",
+    "components":{
+        "Seven Segment Display":{
+            "constructor":"SevenSegment",
+            "size": [6,8],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "A": {"position":[-1,0]},
+                "B": {"position":[-1,1]},
+                "C": {"position":[-1,2]},
+                "D": {"position":[-1,3]},
+                "E": {"position":[-1,4]},
+                "F": {"position":[-1,5]},
+                "G": {"position":[-1,6]},
+                "DP": {"position":[-1,7]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"SevenSegment.pyIcon",
+                    "size": [4,8]
+                }
+            }
+        }
+    }
+}

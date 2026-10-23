@@ -1,0 +1,81 @@
+import math
+
+A = B = C = D = E = F = G = DP = False
+
+if 'node' in globals() and node is not None and getattr(node, 'metadata', None) is not None:
+    meta = node.metadata
+    A = bool(getattr(meta, 'A', False))
+    B = bool(getattr(meta, 'B', False))
+    C = bool(getattr(meta, 'C', False))
+    D = bool(getattr(meta, 'D', False))
+    E = bool(getattr(meta, 'E', False))
+    F = bool(getattr(meta, 'F', False))
+    G = bool(getattr(meta, 'G', False))
+    DP = bool(getattr(meta, 'DP', False))
+
+cx = x + w / 2.0
+cy = y + h / 2.0
+
+box_pts = [
+    (x, y), (x + w, y),
+    (x + w, y + h), (x, y + h)
+]
+
+stroke_w = max(2, int(min(w, h) * 0.05))
+select_w = stroke_w + max(2, int(min(w, h) * 0.04))
+
+# 3. Outer boundary rotation
+rot_box = [rotatePoint(px, py, cx, cy, angle) for px, py in box_pts]
+flat_box = [coord for pt in rot_box for coord in pt]
+
+if is_selected:
+    canvas.create_polygon(
+        flat_box,
+        fill="", outline="#00E5FF", width=select_w,
+        joinstyle="miter", smooth=False, tags=tags
+    )
+
+canvas.create_polygon(
+    flat_box,
+    fill="#181818", outline="#FFFFFF", width=stroke_w,
+    joinstyle="miter", smooth=False, tags=tags
+)
+
+x1, x2 = x + w * 0.28, x + w * 0.72
+y1, y2, y3 = y + h * 0.20, y + h * 0.50, y + h * 0.80
+
+segments = {
+    'A': [(x1, y1), (x2, y1)],
+    'B': [(x2, y1), (x2, y2)],
+    'C': [(x2, y2), (x2, y3)],
+    'D': [(x1, y3), (x2, y3)],
+    'E': [(x1, y2), (x1, y3)],
+    'F': [(x1, y1), (x1, y2)],
+    'G': [(x1, y2), (x2, y2)],
+}
+
+states = {'A': A, 'B': B, 'C': C, 'D': D, 'E': E, 'F': F, 'G': G}
+
+seg_w = max(2, int(min(w, h) * 0.07))
+on_color = "#FF2D55"
+off_color = "#282828"
+
+for seg_key, (p1, p2) in segments.items():
+    rp1 = rotatePoint(p1[0], p1[1], cx, cy, angle)
+    rp2 = rotatePoint(p2[0], p2[1], cx, cy, angle)
+    fill_col = on_color if states[seg_key] else off_color
+    
+    canvas.create_line(
+        rp1[0], rp1[1], rp2[0], rp2[1],
+        fill=fill_col, width=seg_w, capstyle="round", tags=tags
+    )
+
+dp_pt = rotatePoint(x + w * 0.82, y + h * 0.80, cx, cy, angle)
+dp_r = max(1.5, seg_w / 2.0)
+dp_fill = on_color if DP else off_color
+
+canvas.create_oval(
+    dp_pt[0] - dp_r, dp_pt[1] - dp_r,
+    dp_pt[0] + dp_r, dp_pt[1] + dp_r,
+    fill=dp_fill, outline="", tags=tags
+)
