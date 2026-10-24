@@ -4,8 +4,9 @@ is_on = False
 if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
     if hasattr(node.metadata, "state"):
         is_on = bool(node.metadata.state)
-box_w = w * (3.0 / 5.0)
-box_h = h * (3.0 / 5.0)
+
+box_w = w * (6.0 / 5.0)
+box_h = h * (6.0 / 5.0)
 box_x1 = x + (w - box_w) / 2.0
 box_y1 = y + (h - box_h) / 2.0
 box_x2 = box_x1 + box_w
@@ -69,7 +70,7 @@ canvas.create_polygon(
 
 text_str = "1" if is_on else "0"
 center_pt = rotatePoint(x + w / 2.0, y + h / 2.0, cx, cy, angle)
-font_size = int(8 * (zoom / 35.0))
+font_size = int(12 * (zoom / 35.0))
 
 if font_size > 0:
     canvas.create_text(

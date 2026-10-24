@@ -68,15 +68,15 @@ class ToolBarButton(Canvas):
     def _on_click(self, event):
         if self.command:
             self.command()
-
+            
     def _on_resize(self, event):
         self.delete("all")
         w, h = event.width, event.height
         if w <= 1 or h <= 1:
             return
         if self.pyicon_path and os.path.exists(self.pyicon_path):
-            max_box_h = int(h * 0.60) if self.text else int(h * 0.85)
-            max_box_w = int(w * 0.85)
+            max_box_h = int(h * 0.50) if self.text else int(h * 0.65)
+            max_box_w = int(w * 0.65)
             
             img_w, img_h = self.pyicon_ratio[0], self.pyicon_ratio[1]
             actual_ratio = img_h / img_w
@@ -95,7 +95,9 @@ class ToolBarButton(Canvas):
                 (((h * 0.60) - icon_h) / 2) if self.text 
                 else ((h - icon_h) / 2)
             )
-            calculated_zoom = min(icon_w / 4.0, icon_h / 3.0)
+            
+            calculated_zoom = min(icon_w / float(img_w), icon_h / float(img_h))
+            
             icon_scope = {
                 "canvas": self,
                 "x": offset_x,
@@ -118,14 +120,13 @@ class ToolBarButton(Canvas):
                 exec(code, icon_scope)
             except Exception as e:
                 print(f"Error rendering pyIcon {self.pyicon_path}: {e}")
-
         if self.text:
             text_y = h * 0.82 if self.pyicon_path else h / 2
             max_text_h = h * 0.25 if self.pyicon_path else h * 0.6
             max_text_w = w * 0.9
 
-            low = 6
-            high = max(6, int(max_text_h))
+            low = 1
+            high = max(12, int(max_text_h))
             best_size = low
 
             test_font = tkFont.Font(family="Arial", size=high, weight="bold")

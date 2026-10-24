@@ -5,8 +5,8 @@ if 'node' in globals() and node is not None and hasattr(node, 'metadata') and no
     if hasattr(node.metadata, "state"):
         is_on = bool(node.metadata.state)
 
-box_w = w * (3.0 / 5.0)
-box_h = h * (3.0 / 5.0)
+box_w = w * (6.0 / 5.0)
+box_h = h * (6.0 / 5.0)
 box_x1 = x + (w - box_w) / 2.0
 box_y1 = y + (h - box_h) / 2.0
 box_x2 = box_x1 + box_w

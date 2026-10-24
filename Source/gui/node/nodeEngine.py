@@ -11,7 +11,6 @@ from tkinter import ttk
 import math
 import uuid
 from typing import List, Dict, Set, Optional, Tuple, Callable
-from PIL import Image, ImageDraw, ImageTk
 
 def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
     rad = math.radians(angle)
@@ -58,8 +57,8 @@ class NodeObject:
         self.title = title
         self.x = float(round(x * 2.0) / 2.0)
         self.y = float(round(y * 2.0) / 2.0)
-        self.width = float(round(width * 2.0) / 2.0)
-        self.height = float(round(height * 2.0) / 2.0)
+        self._width = float(round(width * 2.0) / 2.0)
+        self._height = float(round(height * 2.0) / 2.0)
         self.bg_color = bg_color
         self.border_color = border_color
         self.graphic_code = graphic_code
@@ -70,7 +69,32 @@ class NodeObject:
         self.compiled_code = None
         if self.graphic_code:
             self.compiled_code = compile(self.graphic_code, f"<node_graphic_{self.id}>", "exec")
-
+    @property
+    def width(self):
+        return self._width
+    @property
+    def height(self):
+        return self._height
+    @width.setter
+    def width(self, new_width):
+        old_width = self._width
+        print("Width Change Detected:")
+        print(old_width,new_width)
+        if old_width != new_width:
+            self._width = new_width
+            dw = new_width - old_width
+            for pin in self.pins:
+                if (pin.rel_x - old_width) == 0.5:
+                    pin.rel_x += dw
+    @height.setter
+    def height(self,new_height):
+        old_height = self._height
+        if old_height != new_height:
+            self._height = new_height
+            dh = new_height - old_height
+            for pin in self.pins:
+                if pin.rel_y == old_height:
+                    pin.rel_y += dh
     def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None) -> Pin:
         rel_x = cell_x + 0.5
         rel_y = cell_y + 0.5

@@ -3,20 +3,20 @@
     "components":{
         "Switch":{
             "constructor":"Switch",
-            "size": [2,2],
+            "size": [1,1],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "Y": {"position":[1.5,0.5]}
+                "Y": {"position":[1,0]}
             },
             "children": {
                 "pyIcon": {
                     "path":"Switch.pyIcon",
-                    "size": [2,2]
+                    "size": [1,1]
                 }
             },
             "attributes": {
-                "State": {
+                "Settings": {
                     "Activated": {
                         "attribute":"state",
                         "type":"boolean",
@@ -27,21 +27,21 @@
         },
         "Pulse Generator":{
             "constructor":"PulseGenerator",
-            "size": [2,2],
+            "size": [1,1],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "Y": {"position":[1.5,0.5]}
+                "Y": {"position":[1,0]}
             },
             "children": {
                 "pyIcon": {
                     "path":"PulseGenerator.pyIcon",
-                    "size": [2,2]
+                    "size": [1,1]
                 }
             },
             "attributes": {
-                "Timing": {
-                    "Frequency(Hz)": {
+                "Settings": {
+                    "Pulse Frequency(Hz)": {
                         "attribute":"Frequency",
                         "type":"float"
                     }
@@ -60,6 +60,15 @@
                 "pyIcon": {
                     "path":"Visualizer.pyIcon",
                     "size": [10,5]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Monitoring Period": {
+                        "attribute":"keepTicks",
+                        "type":"integer",
+                        "callFunc": "update"
+                    }
                 }
             }
         }
