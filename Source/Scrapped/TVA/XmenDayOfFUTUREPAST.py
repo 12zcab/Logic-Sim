@@ -2,7 +2,7 @@ from core.module.object import *
 from Verilog import *
 from LogicGate import *
 from FlipFlop import *
-from Source.modules.TVA.Snap import *
+from Source.Scrapped.TVA.Snap import *
 from Data.DataHandler import *
  
 Handler = DataHandler()

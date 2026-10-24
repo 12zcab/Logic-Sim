@@ -36,10 +36,8 @@ class Loader:
                 return path.absolute()
 
 class Handler:
-
     def __init__(self):
         self.Backet = []
-
 
     def Store(self , Filename: str):
         if not isinstance(self.Backet, list) and not isinstance(self.Backet, dict):
@@ -48,4 +46,4 @@ class Handler:
 
         
     def Retreive(TableName, Filename : str):
-        return Loader.GetData(Filename, TableName)
+        return Loader.GetData(Filename, TableName) 

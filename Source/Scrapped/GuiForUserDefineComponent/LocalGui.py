@@ -1,6 +1,6 @@
 import tkinter as tk
-import ScriptDefiner
-import BlockDefiner
+import Source.Scrapped.GuiForUserDefineComponent.ScriptDefiner as ScriptDefiner
+import Source.Scrapped.GuiForUserDefineComponent.BlockDefiner as BlockDefiner
 from gui.node.nodeEngine import *
 
 

@@ -16,4 +16,4 @@ def ImportObjectData(ParentObject : object.__class__.__self__, Info : dict):
             setattr(ParentObject, Name, Info[Name])
             Success.append(Name)
         
-    return Success 
+    return Success

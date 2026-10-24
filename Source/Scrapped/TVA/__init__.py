@@ -2,7 +2,7 @@ from MutanterFile import Mutanter
 Handler = Mutanter.Handler()
 
 import Source
-import Source.modules.TVA as TVA
+import Source.Scrapped.TVA as TVA
 import importlib
 from pathlib import Path
 
