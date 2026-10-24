@@ -19,8 +19,8 @@ class ROM(Component):
         for i in range(8):
             self.IO["D" + str(i)].Value = self.table[self.selected][i]
     def onclick(self,rx,ry):
-        x = math.floor(rx)
-        y = math.floor(ry)
+        x = math.floor(rx) - 1
+        y = math.floor(ry) - 1
         if (x>=0)and(x<=15)and(y>=0)and(y<=7):
             if self.table[x][y] == Logic.ONE:
                 self.table[x][y] = Logic.ZERO

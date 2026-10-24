@@ -3,27 +3,27 @@
     "components":{
         "ROM":{
             "constructor":"ROM",
-            "size": [16,8],
-            "color": "white",
+            "size": [18,10],
+            "color": "#222222",
             "bcolor": "black",
             "pins": {
                 "A0": {"position":[-1,0]},
                 "A1": {"position":[-1,1]},
                 "A2": {"position":[-1,2]},
                 "A3": {"position":[-1,3]},
-                "D0": {"position":[16,0]},
-                "D1": {"position":[16,1]},
-                "D2": {"position":[16,2]},
-                "D3": {"position":[16,3]},
-                "D4": {"position":[16,4]},
-                "D5": {"position":[16,5]},
-                "D6": {"position":[16,6]},
-                "D7": {"position":[16,7]}
+                "D0": {"position":[18,0]},
+                "D1": {"position":[18,1]},
+                "D2": {"position":[18,2]},
+                "D3": {"position":[18,3]},
+                "D4": {"position":[18,4]},
+                "D5": {"position":[18,5]},
+                "D6": {"position":[18,6]},
+                "D7": {"position":[18,7]}
             },
             "children": {
                 "pyIcon": {
                     "path":"ROM.pyIcon",
-                    "size": [16,8]
+                    "size": [18,10]
                 }
             }
         }

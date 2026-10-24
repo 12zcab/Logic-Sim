@@ -12,23 +12,33 @@ if 'node' in globals() and node is not None and hasattr(node, 'metadata') and no
 if table is None:
     table = [[0 for _ in range(8)] for _ in range(16)]
 
-num_rows = 8  # y goes from 0 to 7
-num_cols = 16 # x goes from 0 to 15
+num_rows = 8  # y matrix cells from 0 to 7
+num_cols = 16 # x matrix cells from 0 to 15
+
+comp_cols = 18
+comp_rows = 10
 
 is_selected = 'is_selected' in globals() and is_selected
 
-cell_w = w / float(num_cols)
-cell_h = h / float(num_rows)
+grid_w = w / float(comp_cols)
+grid_h = h / float(comp_rows)
 
-font_size = int(cell_h * 0.45 * (zoom / 35.0))
+cell_w = grid_w
+cell_h = grid_h
+
+# Center the 16x8 matrix inside the 18x10 grid component
+offset_x = x + grid_w
+offset_y = y + grid_h
+
+font_size = int(18 * (zoom / 35.0))
 
 for r in range(num_rows):
     for c in range(num_cols):
         val = table[c][r] if c < len(table) and r < len(table[c]) else 0
         is_one = val == "1"
 
-        cx1 = x + (c * cell_w) + 0.5
-        cy1 = y + (r * cell_h) + 0.5
+        cx1 = offset_x + (c * cell_w) + 0.5
+        cy1 = offset_y + (r * cell_h) + 0.5
         cx2 = cx1 + cell_w - 1
         cy2 = cy1 + cell_h - 1
 
@@ -66,10 +76,10 @@ for r in range(num_rows):
             )
 
 if selected_col is not None and 0 <= selected_col < num_cols:
-    col_x1 = x + (selected_col * cell_w)
-    col_y1 = y
+    col_x1 = offset_x + (selected_col * cell_w)
+    col_y1 = offset_y
     col_x2 = col_x1 + cell_w
-    col_y2 = y + h
+    col_y2 = offset_y + (num_rows * cell_h)
     
     col_corners = [
         (col_x1, col_y1),
@@ -83,7 +93,7 @@ if selected_col is not None and 0 <= selected_col < num_cols:
     canvas.create_polygon(
         flat_col,
         fill="",
-        outline="#facc15",  # Yellow highlight for the active column
+        outline="#facc15",  # Yellow highlight for active column
         width=2,
         tags=tags
     )
