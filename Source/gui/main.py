@@ -228,14 +228,7 @@ class LogicSimApp:
             self.attributePanel.clearCategories()
         if logic_obj:
             for io in logic_obj.IO.values():
-                net = io.Net
-                if net:
-                    if hasattr(net, "remove"):
-                        try:
-                            net.remove(io)
-                        except Exception:
-                            pass
-                    net.resolve()
+                io.disconnectNet()
                     
             self.simBox.removeObject(logic_obj)
             del self.logicToNode.inv[node]

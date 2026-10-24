@@ -39,7 +39,7 @@ create logger Logger("logger",["IND","INC","INR","Q"],[keyd.IO.OUT,keyc.IO.OUT,k
 
 from core import *
 from modules.LogicGate import *
-
+from modules.DataLogger import *
 class BasicDFF(Module):
     def __init__(self, Name):
         Pin_D = IO("D")
@@ -52,7 +52,7 @@ class BasicDFF(Module):
         NandS = NandGate("SIn")
         NandR = NandGate("RIn")
         NotD = NotGate("DInv")
-        Blocks = [NandQ,NandQM,NandS,NandR,NotD]
+        Blocks = [NotD,NandS,NandR,NandQ,NandQM]
         NandQ.IO.Y >> NandQM.IO.A >> Pin_Q
         NandQM.IO.Y >> NandQ.IO.A >> Pin_QM
         NandS.IO.Y >> NandQ.IO.B
@@ -140,17 +140,29 @@ class PP0_DFF_behave(Component):
         )
 
 class TFF(Module):
-    def __init__(self,Name):
+    def __init__(self, Name):
         clk = IO("C")
-        t = IO("T")
-        tm = IO("TM")
-        ModuleIO = [clk,t,tm]
-        firstDFF = BasicDFF("T_First_DFF")
+        t   = IO("T")
+        tm  = IO("TM")
+        ModuleIO = [clk, t, tm]
+        firstDFF  = BasicDFF("T_First_DFF")
         secondDFF = BasicDFF("T_Second_DFF")
-        notGate = NotGate("T_Not")
-        clk >> firstDFF.IO.C >> notGate.IO.A
-        secondDFF.IO.QM >> tm >> firstDFF.IO.D
+        notGate   = NotGate("T_Not")
+        notCGate  = NotGate("T_C_Not")
+        Blocks    = [firstDFF, secondDFF, notGate,notCGate]
+        super().__init__(Name, ModuleIO, Blocks)
+        notCGate.IO.Y >> firstDFF.IO.C >> notGate.IO.A
+        notGate.update()
+        if notGate.IO.Y.Net:
+            notGate.IO.Y.Net.resolve()
+        notGate.IO.Y >> secondDFF.IO.C
         firstDFF.IO.Q >> secondDFF.IO.D
         secondDFF.IO.Q >> t
-        Blocks = [firstDFF,secondDFF,notGate]
-        super().__init__(Name, ModuleIO, Blocks)
+        secondDFF.forceUpdate()
+        for net in secondDFF.getNet():
+            net.resolve()
+        secondDFF.IO.QM >> tm >> firstDFF.IO.D
+        firstDFF.forceUpdate()
+        for net in firstDFF.getNet():
+            net.resolve()
+        clk >> notCGate.IO.A
