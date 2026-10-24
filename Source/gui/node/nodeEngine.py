@@ -78,8 +78,6 @@ class NodeObject:
     @width.setter
     def width(self, new_width):
         old_width = self._width
-        print("Width Change Detected:")
-        print(old_width,new_width)
         if old_width != new_width:
             self._width = new_width
             dw = new_width - old_width
