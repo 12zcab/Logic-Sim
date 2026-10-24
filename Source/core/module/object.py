@@ -229,7 +229,7 @@ class Component:
         self.Name = Name
         self.parent = None
         self.IO = BetterDict(IOArray) if isinstance(IOArray, dict) else BetterDict({io.Name: io for io in IOArray})
-        self.updateFunction = updateFunction
+        self.updateFunction = updateFunction 
         for io in self.IO.values():
             io.parent = self
 
