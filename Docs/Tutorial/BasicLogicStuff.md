@@ -57,6 +57,10 @@ Finally, we can test this circuit by toggling the input buttons!
 
 ![11](IMG/8.png)
 
+## Counter
+Counter is a very very important component in logic circuits!!
+For humans we can easily
+
 ## T-Type FlipFlop
 ![T-FlipFlop](IMG/TFlipFlop.png)
 

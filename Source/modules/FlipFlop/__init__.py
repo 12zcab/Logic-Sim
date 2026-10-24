@@ -137,4 +137,20 @@ class PP0_DFF_behave(Component):
             Name, 
             [IO("D"), IO("C"), IO("R"), IO("Q"), IO("QM")],
             updateFunction=dff_behavioral_update 
-        )     
+        )
+
+class TFF(Module):
+    def __init__(self,Name):
+        clk = IO("C")
+        t = IO("T")
+        tm = IO("TM")
+        ModuleIO = [clk,t,tm]
+        firstDFF = BasicDFF("T_First_DFF")
+        secondDFF = BasicDFF("T_Second_DFF")
+        notGate = NotGate("T_Not")
+        clk >> firstDFF.IO.C >> notGate.IO.A
+        secondDFF.IO.QM >> tm >> firstDFF.IO.D
+        firstDFF.IO.Q >> secondDFF.IO.D
+        secondDFF.IO.Q >> t
+        Blocks = [firstDFF,secondDFF,notGate]
+        super().__init__(Name, ModuleIO, Blocks)
