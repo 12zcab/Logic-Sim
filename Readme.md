@@ -17,6 +17,17 @@ Logic-Sim is a easy to use logic simulator written with pure python aiming for h
 # How to try it?
 Please download and unzip the latest Release and execute the bootstrap.exe with internal_libs folder and Source folder together at the same time
 
+# Screenshots
+
+Erm sorry i hv not yet prepared
+
+# Documentation
+
+![Docs Readme](Docs/Readme.md)
+
+![Tutorial(Not Yet Finished)](Docs/Tutorial/BasicLogicStuff.md)
+
+
 # How can I modify this project?
 ## Setup Environment:
 You can use setupDev.bat in project Source to install the directory so that modules can be correctly  imported
