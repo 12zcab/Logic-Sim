@@ -14,34 +14,34 @@ class CombineIO:
     
     # This is for normal one
     def InitCon(self, Component : Component , Conditions, Changes):
-        for IOName, Value in Conditions:
-            if not Component.IO[IOName]:
-                print("Pin does not exist")
+        for Object, Value in Conditions:
+            if not Component.IO[Object]:
+                print("Pin does not exist") 
             self.Condition[IO] = Value
 
-        for IOName, Change in Changes:
-            self.Changes[IOName] = Change
+        for InObject, ChangeInfo in Changes:  
+            for DeObject, Value in ChangeInfo:
+                self.Changes[DeObject] = Value
 
         return self.Condition and self.Changes 
 
     def UpdateCon(self, Table, Changes):
-        Table = CombineIO.__dict__.items(Table)
+        Table = CombineIO.__dict__.items(Table)  
         if not Table:
             return print(f"{Table} does not exist in the system")
         for Var, Change in Changes:
             if Table[Var]: 
-                Table[Var] = Change
+                Table[Var] = Change  
 
-    def Execute(self, Inputs):
+    def Execute(self, States):   
         # Ignore the strength 
-        NewInput = {}
-        for IOName, Value in Inputs:
-            if self.Condition[IOName]:
-                NewInput[IOName] = self.Condition[IOName]
-            else:
-                NewInput[IOName] = Value
+        NewState = {}
+        for InObject, Value in States:
+            if Value == self.Condition[InObject]:
+                for DeObject, Value in self.Changes[InObject]:  
+                    NewState[DeObject] = Value
 
-        return NewInput 
+        return NewState
   
 class NumberSystem:
     # Different State combined with strength or factor decided by user tranform as number in a range also decided by user
@@ -54,44 +54,44 @@ class NumberSystem:
         SystemTable.append(self)
         self.CombineIO = CombineIO
         self.Object = Object
-        self.Changes = {}
         self.Logics = {}
 
-    def InitLogic(self, Logic : dict, Changes : dict):
-        for Var, Info in Logic:
+    def InitLogic(self, Logic : dict):
+        for Var, Info in Logic:  
             if Var == "NumberSystem":
-                self.Logics[Var] = Var
+                self.Logics[Var] = Info
                 continue
             if getattr(self.Object, Var):
                self.Logics[Var] = Info
 
-        for Var, Value in Changes:
-            if getattr(self.Object, Var):
-                self.Changes[Var] = Value
-
     def UpdateLogic(self, Table , Info):
         Table = NumberSystem.__dict__.items(Table)
-        if Table == None: 
+        if Table == None:  
             return print("Table is incorrect")  
-        for Var, Value in Info:
+        for Var, Value in Info:  
             Table[Var] = Value  
- 
-    def Check(self, States):
+   
+    def Execute(self, States):
+        ExeLog = {"Old" : States}
         NewValue = {}
-        for Var, Value in States: 
+        for Var, Value in States:  
             Range = [] 
-            for Value in self.Logics[Var][Value]:
+            for Value in self.Logics[Var][str(Value)]:
                 if "-" in Value:
                     Range1, Range2 = map(int, str.split(Value, "-"))
-                    Range.append(random.randint(Range1, Range2))
+                    Range.append(random.randint(Range1, Range2))    
                 else:
-                    Range.append(Value)
-                NewValue[Var] = random.choice(Range)
+                    Range.append(Value)  
 
-        for Var, Value in NewValue:
-            NewValue[Var] = self.Changes[Var]
+                NewValue[Var] = random.choice(Range)  
+          
+        NewState = self.CombineIO.Execute(NewValue)
 
-        return self.CombineIO.Execute(NewValue)
-             
-# Still try to figure out  
-  
+        if self.CombineIO.Execute(NewValue):
+            ExeLog["New"] = NewState  
+   
+# Still try to figure out
+
+# If statement = false , premise = true and conclusion = false
+
+# if person is a sun, premise = true, true, premise = false, false

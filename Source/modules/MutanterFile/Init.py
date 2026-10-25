@@ -1,6 +1,8 @@
 from Source.modules.MutanterFile import Mutanter
 from pathlib import Path
 import Source
+import sys
+import tkinter
 
 FilePath = Path(Source).resolve()
 Handler = Mutanter.Handler()
@@ -53,4 +55,4 @@ Text = f"""
    
 """    
     
-print(Text)   
+   

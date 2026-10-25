@@ -52,12 +52,10 @@ then it will upload the data to the data StoreChangesLog
 
 
 You can pick the functions seperately if u want more overall control from modifier and loader for other purpose
-
+  
 
 ------------------------------------------------------------------------------------------------------------------------------------
-Transformer Description:
+Transformer Description:   \
 It acts as an container of extend functions of Mutanter  
-
------------------------------------------------------------------------------------------------------------------------------------- 
-
- 
+   
+------------------------------------------------------------------------------------------------------------------------------------

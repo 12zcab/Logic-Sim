@@ -221,7 +221,7 @@ class Handler:
                     Found = FoundList[0]
 
                     if hasattr(Found, Import):
-                        delattr(Found, Import)
+                        delattr(Found, Import)  
                         found_name = getattr(Found, "__name__", str(Target))
                         if found_name in self.ConLog and Import in self.ConLog[found_name]:
                             self.ConLog[found_name].remove(Import)
@@ -255,15 +255,15 @@ class Handler:
                             self.LogChanges(self.ConLog, Clone.__name__, key=getattr(Found, "__name__", Target))
                 else:
                     SuccessChanges = Modifier.ApplyAttr(ModuleName, AttrInfo)
-                    self.LogChanges(self.ChangeLog, SuccessChanges, key=ModuleName)
+                    self.LogChanges(self.ChangeLog, SuccessChanges, key=ModuleName)   
         except Exception as e:
-            logger.error(f"Failed in Handler.ApplyAttr transaction: {e}")
-            raise
-
+            logger.error(f"Failed in Handler.ApplyAttr transaction: {e}")  
+            raise  
+  
     def DeleteAttr(self, AttrInfos: List[tuple], TargetScripts: Optional[List[str]] = None):
         for ModuleName, AttrInfo in AttrInfos:
             if TargetScripts is not None:
-                clones = Loader.CloneImport(ModuleName, clone_name=f"Clone_{ModuleName}")
+                clones = Loader.CloneImport(ModuleName, clone_name=f"Clone_{ModuleName}")  
                 if not clones:
                     continue
                 Clone = clones[0]
@@ -358,4 +358,3 @@ class Handler:
                         self.DataHandler.Store("CloneLog")
                     except Exception as e:
                         logger.warning(f"DataHandler storage failed: {e}")
- 
