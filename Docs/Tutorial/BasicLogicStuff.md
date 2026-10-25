@@ -81,39 +81,41 @@ For a couple of single input gate, we have three situations.
 
 1. Buffer-Buffer Cycle
 
-![Buffer Loop](IMG/Latch1.gif)
+![Buffer-Buffer Cycle](IMG/Latch1.png)
 
-Welp, it does preserve the state! (Ignore the Or gate right now, i will explain why soon.)
+Seems that Buffer-Buffer Cycle can preserve the state right..?
 
-But after we set it to 1 then it seems kinda not possible set it back to 0...
+Like if we pullup the cycle...
 
-So we can introduce an AND Gate to this loop.
+Oh...
 
-AND Gate have an overriding property as if one of it's pin is zero, the output must be zero.
-
-So now we have a Cycle with only one AND Gate.? No,no,no... as we have proved that a single gate can't be a latch.
-
-But... it seems pull the cycle to 1 and pulling the AND Gate's remaining pin to 0 can set the state to 1 and 0 respectively now....
-
-Welp, not exactly.
-
-Doing this in LogicSim,You will face this situation:
-
-![Conflict Signal](Latch2.png)
+![Conflict Signal](IMG/Latch2.png)
 
 The Orange Wire Status here represents a X(Conflict) Status. This is because the AND Gate is driving the wire to 0 but the input signal want to drive the wire to 1 at the same time.
 
 To solve this problem, we must use an OR gate, which actually allow us to override the status to 1 by inputting 1 to the OR Gate.
 
+![Added OR Gate](IMG/Latch3.png)
+
+(Note that OR Gate itself actually have an invisible "Buffer" for it output (Buffer is actually just a transparent but have 1 tick delay))
+
+We also want to pull it override the status back to 0 by inputting a signal, so we can add an AND Gate to the loop:
+
+![Added AND Gate](IMG/Latch4.png)
+
 Finally, we want the input to be low-activated so we add a Not Gate for the AND Gate's input.
 
-![AND-OR-NOT-SR-Latch](Latch3.gif)
+![Added NOT Gate](IMG/Latch5.png)
+
+![AND-OR-NOT-SR-Latch](IMG/Latch6.gif)
+
+This latch costs 3 Gates but have the benefit that it does not have non-stablized state.
 
 2. BUFFER-NOT Cycle
 
 Welp... It just Blinks and does not stablize
 
-![BUFFER-NOT Cycle](Latch4.gif)
+![BUFFER-NOT Cycle](IMG/Latch7.gif)
 
 3. 
 
