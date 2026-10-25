@@ -1,0 +1,24 @@
+{
+
+    "SystemName" : {
+
+        "NumberSystem" : "1-12",
+
+        "Variables" : {
+
+            "Var1" : {
+                "True" : "4-6",
+                "False" : "7-9"
+            },
+
+            "Var2" : {
+                "9" : "" 
+            } 
+
+        }
+
+
+    }
+
+
+}

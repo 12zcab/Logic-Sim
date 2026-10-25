@@ -1,4 +1,4 @@
-from MutanterFile import Mutanter
+from modules.MutanterFile import Mutanter
 Handler = Mutanter.Handler()
 
 import Source

@@ -1,30 +1,30 @@
-from core.module.object import *
-from Verilog import *
-from LogicGate import *
-from FlipFlop import *
-from Source.Scrapped.TVA.Snap import *
-from Data.DataHandler import *
+# from core.module.object import *
+# from Verilog import *
+# from LogicGate import *
+# from FlipFlop import *
+# from Source.Scrapped.TVA.Snap import *
+# from Data.DataHandler import *
  
-Handler = DataHandler()
+# Handler = DataHandler()
 
 
-class Mystery:
-    @staticmethod
-    def SetUpSimBox():
-        pass
+# class Mystery:
+#     @staticmethod
+#     def SetUpSimBox():
+#         pass
     
-    @staticmethod
-    def GetResult(self):
-        #Create a simbox locally 
-        self.Unbox = None
+#     @staticmethod
+#     def GetResult(self):
+#         #Create a simbox locally 
+#         self.Unbox = None
 
-class History:
-    @staticmethod
-    def GetResult(Box : SimBox, Number : int):
-        Data = Handler.Retreive("History.JSON", f"{Box}{Number}")
-        if Data:
-            return Data
-        else:
-            print("Retreive unsuccessful")
+# class History:
+#     @staticmethod
+#     def GetResult(Box : SimBox, Number : int):
+#         Data = Handler.Retreive("History.JSON", f"{Box}{Number}")
+#         if Data:
+#             return Data
+#         else:
+#             print("Retreive unsuccessful")
 
               

@@ -19,7 +19,7 @@ class BlocksGui:
     def CopyChosen(self):  
         pass 
 
-    def DeleteChosen(self):   
+    def DeleteChosen(self):    
         pass    
 
     def Create():    
