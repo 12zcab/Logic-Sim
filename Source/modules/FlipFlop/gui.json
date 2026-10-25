@@ -15,7 +15,8 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"PP0_DFF.pyIcon"
+                    "path":"PP0_DFF.pyIcon",
+                    "size": [3,5]
                 }
             }
         },
@@ -32,7 +33,25 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"DFF.pyIcon"
+                    "path":"DFF.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "TFF":{
+            "constructor":"TFF",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "C": {"position":[-1,2]},
+                "T": {"position":[3,0]},
+                "TM": {"position":[3,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"TFF.pyIcon",
+                    "size": [3,3]
                 }
             }
         }

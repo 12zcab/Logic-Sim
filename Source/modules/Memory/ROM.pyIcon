@@ -1,0 +1,116 @@
+import math
+
+table = None
+selected_col = None
+
+if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
+    if hasattr(node.metadata, "table"):
+        table = node.metadata.table
+    if hasattr(node.metadata, "selected"):
+        selected_col = node.metadata.selected
+
+if table is None:
+    table = [[0 for _ in range(8)] for _ in range(16)]
+
+num_rows = 8  # y matrix cells from 0 to 7
+num_cols = 16 # x matrix cells from 0 to 15
+
+comp_cols = 18
+comp_rows = 10
+
+is_selected = 'is_selected' in globals() and is_selected
+
+grid_w = w / float(comp_cols)
+grid_h = h / float(comp_rows)
+
+cell_w = grid_w
+cell_h = grid_h
+
+# Center the 16x8 matrix inside the 18x10 grid component
+offset_x = x + grid_w
+offset_y = y + grid_h
+
+font_size = int(18 * (zoom / 35.0))
+
+for r in range(num_rows):
+    for c in range(num_cols):
+        val = table[c][r] if c < len(table) and r < len(table[c]) else 0
+        is_one = val == "1"
+
+        cx1 = offset_x + (c * cell_w) + 0.5
+        cy1 = offset_y + (r * cell_h) + 0.5
+        cx2 = cx1 + cell_w - 1
+        cy2 = cy1 + cell_h - 1
+
+        cell_corners = [
+            (cx1, cy1),
+            (cx2, cy1),
+            (cx2, cy2),
+            (cx1, cy2)
+        ]
+        rot_cell = [rotatePoint(px, py, cx, cy, angle) for px, py in cell_corners]
+        flat_cell = [coord for pt in rot_cell for coord in pt]
+
+        cell_bg = "#38bdf8" if is_one else "#161616"
+        cell_border = "#0284c7" if is_one else "#222222"
+
+        canvas.create_polygon(
+            flat_cell,
+            fill=cell_bg,
+            outline=cell_border,
+            width=1,
+            tags=tags
+        )
+
+        if font_size > 0:
+            mid_x = (cx1 + cx2) / 2.0
+            mid_y = (cy1 + cy2) / 2.0
+            rot_mid = rotatePoint(mid_x, mid_y, cx, cy, angle)
+
+            canvas.create_text(
+                rot_mid[0], rot_mid[1],
+                text="1" if is_one else "0",
+                fill="#000000" if is_one else "#555555",
+                font=("Consolas", font_size, "bold"),
+                tags=tags
+            )
+
+if selected_col is not None and 0 <= selected_col < num_cols:
+    col_x1 = offset_x + (selected_col * cell_w)
+    col_y1 = offset_y
+    col_x2 = col_x1 + cell_w
+    col_y2 = offset_y + (num_rows * cell_h)
+    
+    col_corners = [
+        (col_x1, col_y1),
+        (col_x2, col_y1),
+        (col_x2, col_y2),
+        (col_x1, col_y2)
+    ]
+    rot_col = [rotatePoint(px, py, cx, cy, angle) for px, py in col_corners]
+    flat_col = [coord for pt in rot_col for coord in pt]
+    
+    canvas.create_polygon(
+        flat_col,
+        fill="",
+        outline="#facc15",  # Yellow highlight for active column
+        width=2,
+        tags=tags
+    )
+
+if is_selected:
+    outer_corners = [
+        (x, y),
+        (x + w, y),
+        (x + w, y + h),
+        (x, y + h)
+    ]
+    rot_outer = [rotatePoint(px, py, cx, cy, angle) for px, py in outer_corners]
+    flat_outer = [coord for pt in rot_outer for coord in pt]
+    canvas.create_polygon(
+        flat_outer,
+        fill="",
+        outline="#38bdf8",
+        width=2,
+        tags=tags
+    )

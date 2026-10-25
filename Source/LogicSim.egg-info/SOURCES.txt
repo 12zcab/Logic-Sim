@@ -12,6 +12,7 @@ Source/core/module/BetterDict.py
 Source/core/module/chronos.py
 Source/core/module/enum.py
 Source/core/module/object.py
+Source/gui/__init__.py
 Source/gui/main.py
 Source/gui/connector/__init__.py
 Source/gui/loader/__init__.py
@@ -41,4 +42,4 @@ Source/modules/TVA/XmenDayOfFUTUREPAST.py
 Source/modules/TVA/disabled__init__.py
 Source/modules/Verilog/__init__.py
 Source/modules/Verilog/parser.py
-Source/modules/guiInteraction/__init__.py
+Source/modules/guiComponents/__init__.py

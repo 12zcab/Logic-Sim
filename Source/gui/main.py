@@ -5,8 +5,9 @@ from bidict import bidict
 from gui.node.nodeEngine import *
 from gui.toolbar.toolbar import *
 from gui.loader import *
+from gui.attribute.attributePanel import *
 from core import *
-from core.module.object import Net, IO, Component, Module, SimBox, Logic, Strength
+from core.module.object import *
 
 
 class LogicSimApp:
@@ -14,16 +15,38 @@ class LogicSimApp:
         self.root = root
         self.root.title("LogicSim GUI")
         self.root.geometry("900x700")
-        
+        self.logicToNode = bidict({})
+        self.logicNetToNodeNet = bidict({})
+        self.constructToDefin = {}
+        self.lastSelectedNode = None
         self.all_jsons = {}
         self.setup_ui()
         self.load_all()
         self.root.after(0, self.updateMainApp)
         self.simBox = SimBox([])
         self.simBox.init()
-        self.logicToNode = bidict({})
-        self.logicNetToNodeNet = bidict({})
-
+        self._nodeAttributes = {
+            "x":{
+                "attribute":"x",
+                "type":"float"
+            },
+            "y":{
+                "attribute":"y",
+                "type":"float"
+            },
+            "width":{
+                "attribute":"width",
+                "type":"float"
+            },
+            "height":{
+                "attribute":"height",
+                "type":"float"
+            },
+            "angle":{
+                "attribute":"angle",
+                "type":"integer"
+            }
+        }
     def updateMainApp(self):
         self.simBox.stepDeltaLoop()
         self.simBox.scheduler.advanceToNext()
@@ -45,36 +68,105 @@ class LogicSimApp:
                 gui_net.setAllPinColor("#222222")
 
     def setup_ui(self):
-        self.paned_window = PanedWindow(
+        self.upperToolbarPaned = PanedWindow(
             self.root,
             orient=VERTICAL,
             sashwidth=6,
             sashrelief=RAISED,
             bg="#2D2D2D"
         )
-        self.paned_window.pack(fill=BOTH, expand=True)
+        self.upperToolbarPaned.pack(fill=BOTH, expand=True)
 
-        self.toolbar = ToolBar(master=self.paned_window)
-        self.sub_toolbar = ToolBar(master=self.paned_window)
-        self.node_editor = NodeEditor(self.paned_window)
-
-        self.paned_window.add(self.toolbar, minsize=40, height=80)
-        self.paned_window.add(self.sub_toolbar, minsize=40, height=80)
-        self.paned_window.add(self.node_editor, minsize=200)
+        self.toolbar = ToolBar(master=self.upperToolbarPaned)
+        self.upperToolbarPaned.add(self.toolbar, minsize=40, height=80)
+        
+        self.lowerToolbarPaned = PanedWindow(
+            self.upperToolbarPaned,
+            orient=VERTICAL,
+            sashwidth=6,
+            sashrelief=RAISED,
+            bg="#2D2D2D"
+        )
+        self.upperToolbarPaned.add(self.lowerToolbarPaned, minsize=40, height=80)
+        self.upperToolbarPaned.pack(fill=BOTH, expand=True)
+        
+        self.sub_toolbar = ToolBar(master=self.lowerToolbarPaned)
+        self.lowerToolbarPaned.add(self.sub_toolbar, minsize=40, height=80)
+        self.lowerMidToolbarPaned = PanedWindow(
+            self.lowerToolbarPaned,
+            orient=HORIZONTAL,
+            sashwidth=6,
+            sashrelief=RAISED,
+            bg="#2D2D2D"
+        )
+        self.lowerToolbarPaned.add(self.lowerMidToolbarPaned, minsize = 200)
+        self.node_editor = NodeEditor(self.lowerMidToolbarPaned)
+        self.attributePanel = AttributePanel(self.lowerMidToolbarPaned)
+        self.lowerMidToolbarPaned.add(self.node_editor, stretch="always")
+        self.lowerMidToolbarPaned.add(self.attributePanel, width=200, stretch="never")
         
         self.node_editor.bind_event("net_create", lambda net: self.createNetEvent(net))
         self.node_editor.bind_event("net_destroy", lambda net: self.destroyNetEvent(net))
         self.node_editor.bind_event("connect", lambda net, pin: self.connectPinEvent(net, pin))
         self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net, pin))
         self.node_editor.bind_event("node_delete", lambda node: self.deleteLogicObj(node))
-        self.node_editor.bind_event("select", lambda obj: self.handle_node_click(obj))
-
-    def handle_node_click(self, obj):
+        self.node_editor.bind_event("select", lambda obj,rx,ry: self.handle_node_click(obj,rx,ry))
+        self.node_editor.bind_event("node_move", lambda node: self.handle_node_move(node))
+    def handle_node_move(self,node):
+        self.updateNodeAttributePanel(self.logicToNode.inv.get(node),node)
+    def handle_node_click(self, obj,ax,ay):
+        if obj == None:
+            self.attributePanel.clearCategories()
+            self.lastSelectedNode = None
+            return
         if isinstance(obj, NodeObject):
             logic_obj = self.logicToNode.inv.get(obj)
             if logic_obj and getattr(logic_obj, "onclick", None):
-                logic_obj.onclick()
-
+                logic_obj.onclick(ax-obj.x,ay-obj.y)
+            if not self.lastSelectedNode == obj:
+                self.loadAttributePanel(logic_obj,obj)
+            else:
+                self.updateAttributePanel(logic_obj,obj)
+            self.lastSelectedNode = obj
+    def loadAttributePanel(self,logicObject,nodeObject):
+        self.attributePanel.clearCategories()
+        self.attributePanel.setTitle(logicObject.Name)
+        definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
+        if definition:
+            for key in definition.keys():
+                cate = self.attributePanel.addCategory(key)
+                for key2 in definition[key].keys():
+                    attr = cate.addAttribute(key2,definition[key][key2]["type"],lambda value,logicObject=logicObject,definition=definition,key=key,key2=key2: self.updateAttribute(logicObject,definition[key][key2],value))
+                    attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
+        self.loadNodeAttributePanel(logicObject,nodeObject)
+    def updateAttributePanel(self,logicObject,nodeObject):
+        self.attributePanel.setTitle(logicObject.Name)
+        definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
+        if definition:
+            for key in definition.keys():
+                cate = self.attributePanel.categories[key]
+                for key2 in definition[key].keys():
+                    attr = cate.attributes[key2]
+                    attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
+        self.updateNodeAttributePanel(logicObject,nodeObject)
+    def loadNodeAttributePanel(self,logicObject,nodeObject):
+        nodeCate = self.attributePanel.addCategory("Node Data")
+        #nodeCate.addAttribute("x","float",lambda value,obj=nodeObject: self.updateAttribute(obj,{"type":"integer","attribute":"x"},value)).setValue(getattr(nodeObject,"x") ,trigger_recall = False)
+        for attributeLabel in self._nodeAttributes.keys():
+            nodeCate.addAttribute(attributeLabel,self._nodeAttributes[attributeLabel]["type"],lambda value,obj=nodeObject,spec=self._nodeAttributes[attributeLabel]: self.updateAttribute(obj,spec,value)).setValue(getattr(nodeObject,self._nodeAttributes[attributeLabel]["attribute"]) ,trigger_recall = False)
+    def updateNodeAttributePanel(self,logicObject,nodeObject):
+        if "Node Data" in self.attributePanel.categories.keys():
+            nodeCate = self.attributePanel.categories["Node Data"]
+            #x = nodeCate.attributes["x"]
+            #x.setValue(getattr(nodeObject,"x") ,trigger_recall = False)
+            for attributeLabel in self._nodeAttributes.keys():
+                nodeCate.attributes[attributeLabel].setValue(getattr(nodeObject,self._nodeAttributes[attributeLabel]["attribute"]) ,trigger_recall = False)
+        else:
+            self.loadNodeAttributePanel(logicObject,nodeObject)
+    def updateAttribute(self,logicObject,spec,value):
+        setattr(logicObject,spec["attribute"],value)
+        if spec.get("callFunc"):
+            getattr(logicObject,spec["callFunc"])()
     def guiPinToLogicPin(self, guiPin):
         return self.logicToNode.inv[guiPin.owner].IO[guiPin.name]
 
@@ -132,16 +224,11 @@ class LogicSimApp:
         self.node_editor.rebuild_nets()
     def deleteLogicObj(self, node):
         logic_obj = self.logicToNode.inv.get(node)
+        if node == self.lastSelectedNode:
+            self.attributePanel.clearCategories()
         if logic_obj:
             for io in logic_obj.IO.values():
-                net = io.Net
-                if net:
-                    if hasattr(net, "remove"):
-                        try:
-                            net.remove(io)
-                        except Exception:
-                            pass
-                    net.resolve()
+                io.disconnectNet()
                     
             self.simBox.removeObject(logic_obj)
             del self.logicToNode.inv[node]
@@ -174,11 +261,12 @@ class LogicSimApp:
         module_dir = os.path.dirname(module_data["__path__"])
         
         for component_name in component_names:
-            pyicon_path, loadingObj = self.get_component_data(
+            pyIconPathRatio, loadingObj , defin= self.get_component_data(
                 module_dir, components_obj, component_name
             )
-            bt = self.sub_toolbar.add_button(component_name, pyicon_path)
+            bt = self.sub_toolbar.add_button(component_name,pyIconPathRatio)
             bt.config(command=lambda loader=loadingObj: self.spawnFromButton(loader))
+            self.constructToDefin[defin.get("constructor")] = defin
         self.sub_toolbar.force_update()
 
     def spawnFromButton(self, loader):
@@ -197,8 +285,12 @@ class LogicSimApp:
     def get_component_data(self, module_dir, components_obj, component_name):
         component_def = getComponentDefinition(components_obj, component_name)
         pyicon_path = None
-        icon_data = component_def.get("children", {}).get("pyIcon", {})
+        ratio = None
+        if "children" in component_def.keys():
+            if "pyIcon" in component_def["children"].keys():
+                icon_data = component_def.get("children", {}).get("pyIcon", {})
+                ratio = component_def.get("children", {}).get("pyIcon", {}).get("size")
         if icon_data.get("path"):
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
         loadingObjfunc = lambda x, y, name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path, x, y)
-        return pyicon_path, loadingObjfunc
+        return [pyicon_path,ratio], loadingObjfunc,component_def

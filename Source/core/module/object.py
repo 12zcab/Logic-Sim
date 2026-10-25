@@ -7,9 +7,9 @@ class IO:
     def __init__(self, Name, parentComponent=None):
         self.Name = Name
         self.parent = parentComponent
-        self.driveVal = Logic.X
-        self.driveStr = Strength.HIGHZ
-        self._Value = Logic.X
+        self.driveVal = Logic.ZERO
+        self.driveStr = Strength.PULL
+        self._Value = Logic.ZERO
         
         default_net = Net(Name=f"Internal_{Name}")
         default_net.add(self)
@@ -77,21 +77,20 @@ class IO:
             target_net.add(self)
 
     def disconnectNet(self):
-        """Cleanly unbind from the external net and restore default internal state."""
-        # Unlink from merged net
         if hasattr(self, '_module_net') and self._module_net:
-            base_net = self._module_net
-            if base_net.merged_into:
-                parent_gui = base_net.merged_into.root
-                for io in list(base_net._IO):
-                    if io in parent_gui._IO:
-                        parent_gui._IO.remove(io)
-                base_net.merged_into = None
-            else:
-                if self.Net:
-                    self.Net.remove(self)
+            curr_net = self._module_net
+            while curr_net and curr_net.merged_into:
+                parent = curr_net.merged_into
+                if parent.merged_into is None:
+                    for io in list(curr_net._IO):
+                        if io in parent._IO:
+                            parent._IO.remove(io)
+                    curr_net.merged_into = None
+                    break
+                curr_net = parent
+        elif self.Net:
+            self.Net.remove(self)
 
-        # Reset driving strength back to High-Z if this isn't an active driver
         if not hasattr(self, "is_driver") or not self.is_driver:
             self.driveStr = Strength.HIGHZ
             self.driveVal = Logic.X

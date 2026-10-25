@@ -19,7 +19,7 @@ class ToolBarButton(Canvas):
         self,
         master,
         text="",
-        pyicon_path=None,
+        pyiconPathRatio=None,
         command=None,
         bg="#202020",
         fg="#FFFFFF",
@@ -30,7 +30,12 @@ class ToolBarButton(Canvas):
         )
 
         self.text = text
-        self.pyicon_path = pyicon_path
+        if pyiconPathRatio == None:
+            self.pyicon_path = None
+            self.pyicon_ratio = None
+        else:
+            self.pyicon_path = pyiconPathRatio[0]
+            self.pyicon_ratio = pyiconPathRatio[1]
         self.command = command
         self.bg_color = bg
         self.fg_color = fg
@@ -63,23 +68,36 @@ class ToolBarButton(Canvas):
     def _on_click(self, event):
         if self.command:
             self.command()
-
+            
     def _on_resize(self, event):
         self.delete("all")
         w, h = event.width, event.height
-
         if w <= 1 or h <= 1:
             return
-
         if self.pyicon_path and os.path.exists(self.pyicon_path):
-            icon_h = int(h * 0.60) if self.text else int(h * 0.85)
-            icon_w = int(w * 0.85)
-
+            max_box_h = int(h * 0.50) if self.text else int(h * 0.65)
+            max_box_w = int(w * 0.65)
+            
+            img_w, img_h = self.pyicon_ratio[0], self.pyicon_ratio[1]
+            actual_ratio = img_h / img_w
+            
+            test_h = max_box_w * actual_ratio
+            
+            if test_h <= max_box_h:
+                icon_w = max_box_w
+                icon_h = int(test_h)
+            else:
+                icon_h = max_box_h
+                icon_w = int(max_box_h / actual_ratio)
+                
             offset_x = (w - icon_w) / 2
             offset_y = (
-                ((h * 0.60) - icon_h) / 2 if self.text else (h - icon_h) / 2
+                (((h * 0.60) - icon_h) / 2) if self.text 
+                else ((h - icon_h) / 2)
             )
-            calculated_zoom = min(icon_w / 4.0, icon_h / 3.0)
+            
+            calculated_zoom = min(icon_w / float(img_w), icon_h / float(img_h))
+            
             icon_scope = {
                 "canvas": self,
                 "x": offset_x,
@@ -102,23 +120,30 @@ class ToolBarButton(Canvas):
                 exec(code, icon_scope)
             except Exception as e:
                 print(f"Error rendering pyIcon {self.pyicon_path}: {e}")
-
         if self.text:
             text_y = h * 0.82 if self.pyicon_path else h / 2
             max_text_h = h * 0.25 if self.pyicon_path else h * 0.6
             max_text_w = w * 0.9
 
-            font_size = max(6, int(max_text_h))
-            test_font = tkFont.Font(
-                family="Arial", size=font_size, weight="bold"
-            )
+            low = 1
+            high = max(12, int(max_text_h))
+            best_size = low
 
-            while (
-                test_font.measure(self.text) > max_text_w
-                or test_font.metrics("linespace") > max_text_h
-            ) and font_size > 6:
-                font_size -= 1
-                test_font.configure(size=font_size)
+            test_font = tkFont.Font(family="Arial", size=high, weight="bold")
+
+            while low <= high:
+                mid = (low + high) // 2
+                test_font.configure(size=mid)
+                if (
+                    test_font.measure(self.text) <= max_text_w
+                    and test_font.metrics("linespace") <= max_text_h
+                ):
+                    best_size = mid
+                    low = mid + 1
+                else:
+                    high = mid - 1
+
+            test_font.configure(size=best_size)
 
             self.create_text(
                 w / 2,
@@ -165,12 +190,12 @@ class ToolBar(Frame):
         )
         self.canvas.bind("<Configure>", self._on_canvas_resize)
 
-    def add_button(self, text, pyicon_path=None):
+    def add_button(self, text, pyiconPathRatio=None):
         container = Frame(self.button_frame, bg="#111111")
         container.pack(side=LEFT, fill=Y, padx=2)
         container.pack_propagate(False)
 
-        btn = ToolBarButton(container, text=text, pyicon_path=pyicon_path)
+        btn = ToolBarButton(container, text=text, pyiconPathRatio=pyiconPathRatio)
         btn.pack(fill=BOTH, expand=True)
 
         self.button_containers.append(container)
@@ -234,12 +259,12 @@ class ToolBar(Frame):
         )
         self.canvas.bind("<Configure>", self._on_canvas_resize)
 
-    def add_button(self, text, pyicon_path=None):
+    def add_button(self, text, pyiconPathRatio=None):
         container = Frame(self.button_frame, bg="#111111")
         container.pack(side=LEFT, fill=Y, padx=2)
         container.pack_propagate(False)
 
-        btn = ToolBarButton(container, text=text, pyicon_path=pyicon_path)
+        btn = ToolBarButton(container, text=text, pyiconPathRatio=pyiconPathRatio)
         btn.pack(fill=BOTH, expand=True)
 
         self.button_containers.append(container)

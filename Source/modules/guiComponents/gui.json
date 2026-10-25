@@ -3,43 +3,72 @@
     "components":{
         "Switch":{
             "constructor":"Switch",
-            "size": [2,2],
+            "size": [1,1],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "Y": {"position":[1.5,0.5]}
+                "Y": {"position":[1,0]}
             },
             "children": {
                 "pyIcon": {
-                    "path":"Switch.pyIcon"
+                    "path":"Switch.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Activated": {
+                        "attribute":"state",
+                        "type":"boolean",
+                        "callFunc": "update"
+                    }
                 }
             }
         },
-        "Lamp":{
-            "constructor":"Lamp",
-            "size": [2,2],
+        "Pulse Generator":{
+            "constructor":"PulseGenerator",
+            "size": [1,1],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[1.5,0.5]}
+                "Y": {"position":[1,0]}
             },
             "children": {
                 "pyIcon": {
-                    "path":"Lamp.pyIcon"
+                    "path":"PulseGenerator.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Pulse Frequency(Hz)": {
+                        "attribute":"Frequency",
+                        "type":"float"
+                    }
                 }
             }
         },
-        "1 Hz":{
-            "constructor":"OneHertz",
-            "size": [2,2],
-            "color": "transparent",
-            "bcolor": "transparent",
+        "Logic Analyzer":{
+            "constructor":"VisualAnalyzer",
+            "size": [10,5],
+            "color": "white",
+            "bcolor": "black",
             "pins": {
-                "Y": {"position":[1.5,0.5]}
+                "A": {"position":[10,2]}
             },
             "children": {
                 "pyIcon": {
-                    "path":"PulseGenerator.pyIcon"
+                    "path":"Visualizer.pyIcon",
+                    "size": [10,5]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Monitoring Period": {
+                        "attribute":"keepTicks",
+                        "type":"integer",
+                        "callFunc": "update"
+                    }
                 }
             }
         }

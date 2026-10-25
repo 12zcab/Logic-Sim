@@ -1,0 +1,98 @@
+import math
+
+graph_data = []
+keep_ticks = 100
+if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
+    if hasattr(node.metadata, "graph"):
+        graph_data = list(node.metadata.graph)
+    if hasattr(node.metadata, "keepTicks"):
+        keep_ticks = node.metadata.keepTicks
+
+if not graph_data:
+    graph_data = [0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1]
+    keep_ticks = len(graph_data)
+
+box_w = w
+box_h = h
+box_x1 = x
+box_y1 = y
+box_x2 = x + w
+box_y2 = y + h
+
+corners = [
+    (box_x1, box_y1),
+    (box_x2, box_y1),
+    (box_x2, box_y2),
+    (box_x1, box_y2)
+]
+
+shadow_offset = box_w * 0.05
+shadow_corners = [
+    (box_x1 + shadow_offset, box_y1 + shadow_offset),
+    (box_x2 + shadow_offset, box_y1 + shadow_offset),
+    (box_x2 + shadow_offset, box_y2 + shadow_offset),
+    (box_x1 + shadow_offset, box_y2 + shadow_offset)
+]
+
+rot_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in corners]
+flat_box = [coord for pt in rot_corners for coord in pt]
+flat_shadow = [coord for pt in shadow_corners for coord in pt]
+
+stroke_w = max(2, int(min(box_w, box_h) * 0.05))
+select_w = stroke_w + max(2, int(min(box_w, box_h) * 0.04))
+
+if is_selected:
+    canvas.create_polygon(
+        flat_box,
+        fill="",
+        outline="#38bdf8",
+        width=select_w,
+        tags=tags
+    )
+
+canvas.create_polygon(
+    flat_shadow,
+    fill="#000000",
+    outline="",
+    tags=tags
+)
+
+canvas.create_polygon(
+    flat_box,
+    fill="#111111",
+    outline="#38bdf8",
+    width=stroke_w,
+    tags=tags
+)
+
+if graph_data:
+    pad_x = box_w * 0.08
+    pad_y = box_h * 0.15
+    inner_x1 = box_x1 + pad_x
+    inner_x2 = box_x2 - pad_x
+    inner_y_high = box_y1 + pad_y
+    inner_y_low = box_y2 - pad_y
+
+    line_pts = []
+    total_ticks = max(keep_ticks - 1, 1)
+
+    for i, val in enumerate(graph_data):
+        px = inner_x1 + (i / float(total_ticks)) * (inner_x2 - inner_x1)
+        is_high = bool(val == 1 or getattr(val, 'value', val) == 1 or str(val).endswith("ONE"))
+        py = inner_y_high if is_high else inner_y_low
+
+        if line_pts:
+            line_pts.append((px, line_pts[-1][1]))
+
+        line_pts.append((px, py))
+
+    rot_line_pts = [rotatePoint(pt[0], pt[1], cx, cy, angle) for pt in line_pts]
+    flat_line = [coord for pt in rot_line_pts for coord in pt]
+
+    if len(flat_line) >= 4:
+        canvas.create_line(
+            flat_line,
+            fill="#38bdf8",
+            width=max(2, int(stroke_w * 0.6)),
+            tags=tags
+        )

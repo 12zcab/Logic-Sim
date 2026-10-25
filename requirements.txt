@@ -1,6 +1,5 @@
 pyinstaller
 svglib
-pillow
 reportlab
 keyboard
 tabulate
