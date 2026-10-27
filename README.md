@@ -28,7 +28,7 @@ Erm sorry i hv not yet prepared
 
 # Documentation
 
-[Docs Readme](Docs/Readme.md)
+[Docs Readme](Docs/README.md)
 
 [Tutorial(Not Yet Finished)](Docs/Tutorial/BasicLogicStuff.md)
 
