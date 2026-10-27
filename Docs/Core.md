@@ -1,7 +1,9 @@
 # Core Documentation
 
 ## Enum
+
 ### Strength
+
 Erh yah Strength Enum :D
 ### Logic
 Erh yah Logic State Enum :D

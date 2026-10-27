@@ -13,10 +13,13 @@
 
 - [main.py](#mainpy)
 
+
 So every GUI panel is modularized into different library that can be called and return a Tkinter Frame Object.
 
 The Whole Application is based on basic Tkinter (no TTK iirc)
 
+
+---
 
 
 ## Toolbar
