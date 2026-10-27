@@ -1,2 +1,2 @@
-- [HOME](/README)
-- [Docs](/Docs/README)
+- [HOME](/README.md)
+- [Docs](/Docs/README.md)
