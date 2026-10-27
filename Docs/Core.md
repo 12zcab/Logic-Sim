@@ -14,7 +14,7 @@ BetterDictionary is a Small (Yah REALLY SMALL) module that let u do Dictionary.K
 ```
 __BetterDict__["Key"] = "Value"
 # can also be written as
-__BetterDict_.Key = "Value"
+__BetterDict__.Key = "Value"
 ```
 
 ## Chronos
@@ -24,7 +24,7 @@ erm yah I made a class named Event instead of passing arguments in a tuple : |
 i probly will change that later.?
 ### Kairos
 The class Kairos manages a sequence of event,featuring schedule,hasCurrentEvent,getNextEvent,advanceToNext, total of 4 functions
-#### schedule
+#### Schedule
 Schedule an IO update for planned future execution by appending it to the queue.
 ```
 __Kairos__.schedule(component.IO.A, Logic.ONE, Strength.STRONG, Delay=0)

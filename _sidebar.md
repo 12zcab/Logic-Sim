@@ -1,3 +1,5 @@
 - [HOME](/README.md)
 - [Docs](/Docs/README.md)
 - [Tutorials](/Docs/Tutorial/README.md)
+- [Github Repo](https://github.com/12zcab/Logic-Sim)
+- [Latest Release](https://github.com/12zcab/Logic-Sim/releases/latest)
