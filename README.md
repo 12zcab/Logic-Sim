@@ -39,14 +39,14 @@ You can use setupDev.bat in project Source to install the directory so that modu
 ## Build
 To build it,just delete the internal_lib and build_cache and execute build.bat
 
-# Functions Implemented Now:
+# Brief File Structure
 - Core
     - module
-        - BetterDict  convenient dictionary library
-        - chronos  event engine
-        - enum  err just some value enums
-        - object  Logic Objects
-    - '__init__'.py  Importer and some testing stuff
+        - BetterDict
+        - chronos
+        - enum
+        - object
+    - '__init__'.py
 - Gui
     - node
     - loader
