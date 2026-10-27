@@ -34,9 +34,9 @@ Erm sorry i hv not yet prepared
 
 
 # How can I modify this project?
-## Setup Environment:
+## Setup Environment
 You can use setupDev.bat in project Source to install the directory so that modules can be correctly  imported
-## Build:
+## Build
 To build it,just delete the internal_lib and build_cache and execute build.bat
 
 # Functions Implemented Now:
@@ -48,17 +48,21 @@ To build it,just delete the internal_lib and build_cache and execute build.bat
         - object  Logic Objects
     - '__init__'.py  Importer and some testing stuff
 - Gui
-    - node  an Ai(Mostly) generate Node Based Editor Engine
-    - simulation WIP  (Probly will soon be moved to main.py)
-    - toolbar  (a Simple Tkinter Button Toolbar that is scalable)
-    - main.py  Main GUI Program with Tkinter
+    - node
+    - loader
+    - toolbar
+    - attribute panel
+    - main.py
 - modules
-    - DataLogger  Basic DataLogger Module
-    - FlipFlop  Basic FlipFlop Components made with LogicGate module
-    - LogicGate  Basic LogicGate Module
-    - SimpleCLIIO Basic Command Line Interface Input Output Module
-    - Verilog  Basic Verilog Component Import (YES YOU DID NOT SAW IT WRONG IT NOW HV VERILOG SUPPORTTTT)
-    - '__init__'.py  Importer :D
+    - DataLogger
+    - FlipFlop
+    - Display
+    - LogicGate
+    - SimpleCLIIO (CLI only)
+    - Memory
+    - Verilog (CLI Only)
+    - guiComponents
+    - '__init__'.py
 
 More About Modules:
 
@@ -78,8 +82,12 @@ Modules basically consist of 3 parts:
 - target.md  a note written in day 1 :O
 - bootstrap.py a loader for the exe file so that the exe can directly execute the code
 - improvements.md a record of brainstorm with Ai that contains some suggestions for us to try implement later
-- Readme.md  WELP U R READING ME RN -_-
+- README.md  WELP U R READING ME RN -_-
 - build.bat erm yah the script i use to build the project
 - bootstrap.exe  pyinstaller compiled directly executable exe! 
 - requirements.txt  for pip install
 - setupDev.bat  setting up developing environment you need for editing this project and build it yourself
+
+- index.html docsify webpage
+[Webpage](https://12zcab.github.io/Logic-Sim/)
+- _sidebar.md docsify sidebar config
