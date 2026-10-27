@@ -28,9 +28,9 @@ Erm sorry i hv not yet prepared
 
 # Documentation
 
-![Docs Readme](Docs/Readme.md)
+[Docs Readme](Docs/Readme.md)
 
-![Tutorial(Not Yet Finished)](Docs/Tutorial/BasicLogicStuff.md)
+[Tutorial(Not Yet Finished)](Docs/Tutorial/BasicLogicStuff.md)
 
 
 # How can I modify this project?
