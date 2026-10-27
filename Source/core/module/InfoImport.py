@@ -1,11 +1,13 @@
 from object import *
-from modules.Data import *
+from modules.Data.DataHandler import *
 
 import inspect
 
 # Initial by user, then loop to request further import if child object has child
 
 def ExportObjectData(ParentObject : object.__class__.__self__, Info):
+    Data = Handler().Backet
+
     FoundData = {"Exec" : {}, "Object" : {}}
     if Info == "All":
         for Name, Value in ParentObject.__dict__.items():
@@ -18,7 +20,7 @@ def ExportObjectData(ParentObject : object.__class__.__self__, Info):
                 FoundData[str(Value.type)][Name] = Value
 
     for Name, Value in ParentObject.__dict__.items():
-        if Info[Name]:  
+        if Info[Name]: 
             FoundData[Name] = Value
 
     return FoundData
@@ -27,10 +29,10 @@ def ImportObjectData(ParentObject : object.__class__.__self__, Info : dict):
     Success = []
     for Name, _ in ParentObject.__dict__.items():
         if Info[Name]: 
-            setattr(ParentObject, Name, Info[Name])
+            setattr(ParentObject, Name, Info[Name])  
             Success.append(Name) 
-           
-    return Success
+   
+    return Success 
 
 def Compare(ParentObject : object.__class__.__self__, CloneObject : object.__class__.__self__):
     Difference = {[ParentObject.name, CloneObject.name]}    
@@ -40,4 +42,4 @@ def Compare(ParentObject : object.__class__.__self__, CloneObject : object.__cla
         elif not CloneObject.__dict__.item(Name):
             Difference[Name] = "Not Exist"
 
-    return Difference 
+    return Difference
