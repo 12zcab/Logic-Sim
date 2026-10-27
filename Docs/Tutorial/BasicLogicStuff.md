@@ -1,7 +1,7 @@
 # How to Learn to Build Your First Logic Circuit in LogicSim
 ### Written by 12zcab
 Erm Hello bud.
-So I am 12zcab form HackClub,one of the main developers of LogicSim.
+So I am 12zcab from HackClub,one of the main developers of LogicSim.
 Glad that actually somebody read the tutorial LOL
 
 ## What you need to know before reading this tutorial
@@ -59,7 +59,7 @@ For this case, we have latches.
 
 There are two main type of latches, NAND based one and NOR based one.
 
-NAND based one are more commonly used but NOR based one is more easy to understand.
+NAND based one are more commonly used but NOR based one is easier to understand.
 
 Also, there is a more rare type using one OR, one AND, and one NOT Gate.
 
@@ -109,14 +109,14 @@ Finally, we want the input to be low-activated so we add a Not Gate for the AND 
 
 ![AND-OR-NOT-SR-Latch](IMG/Latch6.gif)
 
-This latch costs 3 Gates but have the benefit that it does not have non-stablized state.
+This latch costs 3 Gates but have the benefit that it does not have non-stabilized state.
 
 (Btw this latch is formally called as AOI--And Or Invert Latch)
 
 
 2. BUFFER-NOT Cycle
 
-Welp... It just Blinks and does not stablize
+Welp... It just Blinks and does not stabilize
 
 ![BUFFER-NOT Cycle](IMG/Latch7.gif)
 
@@ -154,7 +154,7 @@ Combining two OR Gate to two Not Gate results in a NOR-Gate Couple Loop.
 
 Illegal State VS Metastability
 
-This kinda cross-feedback based circuit usually have illegal state (AOI dont have as it have non-symmetrical priority design)
+This kinda cross-feedback based circuit usually have illegal state (AOI doesn't have this as it has non-symmetrical priority design)
 
 Illegal State is a situation when the input is out of the designed range, causing the circuit's output to be logically incorrect
 
