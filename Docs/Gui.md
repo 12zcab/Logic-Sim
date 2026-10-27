@@ -1,20 +1,23 @@
 # GUI Documentation (WIP Document)
 
+
 ### Main Modules
 
-#### Toolbar
+- [Toolbar](#Toolbar)
 
-#### Loader
+- [Loader](#Loader)
 
-#### Node Engine
+- [Node Engine](#Node-Engine)
 
-#### Attribute Panel
+- [Attribute Panel](#Attribute-Panel)
 
-#### main.py
+- [main.py](#mainpy)
 
 So every GUI panel is modularized into different library that can be called and return a Tkinter Frame Object.
 
 The Whole Application is based on basic Tkinter (no TTK iirc)
+
+
 
 ## Toolbar
 
