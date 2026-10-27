@@ -111,77 +111,13 @@ Finally, we want the input to be low-activated so we add a Not Gate for the AND 
 
 This latch costs 3 Gates but have the benefit that it does not have non-stablized state.
 
-(Btw this latch is formally called as AOI--And Or Invert Latch)
-
-
 2. BUFFER-NOT Cycle
 
 Welp... It just Blinks and does not stablize
 
 ![BUFFER-NOT Cycle](IMG/Latch7.gif)
 
-3. NOT-NOT Cycle
-
-![NOT-NOT Cycle](IMG/Latch8.png)
-
-a Not-Not Cycle contain 1 and 0 signal at the same time :O
-
-that means we can pull the 0 to 1 or pull the 1 to 0 to set it or clear it,yayy!
-
-We can either:
-
-1. Pull the side that is originally 1 to 0 to toggle the latch
-
-That means we uses AND Gate!
-
-![NAND-Gate Couple Loop](IMG/Latch9.png)
-
-Combining two AND Gate to two Not Gate results in a NAND-Gate Couple Loop.
-
-Note that it pulls the signal if the remaining pin of AND Gate is 0 so that means it is low-activate.
-
-![NAND-Latch](IMG/Latch10.gif)
-
-2. Pull the side that is originally 0 to 1 to toggle the latch
-
-That means we uses OR Gate!
-
-![NOR-Gate Couple Loop](IMG/Latch11.png)
-
-Combining two OR Gate to two Not Gate results in a NOR-Gate Couple Loop.
-
-![NOR-Latch](IMG/Latch12.gif)
-
-Illegal State VS Metastability
-
-This kinda cross-feedback based circuit usually have illegal state (AOI dont have as it have non-symmetrical priority design)
-
-Illegal State is a situation when the input is out of the designed range, causing the circuit's output to be logically incorrect
-
-For example, when both of a NOR-Latch's set and reset input is 1,both Q and QM output are zero, which is logically incorrect(as Q and QM should always be complimentary)
-
-Illegal State Situation:
-
-![ILLEGAL-STATE](IMG/Latch13.png)
-
-Metastability
-
-Metastability is an unstable state where the output voltage hovers at an intermediate level between a valid logical 0 and 1.
-
-Metastability occurs because the stabilization after an illegal state resulted in a strange abnormal case of equilibrium state,resulting in unpredictable oscillations or abnormal output.
-
-In real life,metastability usually quickly settle back to stable state due to background noise or small delay but in software simulation, it may not be able to stable it self as it reached a perfect equilibrium oscillating state.
-
-Metastability Situation:
-
-![META-STABILITY](IMG/Latch14.gif)
-
-Comparison table:
-| Feature / Category | NAND Latches | NOR Latches | AOI Latches |
-|-----|-----|-----|-----|
-| Metastability or Illegal State | yes, when $S=R=0$ | yes, when $S=R=1$ | No,Set or Reset Signal can be prioritized |
-| Activation Level | Low-Activate | High-Activate | Mixed/Depends |
-| Gate Count | 2 | 2 | Normally about 8 but can be built as a Single Complex Cell in CMOS Tech. |
+3. 
 
 
 # Sorry From Here On the tutorial is not yet finished
