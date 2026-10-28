@@ -24,7 +24,6 @@ class Exporter:
                 else:
                     self.Backet[getattr(Object, __name__)] = Object
             return
-
         # Normal usage and including path by path function
         if not Loop:
             Found = 0
@@ -39,13 +38,12 @@ class Exporter:
 
                 if not Final:
                     print(f"Target can not be found, final reach is {Found}")
-
         # Outside of the "All", self loop can be used outside of it however the function of path by path is lost
         if Loop:
             for Object in Targets.__dict__:
                 if getattr(Object, __dict__):
                     self.Backet[getattr(Object, __name__)] = self.Catch(File, Object, True)
-                else:
+                else:  
                     self.Backet[getattr(Object, __name__)] = Object
 
     def Store(self):
@@ -58,6 +56,17 @@ class Importer:
         self.SimBox = SimBox
 
     def Import(self, Data):
-        for Key, Value in Data:
-            if hasattr(self.SimBox.__dict__, Key):
-                self.SimBox.__dict__[Key] = Value
+        for Keys, Value in Data:
+            Found = 0
+            Final = True
+            for Key in Keys:
+                if Found == 0:
+                    Found = SimBox.__dict__[Key]
+                    continue
+                Found = getattr(Found, Key)
+
+                if not Found:
+                    print(f"Target can not be found, final reach is {Found}")
+                    Final = False
+            if Final:
+                Found = Value
