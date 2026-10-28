@@ -264,7 +264,7 @@ class Handler:
                 clones = Loader.CloneImport(ModuleName, clone_name=f"Clone_{ModuleName}")  
                 if not clones:
                     continue
-                Clone = clones[0]  
+                Clone = clones[0]
                 if Clone not in self.CloneLog:
                     self.CloneLog.append(Clone)
 
