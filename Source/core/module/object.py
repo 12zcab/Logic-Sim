@@ -242,7 +242,7 @@ class Component:
         NetArray = []
         for io in self.IO.values():
             if io.Net is not None and io.Net.root not in NetArray:
-                NetArray.append(io.Net.root)
+                NetArray.append(io.Net.root) 
         return NetArray
 
 

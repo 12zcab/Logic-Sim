@@ -12,7 +12,6 @@ import types
 from pathlib import Path
 from typing import Any, Dict, List, Union, Optional
 
-# Optional dependency fallback check
 try:
     import Source.modules.MutanterFile.Transformer as Transformer
 except ImportError:
@@ -258,14 +257,14 @@ class Handler:
         except Exception as e:
             logger.error(f"Failed in Handler.ApplyAttr transaction: {e}")  
             raise  
-  
+ 
     def DeleteAttr(self, AttrInfos: List[tuple], TargetScripts: Optional[List[str]] = None):
         for ModuleName, AttrInfo in AttrInfos:
             if TargetScripts is not None:
                 clones = Loader.CloneImport(ModuleName, clone_name=f"Clone_{ModuleName}")  
                 if not clones:
                     continue
-                Clone = clones[0]
+                Clone = clones[0]  
                 if Clone not in self.CloneLog:
                     self.CloneLog.append(Clone)
 
@@ -340,7 +339,6 @@ class Handler:
 
             if self.DataHandler:
                 try:
-                    # Ensure your DataHandler method name matches your implementation (Bucket vs Backet)
                     if hasattr(self.DataHandler, "Bucket"):
                         self.DataHandler.Bucket(Table)
                     elif hasattr(self.DataHandler, "Backet"):
