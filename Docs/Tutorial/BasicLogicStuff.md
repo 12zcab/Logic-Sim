@@ -194,13 +194,69 @@ Welp, we have already built a SR(Set,Reset) latch, however the SR latch take the
 Thats exactly what a D-Type FlipFlop does!
 In this tutorial I want to mainly focus on NAND Gate based D-Type FlipFlop as it is the most common one (it only uses 1 type of gate and it is low activate.) but is it possible to build a D-type FlipFlop with AND-OR-NOT SR-Latch and NOR SR-Latch too!
 
-## T-Type FlipFlop
-![T-FlipFlop](IMG/TFlipFlop.png)
+So right now we want to set or reset the latch through one data input line only.
 
-Not yet finished
-:D
+By Connecting the data input to latch-set and through Not gate to latch-reset we can control the latch with Data input.
+
+Please note that NAND Couple latch is low-activate,therefore the /set signal should be !Data and the /reset signal should be !(!Data)
+
+![Transparent Latch with Single output) 3 not Gates](IMG/dtype1.gif)
+
+However the latch currently is actually transparent...
+
+Therefore, we can add a control signal named as clock (aka. CLK for short form),and connect clock signal to AND gate with Data and !Data before the invertor that made the latch high-activate (NAND Gate is used to simplify the AND Gate and Not Gate combination)
+
+![D-Type-FlipFlop with CLK](IMG/dtype2.gif)
+
+
+## Fall CLK Edge T-Type FlipFlop
+
+T-Type Flipflop is a component that toggle it's output (1 to 0 or 0 to 1) for every clock signal cycle.
+
+You may think that we can just directly connect the QM(Inverted Q) Output of the D-type Flipflop to it's own Data input,but...
+
+![Failed T-Type with single DFF](ttype1.gif)
+
+Welp a single dff itself when activated through a clock signal is actually transparent(Input signal will directly pass through and Output)......
+
+That means if we connect the inverted output back to input it will behave the same as a self connected single Not Gate cycle,which oscillates
+
+To prevent this situation, we cant allow a direct transparent data through the feedback pin to output pin.
+
+What if... we use two chained DFF with out of phase clock signal so that two DFF will never be transparent at the same time..?
+
+YESS THATS EXACTLY HOW A T-Type FlipFlop IS MADE!!!!!!!!!
+
+The implementation of a simple T-Type FlipFlop in LogicSim is shown below.
+
+![Correct Fall CLK Edge TFF](IMG/ttype2.gif)
+
+p.s. BTW this paragraph also briefly described how Edge based DFF works :D
+
+
+## Edge Signal and Rise CLK Edge TFF
+
+From the previous T-Type FlipFlop, we can observe that the toggle update of 
+
+The output actually happens when the clock signal change from 1 to 0 (Fall Edge)
+
+But usually we use Rise Edge clock input (update when the CLK rise from 0 to 1)
+
+Theoretically both Rise Edge and Fall Edge have no real advantage nor disadvantage but we still prefer rise edge one as it is more easy to debug and it is more common (We assume the components are rise edge driven)
+
+While it is known that it update when the CLK fall from 1 to 0 right now, making it a rise edge one is actually simple ------ just insert a not gate for CLK signal input!
+
+By adding another Not Gate in front for CLK signal inverting we can now obtain a rise edge TFF.
+
+![Correct Rise CLK Edge TFF](IMG/ttype3.gif)
 
 ## Counter
-Counter is a very very important component in logic circuits!!
-For humans we can easily
+
+Counter in Logic Circuit have a few important usages.
+
+- it can divide signal frequency,creating precise time-base generation and digital clocks.
+
+- it is the foundation of finite-state machine FSM. The value if a counter can represent a state of the machine.
+
+- it can be used as address pointers too!
 
