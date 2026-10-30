@@ -184,11 +184,6 @@ Comparison table:
 | Gate Count | 2 | 2 | Normally about 8 but can be built as a Single Complex Cell in CMOS Tech. |
 
 
-# Sorry From Here On the tutorial is not yet finished
-## Thanks for viewing this tutorial!
-## Contact me in slack @12zcab for any mistake i made in this tutorial or share your idea!
-
-
 ## D-Type FlipFlop
 Welp, we have already built a SR(Set,Reset) latch, however the SR latch take the set and reset signal as two input, why cant we use 1 signal for data and use another signal to trigger an override?
 Thats exactly what a D-Type FlipFlop does!
@@ -250,7 +245,7 @@ By adding another Not Gate in front for CLK signal inverting we can now obtain a
 
 ![Correct Rise CLK Edge TFF](IMG/ttype3.gif)
 
-## Counter
+## Counter (4 bit)
 
 Counter in Logic Circuit have a few important usages.
 
@@ -260,3 +255,38 @@ Counter in Logic Circuit have a few important usages.
 
 - it can be used as address pointers too!
 
+Lets find the pattern behind the sequence of continuous binary number!
+
+0 -> 1 -> 1 + 1 = 10 (carry) -> 10 + 1 = 11 -> 11 + 1 = 100 (carry)
+
+We notice that each carry occurs when the digit turn from 1 to 0 the next higher bit to flip its state (Add 1)
+
+So for the least significant bit (2^0), it toggles each time when increase input pin is triggered (we use rise edge one in this example)
+
+That is exactly how a TFF behaves!
+
+so technically this is a 1 bit counter :)
+
+![1 Bit Counter](IMG/counter1.png)
+
+To chain it with next higher bit (2^1), we can connect it's QM to the next TFF's clock signal. (QM rises from 0 to 1 as Q fall from 1 to 0,and as QM rises from 0 to 1 the higher bit's TFF toggles)
+
+![2 Bit Counter](IMG/counter2.png)
+
+Following this pattern we can then make a 4 Bit counter :D
+
+![4 Bit Counter](IMG/counter3.png)
+
+![4 Bit Counter Interaction](IMG/counter4.gif)
+
+## ROM
+
+
+# Sorry From Here On the tutorial is not yet finished
+## Thanks for viewing this tutorial!
+## Contact me in slack @12zcab for any mistake i made in this tutorial or share your idea!
+
+
+## State Machine with ROM and Counter
+
+## Seven Segment Counter with ROM,Counter and Seven Segment
