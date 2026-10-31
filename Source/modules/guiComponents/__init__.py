@@ -41,6 +41,8 @@ class PulseGenerator(Component):
             return
         if (now - self.lastupdate) >= (500000000 // self.Frequency):
             self.lastupdate += (500000000 // self.Frequency)
+            if (time.perf_counter_ns() - self.lastupdate) >= (500000000 // self.Frequency):
+                self.lastupdate = None
             self.state = not self.state
             self.IO.Y.Value = Logic.ONE if self.state else Logic.ZERO
             

@@ -70,7 +70,6 @@ class Exporter:
             except Exception:
                 pass
 
-        # 2. Map every active logic object and node object to stable index IDs
         logic_to_id = {}
         node_obj_to_id = {}
         nodes_data = []
@@ -79,8 +78,11 @@ class Exporter:
         if hasattr(app, "node_editor") and hasattr(app.node_editor, "nodes"):
             active_editor_nodes = set(app.node_editor.nodes)
 
-        # Blacklist system attributes that should never be serialized as component settings
-        EXCLUDED_ATTRIBUTES = {"simBox", "IO", "node", "canvas", "Parent", "parent", "Name", "name", "updateFunction"}
+        # 嚴格排除內部結構、模組子組件與系統屬性，避免崩潰或產生無效記憶體字串
+        EXCLUDED_ATTRIBUTES = {
+            "simBox", "IO", "node", "canvas", "Parent", "parent", 
+            "Name", "name", "updateFunction", "child", "children"
+        }
 
         if hasattr(app, "logicToNode"):
             for idx, (logic_obj, node_obj) in enumerate(app.logicToNode.items()):
@@ -90,7 +92,6 @@ class Exporter:
                 logic_to_id[id(logic_obj)] = idx
                 node_obj_to_id[id(node_obj)] = idx
                 
-                # Capture custom component attributes/states (ROM tables, Flip-Flop states, Latches, etc.)
                 attributes = {}
                 for attr in dir(logic_obj):
                     if attr.startswith("_") or attr in EXCLUDED_ATTRIBUTES or callable(getattr(logic_obj, attr)):
@@ -115,7 +116,6 @@ class Exporter:
                 })
         self.Backet["saved_nodes"] = nodes_data
 
-        # 3. Save wires, pin IO mappings, and Net signal values / statuses
         wires_data = []
         nets_data = []
         
@@ -196,11 +196,9 @@ class Importer:
             spawned_nodes_map = {}
             logic_objects = []
 
-            # 1. Clear existing scene items before loading
             if hasattr(self.Data, "node_editor") and hasattr(self.Data.node_editor, "clear"):
                 self.Data.node_editor.clear()
 
-            # 2. Recreate nodes, angles, and custom attribute states (ROM tables, FlipFlops, Latches)
             if "saved_nodes" in data_to_import and self.SpawnCallback:
                 for node_info in data_to_import["saved_nodes"]:
                     node_id = node_info.get("id")
@@ -215,11 +213,11 @@ class Importer:
                     if logic_obj and node_obj:
                         logic_objects.append(logic_obj)
                         for attr, val in attributes.items():
+                            if attr in ["child", "children"]:
+                                continue # 確保不會把序列化的子物件字串灌回組件結構中
                             if hasattr(logic_obj, attr):
                                 restored_val = deserialize_value(val)
                                 try:
-                                    # Avoid overwriting internal BetterDict objects like `IO` entirely; 
-                                    # instead, write values safely to attributes.
                                     current_attr = getattr(logic_obj, attr, None)
                                     if type(current_attr).__name__ == "BetterDict" and isinstance(restored_val, dict):
                                         for sub_k, sub_v in restored_val.items():
@@ -237,7 +235,6 @@ class Importer:
 
                         spawned_nodes_map[node_id] = node_obj
 
-            # 3. Recreate wires and reconnect them to node pins
             if "saved_wires" in data_to_import and hasattr(self.Data, "node_editor"):
                 try:
                     from gui.node.nodeEngine import Wire, WireNet
@@ -289,7 +286,6 @@ class Importer:
 
                         editor.wires.append(new_wire)
 
-                    # 4. Rebuild NetEngine simulation nets and restore Net States/Values & Names
                     if hasattr(editor, "rebuild_nets"):
                         editor.rebuild_nets()
 
@@ -321,7 +317,6 @@ class Importer:
                                             sim_net.resolve()
                                     break
 
-                    # 5. Trigger update pass on all restored logic objects and simulation boxes
                     for logic_obj in logic_objects:
                         if hasattr(logic_obj, "update"):
                             try:

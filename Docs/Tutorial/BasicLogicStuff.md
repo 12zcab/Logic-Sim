@@ -314,7 +314,7 @@ Here is the implementation of it in LogicSim.
 
 Now, we can combine ROM,Counter and Seven Segment Display to make a hexadecimal counter that counts from 0 to F!
 
-We first build a 4 bit counter with pulse generator for automated increment
+We first build a 4 bit counter with pulse generator for automated increment (we use async one here as we dont have very strict requirement here)
 
 ![4 bit counter](IMG/chap1_1.png)
 

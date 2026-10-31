@@ -1422,7 +1422,7 @@ class NodeEditor(ttk.Frame):
 
     def clear(self):
         for net_id, net in list(self.engine.nets.items()):
-            self._notify_event("NET_DESTROY", net, None)
+            self.engine._notify_event("NET_DESTROY", net, None)
         self.engine.nets.clear()
         for node in list(self.nodes):
             self.delete_node(node)
