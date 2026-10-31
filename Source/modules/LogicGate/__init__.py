@@ -27,8 +27,9 @@ OR_LUT = {
 class Buffer(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A"), IO("Y")], self.update)
+        self.delay = 1
     def update(self):
-        self.IO.Y.Value = self.IO.A.Value
+        self.IO.Y.setPower(self.IO.A.Value, Delay=self.delay)
 
 class NotGate(Component):
     def __init__(self, Name):

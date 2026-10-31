@@ -1,0 +1,53 @@
+import math
+
+y_clk = y + h * (5.0 / 6.0)
+
+box_pts = [
+    (x, y), (x + w, y),
+    (x + w, y + h), (x, y + h)
+]
+
+clk_w = w * 0.15
+clk_h = h * 0.05
+clk_pts = [
+    (x, y_clk - clk_h),
+    (x + clk_w, y_clk),
+    (x, y_clk + clk_h)
+]
+
+cx = x + w / 2.0
+cy = y + h / 2.0
+
+box_pts = [rotatePoint(px, py, cx, cy, angle) for px, py in box_pts]
+clk_pts = [rotatePoint(px, py, cx, cy, angle) for px, py in clk_pts]
+
+txt_x, txt_y = rotatePoint(cx, cy, cx, cy, angle)
+
+flat_box = [coord for pt in box_pts for coord in pt]
+flat_clk = [coord for pt in clk_pts for coord in pt]
+
+stroke_w = max(2, int(min(w, h) * 0.05))
+select_w = stroke_w + max(2, int(min(w, h) * 0.04))
+
+if is_selected:
+    canvas.create_polygon(
+        flat_box,
+        fill="", outline="#00E5FF", width=select_w,
+        joinstyle="miter", smooth=False, tags=tags
+    )
+
+canvas.create_polygon(
+    flat_box,
+    fill="#181818", outline="#FFFFFF", width=stroke_w,
+    joinstyle="miter", smooth=False, tags=tags
+)
+
+canvas.create_line(*flat_clk, fill="#FFFFFF", width=stroke_w, tags=tags)
+
+font_size = round(2*int(h * 0.05))
+if font_size > 0:
+    canvas.create_text(
+        txt_x, txt_y,
+        text="D Latch", fill="#FFFFFF", anchor="center",
+        font=("Arial", font_size, "bold"), tags=tags
+    )

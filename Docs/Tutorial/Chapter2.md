@@ -22,17 +22,16 @@ And this time, we are going to build a Seven Segment Based Clock.
 
 ## Complex Register with Increasement,Reset and Rewrite function.
 
-### JK FlipFlop
+### SRMSDFF FlipFlop
 
 ### Clock and Reset 
 
     Common control signal
 
-### Toggling with JK FlipFlop
+### Toggling with SRMSDFF FlipFlop
 
-    (T is actually just JK when they are same)
-    So when Increasement mode we can just directly put the previous output as the new input's JK signal
+    just add a Toggle Input and use XOR for Q signal
 
-### Force Rewrite a JK FlipFlop
+### Force Rewrite a SRMSDFF FlipFlop
 
-    lol just D->J and !D->K
+    lol just D->/R and !D->/S

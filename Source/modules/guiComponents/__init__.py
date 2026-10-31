@@ -10,6 +10,19 @@ class Switch(Component):
         self.state = not self.state
         self.update()
         
+class Constant(Component):
+    def __init__(self, Name):
+        super().__init__(Name, [IO("Y")], self.update)
+        self.state = False
+    def update(self):
+        self.IO.Y.Value = Logic.ONE if self.state else Logic.ZERO
+    @property
+    def power(self):
+        return self.state
+    @power.setter
+    def power(self,newval):
+        self.state = newval
+        self.update()
 
 
 class PulseGenerator(Component):

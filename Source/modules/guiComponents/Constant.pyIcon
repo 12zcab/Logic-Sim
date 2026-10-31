@@ -1,0 +1,83 @@
+import math
+
+is_on = False
+if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
+    if hasattr(node.metadata, "state"):
+        is_on = bool(node.metadata.state)
+
+box_w = w * (6.0 / 5.0)
+box_h = h * (6.0 / 5.0)
+box_x1 = x + (w - box_w) / 2.0
+box_y1 = y + (h - box_h) / 2.0
+box_x2 = box_x1 + box_w
+box_y2 = box_y1 + box_h
+
+corners = [
+    (box_x1, box_y1),
+    (box_x2, box_y1),
+    (box_x2, box_y2),
+    (box_x1, box_y2)
+]
+
+shadow_offset = box_w * 0.06
+shadow_corners = [
+    (box_x1 + shadow_offset, box_y1 + shadow_offset),
+    (box_x2 + shadow_offset, box_y1 + shadow_offset),
+    (box_x2 + shadow_offset, box_y2 + shadow_offset),
+    (box_x1 + shadow_offset, box_y2 + shadow_offset)
+]
+
+rot_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in corners]
+flat_box = [coord for pt in rot_corners for coord in pt]
+
+flat_shadow = [coord for pt in shadow_corners for coord in pt]
+
+stroke_w = max(2, int(min(box_w, box_h) * 0.05))
+select_w = stroke_w + max(2, int(min(box_w, box_h) * 0.04))
+
+if is_selected:
+    canvas.create_polygon(
+        flat_box,
+        fill="",
+        outline="#38bdf8",
+        width=select_w,
+        smooth=True,
+        splinesteps=32,
+        tags=tags
+    )
+
+canvas.create_polygon(
+    flat_shadow,
+    fill="#000000",
+    outline="",
+    smooth=True,
+    splinesteps=32,
+    tags=tags
+)
+
+bg_fill = "#38bdf8" if is_on else "#000000"
+text_color = "#000000" if is_on else "#FFFFFF"
+border_color = "#38bdf8" if is_on else "#FFFFFF"
+
+canvas.create_polygon(
+    flat_box,
+    fill=bg_fill,
+    outline=border_color,
+    width=stroke_w,
+    smooth=True,
+    splinesteps=32,
+    tags=tags
+)
+
+text_str = "1" if is_on else "0"
+center_pt = rotatePoint(x + w / 2.0, y + h / 2.0, cx, cy, angle)
+font_size = int(8 * (zoom / 35.0))
+
+if font_size > 0:
+    canvas.create_text(
+        center_pt[0], center_pt[1],
+        text=text_str,
+        fill=text_color,
+        font=("Consolas", font_size, "bold"),
+        tags=tags
+    )

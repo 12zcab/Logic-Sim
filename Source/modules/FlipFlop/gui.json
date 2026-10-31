@@ -20,8 +20,8 @@
                 }
             }
         },
-        "DFF":{
-            "constructor":"BasicDFF",
+        "D Latch":{
+            "constructor":"BasicDLatch",
             "size": [3,3],
             "color": "white",
             "bcolor": "black",
@@ -33,7 +33,65 @@
             },
             "children": {
                 "pyIcon": {
-                    "path":"DFF.pyIcon",
+                    "path":"BasicDLatch.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "MSDFF":{
+            "constructor":"MSDFF",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"MSDFF.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "SRDLatch":{
+            "constructor":"SRDLatch",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]},
+                "/R": {"position":[1,3]},
+                "/S": {"position":[1,-1]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"BasicDLatch.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "SRMSDFF":{
+            "constructor":"SRMSDFF",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]},
+                "/R": {"position":[1,3]},
+                "/S": {"position":[1,-1]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"MSDFF.pyIcon",
                     "size": [3,3]
                 }
             }
@@ -44,9 +102,10 @@
             "color": "white",
             "bcolor": "black",
             "pins": {
+                "T": {"position":[-1,0]},
                 "C": {"position":[-1,2]},
-                "T": {"position":[3,0]},
-                "TM": {"position":[3,2]}
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]}
             },
             "children": {
                 "pyIcon": {

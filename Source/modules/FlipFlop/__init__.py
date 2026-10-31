@@ -17,7 +17,7 @@ create logger Logger("logger",["Q"],[NAND1.IO.Y])
 """
 
 """
-create dff BasicDFF("DFFTest")
+create dff BasicDLatch("DFFTest")
 create keyd keyboard_button("key1","d")
 create keyc keyboard_button("key2","c")
 keyd.IO.OUT >> dff.IO.D
@@ -40,7 +40,7 @@ create logger Logger("logger",["IND","INC","INR","Q"],[keyd.IO.OUT,keyc.IO.OUT,k
 from core import *
 from modules.LogicGate import *
 from modules.DataLogger import *
-class BasicDFF(Module):
+class BasicDLatch(Module):
     def __init__(self, Name):
         Pin_D = IO("D")
         Pin_CLK = IO("C")
@@ -61,7 +61,32 @@ class BasicDFF(Module):
         Pin_D >> NandS.IO.B >> NotD.IO.A
         NotD.IO.Y >> NandR.IO.B
         super().__init__(Name, ModuleIO, Blocks)
-
+        
+class SRDLatch(Module):
+    def __init__(self, Name):
+        Pin_D = IO("D")
+        Pin_CLK = IO("C")
+        Pin_Q = IO("Q")
+        Pin_QM = IO("QM")
+        Pin_S = IO("/S")
+        Pin_R = IO("/R")
+        ModuleIO = [Pin_D,Pin_CLK,Pin_Q,Pin_QM,Pin_S,Pin_R]
+        NandQ = NandGate3("QY")
+        NandQM = NandGate3("QMY")
+        NandS = NandGate("SIn")
+        NandR = NandGate("RIn")
+        NotD = NotGate("DInv")
+        Blocks = [NotD,NandS,NandR,NandQ,NandQM]
+        Pin_S >> NandQ.IO.C
+        Pin_R >> NandQM.IO.C
+        NandQ.IO.Y >> NandQM.IO.A >> Pin_Q
+        NandQM.IO.Y >> NandQ.IO.A >> Pin_QM
+        NandS.IO.Y >> NandQ.IO.B
+        NandR.IO.Y >> NandQM.IO.B
+        Pin_CLK >> NandS.IO.A >> NandR.IO.A
+        Pin_D >> NandS.IO.B >> NotD.IO.A
+        NotD.IO.Y >> NandR.IO.B
+        super().__init__(Name, ModuleIO, Blocks)
 
 class PP0_DFF(Module):
     def __init__(self, Name):
@@ -143,26 +168,72 @@ class TFF(Module):
     def __init__(self, Name):
         clk = IO("C")
         t   = IO("T")
-        tm  = IO("TM")
-        ModuleIO = [clk, t, tm]
-        firstDFF  = BasicDFF("T_First_DFF")
-        secondDFF = BasicDFF("T_Second_DFF")
-        notGate   = NotGate("T_Not")
-        notCGate  = NotGate("T_C_Not")
-        Blocks    = [firstDFF, secondDFF, notGate,notCGate]
+        q   = IO("Q")
+        qm  = IO("QM")
+        ModuleIO = [clk, t, q,qm]
+        dff = MSDFF("MSDFF")
+        xor = XorGate("XOR")
+        Blocks    = [dff, xor]
         super().__init__(Name, ModuleIO, Blocks)
-        notCGate.IO.Y >> firstDFF.IO.C >> notGate.IO.A
+        clk >> dff.IO.C
+        t >> xor.IO.A
+        xor.IO.Y >> dff.IO.D
+        dff.IO.Q >> xor.IO.B >> q
+        dff.IO.QM >> qm
+        
+class MSDFF(Module):
+    def __init__(self, Name):
+        clk = IO("C")
+        d = IO("D")
+        q   = IO("Q")
+        qm  = IO("QM")
+        ModuleIO = [clk,d, q, qm]
+        firstDLatch  = BasicDLatch("First_DFF")
+        secondDLatch = BasicDLatch("Second_DFF")
+        notGate   = NotGate("Not")
+        notCGate  = NotGate("C_Not")
+        Blocks    = [firstDLatch, secondDLatch, notGate,notCGate]
+        super().__init__(Name, ModuleIO, Blocks)
+        d >> firstDLatch.IO.D
+        firstDLatch.IO.Q >> secondDLatch.IO.D
+        
+        secondDLatch.IO.Q >> q
+        secondDLatch.IO.QM >> qm
+        notGate.IO.Y >> secondDLatch.IO.C
         notGate.update()
         if notGate.IO.Y.Net:
             notGate.IO.Y.Net.resolve()
-        notGate.IO.Y >> secondDFF.IO.C
-        firstDFF.IO.Q >> secondDFF.IO.D
-        secondDFF.IO.Q >> t
-        secondDFF.forceUpdate()
-        for net in secondDFF.getNet():
-            net.resolve()
-        secondDFF.IO.QM >> tm >> firstDFF.IO.D
-        firstDFF.forceUpdate()
-        for net in firstDFF.getNet():
-            net.resolve()
         clk >> notCGate.IO.A
+        notCGate.IO.Y >> firstDLatch.IO.C >> notGate.IO.A
+        notCGate.update()
+        if notCGate.IO.Y.Net:
+            notCGate.IO.Y.Net.resolve()
+        notGate.update()
+        if notGate.IO.Y.Net:
+            notGate.IO.Y.Net.resolve()
+        
+        
+class SRMSDFF(Module):
+    def __init__(self, Name):
+        clk = IO("C")
+        d = IO("D")
+        q   = IO("Q")
+        qm  = IO("QM")
+        s   = IO("/S")
+        r  = IO("/R")
+        ModuleIO = [clk,d, q, qm,s,r]
+        firstDLatch  = SRDLatch("First_DFF")
+        secondDLatch = SRDLatch("Second_DFF")
+        notGate   = NotGate("Not")
+        notCGate  = NotGate("C_Not")
+        Blocks    = [firstDLatch, secondDLatch, notGate,notCGate]
+        super().__init__(Name, ModuleIO, Blocks)
+        s >> firstDLatch.IO["/S"] >> secondDLatch.IO["/S"]
+        r >> firstDLatch.IO["/R"] >> secondDLatch.IO["/R"]
+        d >> firstDLatch.IO.D
+        firstDLatch.IO.Q >> secondDLatch.IO.D
+        secondDLatch.IO.Q >> q
+        secondDLatch.IO.QM >> qm
+        clk >> notCGate.IO.A
+        notCGate.IO.Y >> firstDLatch.IO.C >> notGate.IO.A
+        notGate.IO.Y >> secondDLatch.IO.C
