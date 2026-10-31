@@ -61,7 +61,7 @@ class Exporter:
             self.Backet = {}
 
 class Importer: 
-    def __init__(self, FileName : json, TableName, SimBox):  
+    def __init__(self, FileName : json, TableName, SimBox):
         self.File = FileName  
         self.SimBox = SimBox
         self.Table = TableName  
@@ -89,7 +89,7 @@ class Importer:
                         setattr(Found, Key, Value)
                             
 
-        if Table == "All" or Loop == True:
+        if Table == "All" or Loop == True:  
             PriObj = getattr(self.SimBox, globals()[next(iter(Table))])
 
             for Key, Object in Table:
@@ -115,8 +115,8 @@ class Importer:
                                 Found = getattr(Found, Part)
 
                             Object = Found
-                                   
-                    setattr(PriObj, Key, Object)
+                                      
+                    setattr(PriObj, Key, Object)  
 
             if Table == "All":
                return PriObj
