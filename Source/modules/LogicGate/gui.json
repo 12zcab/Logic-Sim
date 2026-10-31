@@ -15,6 +15,15 @@
                     "path":"Buffer.pyIcon",
                     "size": [4,3]
                 }
+            },
+            "attributes":{
+                "Settings":{
+                    "Delay":{
+                        "attribute":"delay",
+                        "type":"integer",
+                        "callFunc": "update"
+                    }
+                }
             }
         },
         "Not Gate":{

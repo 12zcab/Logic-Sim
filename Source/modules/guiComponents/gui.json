@@ -71,6 +71,30 @@
                     }
                 }
             }
+        },
+        "Constant":{
+            "constructor":"Constant",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Constant.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Activated": {
+                        "attribute":"power",
+                        "type":"boolean",
+                        "callFunc": "update"
+                    }
+                }
+            }
         }
     }
 }

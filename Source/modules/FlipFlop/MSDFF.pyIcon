@@ -44,10 +44,10 @@ canvas.create_polygon(
 
 canvas.create_line(*flat_clk, fill="#FFFFFF", width=stroke_w, tags=tags)
 
-font_size = round(int(h * 0.05))
+font_size = round(2 * int(h * 0.05))
 if font_size > 0:
     canvas.create_text(
         txt_x, txt_y,
-        text="DFF", fill="#FFFFFF", anchor="center",
+        text="MSDFF", fill="#FFFFFF", anchor="center",
         font=("Arial", font_size, "bold"), tags=tags
     )
