@@ -29,17 +29,17 @@ class IO:
     def simBox(self):
         if self.parent:
             return self.parent.simBox 
-        return None
+        return None  
 
     @property
-    def Value(self): 
+    def Value(self):
         return self._Value
 
     @Value.setter
     def Value(self, val, strength=Strength.STRONG, Delay=1):
         self.setPower(val, strength, Delay)
 
-    def setPower(self, val, strength=Strength.STRONG, Delay=1):
+    def setPower(self, val, strength=Strength.STRONG, Delay=1):  
         sim = self.simBox
         if sim and hasattr(sim, "scheduler"):
             sim.scheduler.schedule(self, val, strength, Delay)
@@ -162,7 +162,6 @@ class Net:
         ios = root_net._IO
         if not ios:
             valChanged = (root_net._Value != Logic.Z or root_net._Strength != Strength.HIGHZ)
-            root_net._Value = Logic.Z
             root_net._Strength = Strength.HIGHZ
             return valChanged
             
@@ -177,7 +176,7 @@ class Net:
                 if io.driveStr == maxStr:
                     if firstVal is None:
                         firstVal = io.driveVal
-                    elif io.driveVal != firstVal:
+                    elif io.driveVal != firstVal:  
                         newVal = Logic.X
                         break
             if newVal is None:
@@ -263,7 +262,7 @@ class Module(Component):
 
     def getNet(self):
         NetArray = []
-        for io in self.IO.values():
+        for io in self.IO.values():  
             if io.Net is not None and io.Net.root not in NetArray:
                 NetArray.append(io.Net.root)
         for block in self.child.values():
@@ -275,16 +274,16 @@ class Module(Component):
     def update(self):
         pass
     def forceUpdate(self):
-        if hasattr(self, "child"):
+        if hasattr(self, "child"):  
             for child in self.child.values():
                 if hasattr(child, "forceUpdate"):
-                    child.forceUpdate()
+                    child.forceUpdate()  
                 elif hasattr(child, "update"):
-                    child.update()
+                    child.update()    
 
 class SimBox:
-    def __init__(self, Objects, MAX_DELTA_CYCLES=50):
-        self.Objects = []
+    def __init__(self, Objects, MAX_DELTA_CYCLES=50):  
+        self.Objects = [] 
         self.Nets = []
         self.scheduler = Kairos()
         self.MAX_DELTA_CYCLES = MAX_DELTA_CYCLES
@@ -320,7 +319,7 @@ class SimBox:
                         flat_nets.append(root_net)
 
             if hasattr(comp, "child"):
-                for child_obj in comp.child.values():
+                for child_obj in comp.child.values():  
                     flatten(child_obj, parent_node=comp)
 
         top_level = [o for o in list(self.Objects) if o.parent is None or o.parent == self]
