@@ -1,5 +1,5 @@
 import os
-from tkinter import Tk, PanedWindow, VERTICAL, RAISED, BOTH
+from tkinter import Tk, PanedWindow, VERTICAL, RAISED, BOTH,filedialog
 from bidict import bidict
 
 from gui.node.nodeEngine import *
@@ -7,7 +7,6 @@ from gui.toolbar.toolbar import *
 from gui.loader import *
 from gui.attribute.attributePanel import *
 from core import *
-from core.module.object import *
 
 
 class LogicSimApp:
@@ -226,22 +225,32 @@ class LogicSimApp:
         logic_obj = self.logicToNode.inv.get(node)
         if node == self.lastSelectedNode:
             self.attributePanel.clearCategories()
+            self.lastSelectedNode = None
         if logic_obj:
             for io in logic_obj.IO.values():
                 io.disconnectNet()
-                    
+                if io.Net:
+                    io.Net.resolve()
             self.simBox.removeObject(logic_obj)
-            del self.logicToNode.inv[node]
+            if logic_obj in self.logicToNode:
+                del self.logicToNode[logic_obj]
+            if node in self.logicToNode.inv:
+                del self.logicToNode.inv[node]
             self.simBox.expandNet()
+        if hasattr(self, "node_editor"):
+            self.node_editor.rebuild_nets()
+            self.node_editor.redraw_all()
             
     def load_all(self):
         self.load_modules()
         for modName in list(reversed(self.all_jsons)):
             self.switch_module(modName)
-
+        self.switch_module("File")
+        
     def load_modules(self):
         module_jsons = guiJsonPaths()
-        
+        filebt = self.toolbar.add_button("File")
+        filebt.config(command=lambda:self.switch_module("File"))
         for module_path in module_jsons:
             json_obj = loadJson(module_path)
             module_name = json_obj.get("name")
@@ -251,10 +260,61 @@ class LogicSimApp:
             
             bt = self.toolbar.add_button(module_name)
             bt.config(command=lambda name=module_name: self.switch_module(name))
-
+    def SaveAll(self):
+        def create_sample(class_name):
+            for mod_name, mod_data in self.all_jsons.items():
+                components = mod_data.get("components", {})
+                for comp_name, comp_def in components.items():
+                    if comp_def.get("constructor") == class_name:
+                        module_dir = os.path.dirname(mod_data["__path__"])
+                        return loadObject(comp_name, comp_def, self.node_editor, module_dir, 0, 0)
+            return None
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".LSproj",
+            filetypes=[("LogicSim File", "*.LSproj")],
+            title="Save LogicSim Project"
+        )
+        if not filename == "":
+            exporter = Exporter(self, filename, "UntitledApp", sample_factory=create_sample)
+            exporter.Catch()
+            exporter.Store()
+    def LoadAll(self):
+        def recreate_node(constructor_name, x, y, angle):
+            for mod_name, mod_data in self.all_jsons.items():
+                components = mod_data.get("components", {})
+                for comp_name, comp_def in components.items():
+                    if comp_def.get("constructor") == constructor_name:
+                        module_dir = os.path.dirname(mod_data["__path__"])
+                        logic_obj, node_obj = loadObject(comp_name, comp_def, self.node_editor, module_dir, x, y)
+                        if angle != 0.0 and hasattr(self.node_editor, "rotate_node"):
+                            self.node_editor.rotate_node(node_obj, angle_deg=angle)
+                        self.addLogic(logic_obj, node_obj)
+                        return logic_obj, node_obj
+            return None, None
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".LSproj",
+            filetypes=[("LogicSim File", "*.LSproj")],
+            title="Load LogicSim Project",
+            confirmoverwrite=False
+        )
+        if not filename == "":
+            importer = Importer(filename, "UntitledApp", self, spawn_callback=recreate_node)
+            importer.Import()
+    def ClearAll(self):
+        self.node_editor.clear()
+        self.attributePanel.clearCategories()
     def switch_module(self, module_name):
+        if module_name == "File":
+            self.sub_toolbar.clear_buttons()
+            savebt = self.sub_toolbar.add_button("Save")
+            savebt.config(command=self.SaveAll)
+            loadbt = self.sub_toolbar.add_button("Load")
+            loadbt.config(command=self.LoadAll)
+            clearbt = self.sub_toolbar.add_button("Clear")
+            clearbt.config(command=self.ClearAll)
+            self.sub_toolbar.force_update()
+            return
         self.sub_toolbar.clear_buttons()
-        
         module_data = self.all_jsons[module_name]
         component_names = getComponents(module_data)
         components_obj = module_data.get("components", {})
@@ -294,3 +354,6 @@ class LogicSimApp:
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
         loadingObjfunc = lambda x, y, name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path, x, y)
         return [pyicon_path,ratio], loadingObjfunc,component_def
+
+
+

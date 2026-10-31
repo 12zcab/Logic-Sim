@@ -912,13 +912,12 @@ class NodeEditor(ttk.Frame):
     def _draw_instructions(self):
         h = self.canvas.winfo_height() or 700
         text = (
-            "Strict 90° Edge-Main Controls (Dual Edge/Center 0.5 Grid):\n"
-            "• L-Click / Rapid-Click: Select Net / Toggle Node / Drag\n"
-            "• R Key: Rotate Selected/Hovered Node\n"
-            "• Shift + L-Click: Branch Sub-Wire from Edge / Pin\n"
-            "• R-Click: Delete Node or Full Wire\n"
-            "• Shift + R-Click: Cut Wire Segment (Net Split)\n"
-            "• Hover Wire: View Connected Node:Pin List\n"
+            "• L-Click: Select / Drag\n"
+            "• R-Click: Delete Node or Wire\n"
+            "• Shift + L-Click: Branch Sub-Wire\n"
+            "• Shift + R-Click: Cut Wire Segment\n"
+            "• R: Rotate\n"
+            "• Hover Wire: View Connection Status\n"
             "• M-Click + Drag: Pan Canvas | Scroll: Zoom"
         )
         x1, y1 = 12, h - 135
@@ -1422,10 +1421,16 @@ class NodeEditor(ttk.Frame):
             self._emit("wire_delete", wire)
 
     def clear(self):
-        self.nodes.clear()
-        self.wires.clear()
+        for net_id, net in list(self.engine.nets.items()):
+            self._notify_event("NET_DESTROY", net, None)
+        self.engine.nets.clear()
+        for node in list(self.nodes):
+            self.delete_node(node)
+        for wire in list(self.wires):
+            self.delete_wire(wire)
         self.selected_object = None
         self.hovered_object = None
+        self.active_wire = None
         self.rebuild_nets()
         self.redraw_all()
 
