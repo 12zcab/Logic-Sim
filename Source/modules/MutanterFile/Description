@@ -1,21 +1,5 @@
 How to Use Mutanter
 
-------------------------------------------------------------------------------------------------------------------------------------
-
-Handler:
-It creates an object that can connect, disconnect, replaceModuleAttr, revert and StoreChangesLog
-
-self.ConLog
-self.CloneLog
-self.ConnectLog
-
-------------------------------------------------------------------------------------------------------------------------------------
-connect:
-
-Handler.connect(Info)
-Handler.disconnect(Info)
-
-Info = {"MyModule1.py" = {"Module2.py", "Calculator.py"}} for example
 
 ------------------------------------------------------------------------------------------------------------------------------------
 HandleAttachment:
@@ -30,7 +14,6 @@ AttrInfo = {"Printer", "def Print(): print("I print something haha")"} for examp
 Handler.Revert(RevertInfo) then automatically check if any cloned immport is not attached to anything
 
 RevertInfo = {"MyModule.py", {"Import1.py"}}
-
 
 
 ------------------------------------------------------------------------------------------------------------------------------------
@@ -57,5 +40,17 @@ Transformer Description:
 It acts as an container of extend functions of Mutanter  
 
 ------------------------------------------------------------------------------------------------------------------------------------ 
+Handler Description:
+
+Connect()
+
+Table Required = {
+    "Targets" : path or name,
+    "Imports" : path or name,
+}
+
+
+
+
 
  

@@ -21,13 +21,13 @@
                     "path":"SevenSegment.pyIcon",
                     "size": [6,8]
                 }
-            },
+            },  
             "attributes": {
                 "Settings": {
-                    "High Activate":{
+                    "High Activate":{ 
                         "attribute":"ActivateLevel",
                         "type":"boolean",
-                        "callFunc": "update"
+                        "callFunc": "update" 
                     }
                 }
             }
@@ -41,9 +41,9 @@
                 "A": {"position":[1,0]}
             },
             "children": {
-                "pyIcon": {
+                "pyIcon": {  
                     "path":"Lamp.pyIcon",
-                    "size": [1,1]
+                    "size": [1,1]   
                 }
             }
         }
