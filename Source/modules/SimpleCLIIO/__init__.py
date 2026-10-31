@@ -17,8 +17,7 @@ def keyboard_button(Name, key):
     obj.IO["LOOP"] >> obj.IO["LOOP"]
     return obj
 
-def print_output(Name, out):
+def print_output(Name, out):  
     IODict = {"IN": IO("IN")}
     comp = Component(Name,IODict,lambda self: print(f"{out}") if self.IO["IN"].Value else None)
     return comp
-  

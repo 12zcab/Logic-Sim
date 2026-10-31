@@ -24,7 +24,7 @@ def safeEval(expression, context=None):
         return "Error"
 def clear_terminal_input_buffer(): 
     try:
-        import msvcrt
+        import msvcrt  
         while msvcrt.kbhit():
             msvcrt.getch()
     except ImportError:

@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Union, Optional
 
 try:
     import Source.modules.MutanterFile.Transformer as Transformer
-except ImportError:
+except ImportError:  
     Transformer = None
 
 try:
@@ -38,47 +38,33 @@ class Loader:
 
         for Target in TargetName:
             try:
-                Found = importlib.import_module(Target)
-                FoundItems.append(Found)
-            except ImportError as e:
-                logger.error(f"'{Target}' does not exist due to: {e}")
-                raise
+                if "/" in Target:
+                    Target = Path(Target)
+                    for _, modname, _ in pkgutil.iter_modules(Target):
+                        Target = f"{modname}"
+                        Found = importlib.import_module(Target)
+                else:
+                    Found = importlib.import_module(Target)
 
-        return FoundItems
+            except ModuleNotFoundError:
 
-    @staticmethod
-    def LoadModuleFromPath(Targets: Union[str, List[str]], prefix: str = "") -> List[types.ModuleType]:
-        FoundItems = []
-        Paths = []
-        if not isinstance(Targets, list):
-            Targets = [Targets]
+                print(f"{Target} does not exist")
+                continue
 
-        for Folder in Targets:
-            Paths.append(Path(Folder).resolve())
-
-        for p in Paths:  
-            try:
-                for _, modname, _ in pkgutil.iter_modules([str(p)]):
-                    Target = f"{prefix}{modname}"
-                    try:
-                        found_mod = importlib.import_module(Target)
-                        FoundItems.append(found_mod)
-                    except ImportError as e:
-                        logger.error(f"'{Target}' does not exist due to: {e}")
-            except Exception as e:
-                logger.error(f"Error iterating modules in path {p}: {e}") 
+            FoundItems.append(Found)
 
         return FoundItems
 
     @staticmethod
     def CloneImport(TargetImport: Union[str, types.ModuleType], clone_name: Optional[str] = None) -> List[types.ModuleType]:
+
         Clones = []
         if isinstance(TargetImport, str):
             Imports = Loader.LoadModule(TargetImport)  
         else:
-            Imports = [TargetImport]
-
-        for Import in Imports:  
+            Imports = [TargetImport]   
+    
+        for Import in Imports:
             if Import is None:
                 continue
 
@@ -202,13 +188,13 @@ class Handler:
         ImportList = Loader.LoadModule(Infos["Imports"])
         Imports = ImportList[0]
 
-        for Target in Found:
+        for Target in Found:      
             for Import in Imports:
                 Name = Infos["Names"].get(Import.__name__, False)
                 if Name is False:
                     Name = Import.__name__
                 setattr(Target, Name, Import)
-
+          
     def Disconnect(self, ListInfo: List[tuple]):
         for Target, Imports in ListInfo:
             for Import in Imports:
@@ -230,7 +216,7 @@ class Handler:
 
     def ApplyAttr(self, AttrInfos: List[tuple], TargetScripts: Optional[List[str]] = None):
         try:
-            for ModuleName, AttrInfo in AttrInfos:
+            for ModuleName, AttrInfo in AttrInfos:  
                 if TargetScripts is not None:
                     clones = Loader.CloneImport(ModuleName, clone_name=f"Clone_{ModuleName}")
                     if not clones:
@@ -267,19 +253,21 @@ class Handler:
                 Clone = clones[0]
                 if Clone not in self.CloneLog:
                     self.CloneLog.append(Clone)
-
+              
             SuccessChange = Modifier.DeleteAttr(Clone if TargetScripts else ModuleName, AttrInfo)
-            if SuccessChange:
+            if SuccessChange:  
                 self.LogChanges(self.ChangeLog, AttrInfo, key=ModuleName)
 
     def Revert(self, RevertInfo: Union[dict, list]):
         items = RevertInfo.items() if isinstance(RevertInfo, dict) else RevertInfo
 
+
         for Target, ImportList in items:
-            try:
+            try:   
                 targets = Loader.LoadModule(Target) 
-                if not targets:
+                if not targets:  
                     continue
+    
                 TargetMod = targets[0]
 
                 for ImportName in ImportList:
@@ -336,7 +324,7 @@ class Handler:
                 else:
                     if Value not in Table[key]:
                         Table[key].append(Value)
-
+                        
             if self.DataHandler:
                 try:
                     if hasattr(self.DataHandler, "Bucket"):
