@@ -38,7 +38,7 @@ class Loader:
 class Handler:
 
     def __init__(self):
-        self.Backet = []
+        self.Backet = {}
 
 
     def Store(self , Filename: str):
