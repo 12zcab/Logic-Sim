@@ -185,6 +185,7 @@ Comparison table:
 
 
 ## D Latch
+
 Welp, we have already built a SR(Set,Reset) latch, however the SR latch take the set and reset signal as two input, why cant we use 1 signal for data and use another signal to trigger an override?
 Thats exactly what a D Latch does!
 In this tutorial I want to mainly focus on NAND Gate based D Latch as it is the most common one (it only uses 1 type of gate and it is low activate.) but is it possible to build a D Latch with AND-OR-NOT SR-Latch and NOR SR-Latch too!
@@ -204,6 +205,7 @@ Therefore, we can add a control signal named as clock (aka. CLK for short form),
 ![D Latch with CLK](IMG/dlatch2.gif)
 
 ## Rise Edge Master-Slave D-Type FlipFlop
+
 The previous D Latch is level triggered but sometimes we dont want it to become transparent when it is triggered
 
 Thats why we introduce a new type of component called FlipFlop.
@@ -214,9 +216,15 @@ It can be Rise Edge(0 to 1 change),Fall Edge(1 to 0 change),or Both(any change).
 
 To build a FlipFlop with D Latches, we cant allow a direct transparent data through the input  pin to output pin.
 
-Therefore,we use two chained D Latch with out of phase clock signal so that two D Latch will never be transparent at the same time!
+Therefore,we use two chained D Latch with out of phase clock signal (when one rise,one fall,vice versa) so that two D Latch will never be transparent at the same time!
 
-![MSDFF](IMG/MSDFF.gif)
+![MSDFF](IMG/MSDFF1.gif)
+
+However we found that currently the FlipFlop is fall edge triggered.
+
+We can add an invertor for the clock signal to fix it.
+
+![MSDFF_RISE](IMG/MSDFF2.gif)
 
 ## T-Type FlipFlop
 
@@ -232,7 +240,7 @@ If we want an Enable pin (T), we want when T equals to 1,the input of the MSDFF 
 
 ![Correct MSDFF based Toggle TFF](IMG/ttype2.gif)
 
-## Counter (4 bit)
+## Asynchronous Counter (4 bit)
 
 Counter in Logic Circuit have a few important usages.
 
@@ -266,14 +274,56 @@ Following this pattern we can then make a 4 Bit counter :D
 
 ![4 Bit Counter Interaction](IMG/counter4.gif)
 
-## ROM
+## Synchronous Counter
 
+Theres a slightly problem in the previous counter we built.
 
-# Sorry From Here On the tutorial is not yet finished
-## Thanks for viewing this tutorial!
-## Contact me in slack @12zcab for any mistake i made in this tutorial or share your idea!
+The update from the least significant bit take a few update tick to propagate to the last bit.
 
+For some situation the state between two proper counter state is not preferred (there will be an instant that the value is 000 for 011 to 100 when the most significant bit is not yet toggled)
 
-## State Machine with ROM and Counter
+Therefore, we have another method to make a counter but let all the FlopFlip Update at the same time.
+
+![sync Counter](IMG/counter5.png)
+
+![sync Interaction](IMG/counter6.gif)
+
+## ROM and Seven Segment Display
+
+Alright, so we have just built a synchronous counter that output a binary value from 0 to 15.
+
+But how can we make Seven Segment Display (Which is actually 8 lights(with DP)) display number according to the value?
+
+We need a Look Up Table.
+
+Look Up Table (LUT) can let us map every combination of input into any output so that we can customize output for every situation.
+
+![SSD](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0FKjzRb2AWXiiKAIXt1ojziQPiGPy0AdE6UFQx1nr2Q&s=10)
+
+The image above is a table defining the state of seven segment's segments for each value from 0 to 15(F).
+
+With a 16x8 ROM, we can map 4 digit input with 16 states into 8 bit output for seven segment display input.
+
+We can press the logic cell of the ROM in LogicSim to toggle it's address.
+
+Here is the implementation of it in LogicSim.
+
+![SSDROM](IMG/SSDROM.gif)
 
 ## Seven Segment Counter with ROM,Counter and Seven Segment
+
+Now, we can combine ROM,Counter and Seven Segment Display to make a hexadecimal counter that counts from 0 to F!
+
+We first build a 4 bit counter with pulse generator for automated increment
+
+![4 bit counter](IMG/chap1_1.png)
+
+Then, we connect the output of the counter to address input of the ROM
+
+After that, write the look up table into ROM and connect it to the seven segment display
+
+![Finished](IMG/chap1_2.png)
+
+TADAAAA
+
+![Finished_Animated](IMG/chap1_3.gif)
