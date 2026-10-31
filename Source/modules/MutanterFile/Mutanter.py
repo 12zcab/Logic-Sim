@@ -56,7 +56,7 @@ class Loader:
         for Folder in Targets:
             Paths.append(Path(Folder).resolve())
 
-        for p in Paths:
+        for p in Paths:  
             try:
                 for _, modname, _ in pkgutil.iter_modules([str(p)]):
                     Target = f"{prefix}{modname}"
@@ -66,7 +66,7 @@ class Loader:
                     except ImportError as e:
                         logger.error(f"'{Target}' does not exist due to: {e}")
             except Exception as e:
-                logger.error(f"Error iterating modules in path {p}: {e}")
+                logger.error(f"Error iterating modules in path {p}: {e}") 
 
         return FoundItems
 
@@ -74,11 +74,11 @@ class Loader:
     def CloneImport(TargetImport: Union[str, types.ModuleType], clone_name: Optional[str] = None) -> List[types.ModuleType]:
         Clones = []
         if isinstance(TargetImport, str):
-            Imports = Loader.LoadModule(TargetImport)
+            Imports = Loader.LoadModule(TargetImport)  
         else:
             Imports = [TargetImport]
 
-        for Import in Imports:
+        for Import in Imports:  
             if Import is None:
                 continue
 
@@ -119,7 +119,7 @@ class Loader:
             Clones.append(CloneModule)
 
         return Clones
-
+   
 
 class Modifier:
     @staticmethod

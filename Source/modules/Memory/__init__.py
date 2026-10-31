@@ -26,4 +26,4 @@ class ROM(Component):
                 self.table[x][y] = Logic.ZERO
             else:
                 self.table[x][y] = Logic.ONE
-        self.update()
+        self.update()  
