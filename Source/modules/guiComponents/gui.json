@@ -25,29 +25,6 @@
                 }
             }
         },
-        "Pulse Generator":{
-            "constructor":"PulseGenerator",
-            "size": [1,1],
-            "color": "transparent",
-            "bcolor": "transparent",
-            "pins": {
-                "Y": {"position":[1,0]}
-            },
-            "children": {
-                "pyIcon": {
-                    "path":"PulseGenerator.pyIcon",
-                    "size": [1,1]
-                }
-            },
-            "attributes": {
-                "Settings": {
-                    "Pulse Frequency(Hz)": {
-                        "attribute":"Frequency",
-                        "type":"float"
-                    }
-                }
-            }
-        },
         "Logic Analyzer":{
             "constructor":"VisualAnalyzer",
             "size": [10,5],

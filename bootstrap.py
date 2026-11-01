@@ -2,8 +2,9 @@ import os
 import sys
 import traceback
 import pkgutil
+import multiprocessing
 if __name__ == '__main__':
-    
+    multiprocessing.freeze_support()
     if getattr(sys, 'frozen', False):
         base_dir = os.path.dirname(os.path.abspath(sys.executable))
     else:

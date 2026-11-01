@@ -1,0 +1,100 @@
+{
+    "name": "Pulse",
+    "components":{
+        "Pulse Generator":{
+            "constructor":"PulseGenerator",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"PulseGenerator.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Pulse Frequency(Hz)": {
+                        "attribute":"Frequency",
+                        "type":"float"
+                    }
+                }
+            }
+        },
+        "Rise Detector":{
+            "constructor":"RiseEdge",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1,0]},
+                "A": {"position":[-1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"RiseEdge.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Pulse Width(Ticks)": {
+                        "attribute":"delay",
+                        "type":"integer"
+                    }
+                }
+            }
+        },
+        "Fall Detector":{
+            "constructor":"FallEdge",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1,0]},
+                "A": {"position":[-1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"FallEdge.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Pulse Width(Ticks)": {
+                        "attribute":"delay",
+                        "type":"integer"
+                    }
+                }
+            }
+        },
+        "Edge Detector":{
+            "constructor":"Edge",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1,0]},
+                "A": {"position":[-1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Edge.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Pulse Width(Ticks)": {
+                        "attribute":"delay",
+                        "type":"integer"
+                    }
+                }
+            }
+        }
+    }
+}
