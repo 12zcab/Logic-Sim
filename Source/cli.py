@@ -5,6 +5,9 @@ PythonRepresentaion  (Print Result) direct execute
 run Speed [Tick]    Speed is must input but Tick is optional(Tick = how many tick u wanna run,leave blank for unlimited)
 Ctrl-C to Escape from Run Loop
 """
+"""
+NOT MAINTAINED ANYMORE :D
+"""
 
 from core import *
 from modules import *
