@@ -130,23 +130,25 @@ class LogicSimApp:
     def loadAttributePanel(self,logicObject,nodeObject):
         self.attributePanel.clearCategories()
         self.attributePanel.setTitle(logicObject.Name)
-        definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
-        if definition:
-            for key in definition.keys():
-                cate = self.attributePanel.addCategory(key)
-                for key2 in definition[key].keys():
-                    attr = cate.addAttribute(key2,definition[key][key2]["type"],lambda value,logicObject=logicObject,definition=definition,key=key,key2=key2: self.updateAttribute(logicObject,definition[key][key2],value))
-                    attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
+        if logicObject.__class__.__name__ in self.constructToDefin.keys():
+            definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
+            if definition:
+                for key in definition.keys():
+                    cate = self.attributePanel.addCategory(key)
+                    for key2 in definition[key].keys():
+                        attr = cate.addAttribute(key2,definition[key][key2]["type"],lambda value,logicObject=logicObject,definition=definition,key=key,key2=key2: self.updateAttribute(logicObject,definition[key][key2],value))
+                        attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
         self.loadNodeAttributePanel(logicObject,nodeObject)
     def updateAttributePanel(self,logicObject,nodeObject):
         self.attributePanel.setTitle(logicObject.Name)
-        definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
-        if definition:
-            for key in definition.keys():
-                cate = self.attributePanel.categories[key]
-                for key2 in definition[key].keys():
-                    attr = cate.attributes[key2]
-                    attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
+        if logicObject.__class__.__name__ in self.constructToDefin.keys():
+            definition = self.constructToDefin[logicObject.__class__.__name__].get("attributes",None)
+            if definition:
+                for key in definition.keys():
+                    cate = self.attributePanel.categories[key]
+                    for key2 in definition[key].keys():
+                        attr = cate.attributes[key2]
+                        attr.setValue(getattr(logicObject,definition[key][key2]["attribute"]) ,trigger_recall = False)
         self.updateNodeAttributePanel(logicObject,nodeObject)
     def loadNodeAttributePanel(self,logicObject,nodeObject):
         nodeCate = self.attributePanel.addCategory("Node Data")
@@ -317,6 +319,7 @@ class LogicSimApp:
         self.sub_toolbar.clear_buttons()
         module_data = self.all_jsons[module_name]
         component_names = getComponents(module_data)
+        function_names = getFunctions(module_data)
         components_obj = module_data.get("components", {})
         module_dir = os.path.dirname(module_data["__path__"])
         
@@ -327,8 +330,29 @@ class LogicSimApp:
             bt = self.sub_toolbar.add_button(component_name,pyIconPathRatio)
             bt.config(command=lambda loader=loadingObj: self.spawnFromButton(loader))
             self.constructToDefin[defin.get("constructor")] = defin
+        for functionName in function_names:
+            functionDef = module_data.get("function", {}).get(functionName, {})
+            codeFile = functionDef.get("code")
+            if codeFile:
+                codePath = os.path.join(module_dir, codeFile)
+                bt = self.sub_toolbar.add_button(functionName)
+                bt.config(command=lambda cp=codePath, fd=functionDef: self.execute_gui_function(cp, fd))
         self.sub_toolbar.force_update()
-
+    def execute_gui_function(self, code_path, function_def):
+        params = function_def.get("parameters", {})
+        exec_scope = globals().copy()
+        exec_scope["self"] = self
+        if "path" in params.values() or "path" in params:
+            file_path = filedialog.askopenfilename(
+                title="Select File",
+                filetypes=[("All Files", "*.*")]
+            )
+            if not file_path:
+                return
+            exec_scope["path"] = file_path
+        with open(code_path, "r", encoding="utf-8") as f:
+            code_content = f.read()
+        exec(code_content, exec_scope)
     def spawnFromButton(self, loader):
         self.root.config(cursor="plus")
         self.node_editor.grepNextPressGridPos(
@@ -346,11 +370,12 @@ class LogicSimApp:
         component_def = getComponentDefinition(components_obj, component_name)
         pyicon_path = None
         ratio = None
+        icon_data = None
         if "children" in component_def.keys():
             if "pyIcon" in component_def["children"].keys():
                 icon_data = component_def.get("children", {}).get("pyIcon", {})
                 ratio = component_def.get("children", {}).get("pyIcon", {}).get("size")
-        if icon_data.get("path"):
+        if not icon_data == None:
             pyicon_path = os.path.join(module_dir, icon_data.get("path"))
         loadingObjfunc = lambda x, y, name=component_name, defn=component_def, dir_path=module_dir: loadObject(name, defn, self.node_editor, dir_path, x, y)
         return [pyicon_path,ratio], loadingObjfunc,component_def

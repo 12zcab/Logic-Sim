@@ -1,5 +1,5 @@
 from core import *
-from modules.LogicGate import *
+from modules.Legacy.LogicGate import *
 
 class RiseEdge(Module):
     def __init__(self, Name):

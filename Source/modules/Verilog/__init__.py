@@ -4,6 +4,10 @@ from .parser import *
 import re
 from collections import defaultdict
 
+class VerilogModule(Module):
+    def __init__(self, name: str, IOArray: list[IO], InnerBlocks: list[Component]):
+        super().__init__(name, IOArray, InnerBlocks)
+
 def analyse_file(filename):
     data = parse_verilog_to_pure_gates(os.path.abspath(filename))
     data = BetterDict(data)
@@ -125,7 +129,7 @@ def parseFileIntoObject(filename,objonly = True):
                 if netValue["hide_name"] == 0:
                     net_obj.Name = netKey
 
-        mod = Module(str(moduleKey), IOArray, InnerBlocks)
+        mod = VerilogModule(str(moduleKey), IOArray, InnerBlocks)
         resultModules.append(mod)
         inputPinsForEach.append(inputPins)
         outputPinsForEach.append(outputPins)

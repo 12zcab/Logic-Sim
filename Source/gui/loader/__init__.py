@@ -29,8 +29,9 @@ def loadJson(jsonpath):
 
 
 def getComponents(moduleDescription):
-    return moduleDescription.get('components', []).keys()
-
+    return moduleDescription.get('components', {}).keys()
+def getFunctions(moduleDescription):
+    return moduleDescription.get('function', {}).keys()
 
 def getComponentDefinition(componentsDescription, componentName):
     return componentsDescription.get(componentName)
@@ -55,5 +56,8 @@ def loadObject(name, objDescription, node_editor, jsonpath,x=0,y=0):
         metadata=obj
     )
     for key,value in objDescription["pins"].items():
-        node.add_pin(key, value["position"][0], value["position"][1], color="#222222")
+        if value.get("hide_when_wired") is not None:
+            node.add_pin(key, value["position"][0], value["position"][1], color="#222222", hide_when_wired=value["hide_when_wired"])
+        else:
+            node.add_pin(key, value["position"][0], value["position"][1], color="#222222")
     return [obj,node]

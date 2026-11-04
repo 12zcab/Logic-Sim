@@ -18,7 +18,7 @@ def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tup
     return (nx, ny)
 
 class Pin:
-    def __init__(self, owner: 'NodeObject', name: str, rel_x: float, rel_y: float, color: Optional[str] = None, hide_when_wired: bool = True):
+    def __init__(self, owner: 'NodeObject', name: str, rel_x: float, rel_y: float, color: Optional[str] = None, hide_when_wired: bool = False):
         self.id = str(uuid.uuid4())[:8]
         self.owner = owner
         self.name = name
@@ -107,7 +107,7 @@ class NodeObject:
                 if math.isclose(pin.rel_y - old_height, 0.5, abs_tol=1e-4) or pin.rel_y >= old_height:
                     pin.rel_y += dh
 
-    def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None, hide_when_wired: bool = True) -> Pin:
+    def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None, hide_when_wired: bool = False) -> Pin:
         rel_x = float(cell_x) + 0.5
         rel_y = float(cell_y) + 0.5
         pin = Pin(self, name, rel_x, rel_y, color, hide_when_wired=hide_when_wired)

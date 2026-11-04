@@ -38,7 +38,7 @@ create logger Logger("logger",["IND","INC","INR","Q"],[keyd.IO.OUT,keyc.IO.OUT,k
 """
 
 from core import *
-from modules.LogicGate import *
+from modules.Legacy.LogicGate import *
 from modules.DataLogger import *
 class BasicDLatch(Module):
     def __init__(self, Name):

@@ -3,7 +3,7 @@ reportlab
 keyboard
 tabulate
 typing
-yowasp-yosys
+yowasp-yosys~=0.69.0
 wasmtime
 bidict
 nuitka

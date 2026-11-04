@@ -7,8 +7,8 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "Y": {"position":[2,0]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "Y": {"hide_when_wired":true, "position":[2,0]}
             },
             "children": {
                 "pyIcon": {
@@ -32,8 +32,8 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "Y": {"position":[2,0]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "Y": {"hide_when_wired":true, "position":[2,0]}
             },
             "children": {
                 "pyIcon": {
@@ -48,9 +48,9 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "Y": {"position":[2,0.5]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
@@ -65,9 +65,9 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "Y": {"position":[2,0.5]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
@@ -82,9 +82,9 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "Y": {"position":[2,0.5]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
@@ -99,9 +99,9 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "Y": {"position":[2,0.5]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
@@ -116,9 +116,9 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "Y": {"position":[2,0.5]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
@@ -133,9 +133,9 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "Y": {"position":[2,0.5]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
@@ -150,10 +150,10 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "C": {"position":[-1,2]},
-                "Y": {"position":[3,1]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "C": {"hide_when_wired":true, "position":[-1,2]},
+                "Y": {"hide_when_wired":true, "position":[3,1]}
             },
             "children": {
                 "pyIcon": {
@@ -168,9 +168,9 @@
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,0]},
-                "B": {"position":[-1,1]},
-                "Y": {"position":[2,0.5]}
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
