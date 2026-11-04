@@ -17,6 +17,7 @@
 #### Day-1-Believer : @astrokoala23 for giving this project the first star
 
 Python 3.13.17 Used
+Yowasp Yosys 0.69 Used
 
 # What is Logic-Sim?
 Logic-Sim is a easy to use logic simulator written with pure python aiming for high modularization and Simple-to-use.
@@ -83,7 +84,6 @@ Modules basically consist of 3 parts:
 
 - README.md  WELP U R READING ME RN -_-
 - build.bat  building the project
-- update.bat copy new Source folder into the build
 - requirements.txt  for pip install
 - setupDev.bat  setting up developing environment you need for editing this project and build it yourself
 
