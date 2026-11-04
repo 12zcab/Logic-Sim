@@ -1,0 +1,23 @@
+cx = x + w / 2.0
+cy = y + h / 2.0
+
+text = "Text"
+
+if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
+    if hasattr(node.metadata, "text"):
+        text = node.metadata.text
+
+txt_x, txt_y = rotatePoint(cx, cy, cx, cy, angle)
+
+font_size = round(int(12 * h * 0.05))
+
+length = len(text)
+if 'node' in globals():
+    node.width = (length + 1)//2
+
+if font_size > 0:
+    canvas.create_text(
+        txt_x, txt_y,
+        text=text, fill="#FFFFFF", anchor="center",
+        font=("Arial", font_size, "bold"), tags=tags
+    )

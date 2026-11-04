@@ -1,20 +1,23 @@
 import math
 
 y_pin = y + h * (1.5 / 3.0)
+h_scale = 1.5
+wire_extension = w * 0.25
 
 x_gate_left = x + w * (1.0 / 4.0)
-r_bubble = h * (0.2 / 3.0)
-x_gate_right = x + w * (2.6 / 4.0)
+x_gate_right = x + w * (3.0 / 4.0)
+
+r_bubble = h * (0.2 / 3.0) * h_scale
 cx_bubble = x_gate_right + r_bubble
 
 pts = [
-    (x_gate_left, y_pin - h * (1.2 / 3.0)),
+    (x_gate_left, y_pin - h * (1.2 / 3.0) * h_scale),
     (x_gate_right, y_pin),
-    (x_gate_left, y_pin + h * (1.2 / 3.0))
+    (x_gate_left, y_pin + h * (1.2 / 3.0) * h_scale)
 ]
 
-line_in = [(x, y_pin), (x_gate_left, y_pin)]
-line_out = [(cx_bubble + r_bubble, y_pin), (x + w, y_pin)]
+line_in = [(x - wire_extension, y_pin), (x_gate_left, y_pin)]
+line_out = [(cx_bubble + r_bubble, y_pin), (x + w + wire_extension, y_pin)]
 
 pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
 line_in = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in]

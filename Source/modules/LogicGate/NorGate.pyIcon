@@ -1,20 +1,22 @@
 import math
 
-y_in0 = y + h * (0.5 / 3.0)
+y_in0 = y + h * (0.75 / 3.0)
 y_out = y + h * (1.5 / 3.0)
-y_in1 = y + h * (2.5 / 3.0)
+y_in1 = y + h * (2.25 / 3.0)
+
+wire_extension = w * 0.25
 
 y_top = y + h * (0.2 / 3.0)
 y_bot = y + h * (2.8 / 3.0)
 y_mid = y + h * (1.5 / 3.0)
 
-x_gate_back = x + w * (1.0 / 4.0)
-x_gate_flat_end = x + w * (1.8 / 4.0)
-x_gate_back_mid = x + w * (1.5 / 4.0)
-x_tip = x + w * (2.6 / 4.0)
+x_gate_back = x + w * (0.75 / 4.0)
+x_gate_flat_end = x + w * (2.0 / 4.0)
+x_gate_back_mid = x + w * (1.25 / 4.0)
+x_tip = x + w * (3.1 / 4.0)  # Un-squeezed body with bubble outside
 
 pts = []
-num_pts = 16
+num_pts = 32
 
 pts.append((x_gate_back, y_top))
 pts.append((x_gate_flat_end, y_top))
@@ -48,9 +50,9 @@ x_attach0 = x_gate_back + (x_gate_back_mid - x_gate_back) * 4.0 * t0 * (1.0 - t0
 t1 = (y_bot - y_in1) / (y_bot - y_top)
 x_attach1 = x_gate_back + (x_gate_back_mid - x_gate_back) * 4.0 * t1 * (1.0 - t1)
 
-line_in0 = [(x, y_in0), (x_attach0, y_in0)]
-line_in1 = [(x, y_in1), (x_attach1, y_in1)]
-line_out = [(cx_bubble + r_bubble, y_out), (x + w, y_out)]
+line_in0 = [(x - wire_extension, y_in0), (x_attach0, y_in0)]
+line_in1 = [(x - wire_extension, y_in1), (x_attach1, y_in1)]
+line_out = [(cx_bubble + r_bubble, y_out), (x + w + wire_extension, y_out)]
 
 pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
 line_in0 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in0]

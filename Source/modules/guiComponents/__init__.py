@@ -25,27 +25,7 @@ class Constant(Component):
         self.update()
 
 
-class PulseGenerator(Component):
-    def __init__(self, Name):
-        super().__init__(Name, [IO("Y")], self.update)
-        self.state = False
-        self.lastupdate = None
-        self.Frequency = 1
-        self.IO.Y.Value = Logic.ZERO
-    def update(self):
-        pass
-    def perdeltatick(self):
-        now = time.perf_counter_ns()
-        if self.lastupdate is None:
-            self.lastupdate = now
-            return
-        if (now - self.lastupdate) >= (500000000 // self.Frequency):
-            self.lastupdate += (500000000 // self.Frequency)
-            if (time.perf_counter_ns() - self.lastupdate) >= (500000000 // self.Frequency):
-                self.lastupdate = None
-            self.state = not self.state
-            self.IO.Y.Value = Logic.ONE if self.state else Logic.ZERO
-            
+
 class VisualAnalyzer(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A")], self.update)

@@ -41,6 +41,10 @@ class AttributeRow(Frame):
             self.checkButton = Checkbutton(self, variable=self.inputWidget, bg="#111111", activebackground="#111111", onvalue=True, offvalue=False)
             self.checkButton.pack(side="right", padx=5)
             self.checkButton.config(command=lambda: self.checkChange(None))
+
+        elif inputType.lower() == "readonly":
+            self.inputWidget = Entry(self, bg="#222222", state="readonly", highlightthickness=0)
+            self.inputWidget.pack(side="right", expand=True, fill="x", padx=5)
             
         else:
             self.inputWidget = Label(self, text="[Unknown Type]", bg="#111111", fg="red")
@@ -70,12 +74,15 @@ class AttributeRow(Frame):
                 except ValueError:
                     return float(self.lastValue) if isinstance(self.lastValue, (int, float)) else 0.0
                     
-            elif self.inputType.lower() == "string":
+            elif self.inputType.lower() in ["string", "readonly"]:
                 return str(raw_value)
                 
         return ""
 
     def checkChange(self, event=None):
+        if self.inputType.lower() == "readonly":
+            return
+            
         currentValue = self.getWidgetValue()
         value_changed = (currentValue != self.lastValue)
         
@@ -96,6 +103,12 @@ class AttributeRow(Frame):
 
         if self.inputType.lower() == "boolean" and isinstance(self.inputWidget, BooleanVar):
             self.inputWidget.set(bool(value))
+            
+        elif self.inputType.lower() == "readonly":
+            self.inputWidget.config(state="normal")
+            self.inputWidget.delete(0, "end")
+            self.inputWidget.insert(0, str(value))
+            self.inputWidget.config(state="readonly")
             
         elif self.inputType.lower() in ["string", "integer", "float"] and hasattr(self.inputWidget, 'delete'):
             self.inputWidget.delete(0, "end")

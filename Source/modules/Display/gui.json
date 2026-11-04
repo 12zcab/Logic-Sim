@@ -45,6 +45,18 @@
                     "path":"Lamp.pyIcon",
                     "size": [1,1]   
                 }
+            },
+            "attributes": {
+                "Settings": {
+                    "Colour":{ 
+                        "attribute":"colour",
+                        "type":"string"
+                    },
+                    "Show Number":{ 
+                        "attribute":"showNumber",
+                        "type":"boolean"
+                    }
+                }
             }
         }
     }

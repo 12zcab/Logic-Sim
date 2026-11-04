@@ -3,17 +3,17 @@
     "components":{
         "Buffer":{
             "constructor":"Buffer",
-            "size": [4,3],
+            "size": [2,1],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,1]},
-                "Y": {"position":[4,1]}
+                "A": {"position":[-1,0]},
+                "Y": {"position":[2,0]}
             },
             "children": {
                 "pyIcon": {
                     "path":"Buffer.pyIcon",
-                    "size": [4,3]
+                    "size": [2,1]
                 }
             },
             "attributes":{
@@ -28,154 +28,154 @@
         },
         "Not Gate":{
             "constructor":"NotGate",
-            "size": [4,3],
+            "size": [2,1],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
-                "A": {"position":[-1,1]},
-                "Y": {"position":[4,1]}
+                "A": {"position":[-1,0]},
+                "Y": {"position":[2,0]}
             },
             "children": {
                 "pyIcon": {
                     "path":"NotGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,1]
                 }
             }
         },
         "And Gate":{
             "constructor":"AndGate",
-            "size": [4,3],
+            "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "Y": {"position":[4,1]}
+                "B": {"position":[-1,1]},
+                "Y": {"position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
                     "path":"AndGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,2]
                 }
             }
         },
         "Nand Gate":{
             "constructor":"NandGate",  
-            "size": [4,3],
+            "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "Y": {"position":[4,1]}
+                "B": {"position":[-1,1]},
+                "Y": {"position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
                     "path":"NandGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,2]
                 }
             }
         },
         "Or Gate":{
             "constructor":"OrGate",
-            "size": [4,3],
+            "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "Y": {"position":[4,1]}
+                "B": {"position":[-1,1]},
+                "Y": {"position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
                     "path":"OrGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,2]
                 }
             }
         },
         "Nor Gate":{
             "constructor":"NorGate",
-            "size": [4,3],
+            "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "Y": {"position":[4,1]}
+                "B": {"position":[-1,1]},
+                "Y": {"position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
                     "path":"NorGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,2]
                 }
             }
         },
         "Xor Gate":{
             "constructor":"XorGate",
-            "size": [4,3],
+            "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "Y": {"position":[4,1]}
+                "B": {"position":[-1,1]},
+                "Y": {"position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
                     "path":"XorGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,2]
                 }
             }
         },
         "Xnor Gate":{
             "constructor":"XnorGate",
-            "size": [4,3],
+            "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "Y": {"position":[4,1]}
+                "B": {"position":[-1,1]},
+                "Y": {"position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
                     "path":"XnorGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,2]
                 }
             }
         },
         "3 Input Nand Gate":{
             "constructor":"NandGate3",
-            "size": [6,5],
+            "size": [3,3],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "C": {"position":[-1,4]},
-                "Y": {"position":[6,2]}
+                "B": {"position":[-1,1]},
+                "C": {"position":[-1,2]},
+                "Y": {"position":[3,1]}
             },
             "children": {
                 "pyIcon": {
                     "path":"NandGate3.pyIcon",
-                    "size": [6,5]
+                    "size": [3,3]
                 }
             }
         },
         "OrNot Gate":{
             "constructor":"OrNotGate",
-            "size": [4,3],
+            "size": [2,2],
             "color": "transparent",
             "bcolor": "transparent",
             "pins": {
                 "A": {"position":[-1,0]},
-                "B": {"position":[-1,2]},
-                "Y": {"position":[4,1]}
+                "B": {"position":[-1,1]},
+                "Y": {"position":[2,0.5]}
             },
             "children": {
                 "pyIcon": {
                     "path":"OrNotGate.pyIcon",
-                    "size": [4,3]
+                    "size": [2,2]
                 }
             }
         }

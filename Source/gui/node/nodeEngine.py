@@ -4,8 +4,6 @@
 # I ALREADY SPENT 1.5WEEKS ON THE nodeEngine :|
 # By 12zcab :|
 
-
-
 import tkinter as tk
 from tkinter import ttk
 import math
@@ -20,14 +18,23 @@ def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tup
     return (nx, ny)
 
 class Pin:
-    def __init__(self, owner: 'NodeObject', name: str, rel_x: float, rel_y: float, color: Optional[str] = None):
+    def __init__(self, owner: 'NodeObject', name: str, rel_x: float, rel_y: float, color: Optional[str] = None, hide_when_wired: bool = True):
         self.id = str(uuid.uuid4())[:8]
         self.owner = owner
         self.name = name
-        self.rel_x = rel_x
-        self.rel_y = rel_y
+        self.rel_x = float(rel_x)
+        self.rel_y = float(rel_y)
         self.color = color
-        self.net: Optional['Net'] = None
+        self.net: Optional['WireNet'] = None
+        self.hide_when_wired = hide_when_wired
+
+    @property
+    def is_wired(self) -> bool:
+        return self.net is not None and len(self.net.wires) > 0
+
+    @property
+    def hidden(self) -> bool:
+        return self.hide_when_wired and self.is_wired
 
     @property
     def abs_pos(self) -> Tuple[float, float]:
@@ -55,10 +62,10 @@ class NodeObject:
     ):
         self.id = node_id
         self.title = title
-        self.x = float(round(x * 2.0) / 2.0)
-        self.y = float(round(y * 2.0) / 2.0)
-        self._width = float(round(width * 2.0) / 2.0)
-        self._height = float(round(height * 2.0) / 2.0)
+        self.x = float(x)
+        self.y = float(y)
+        self._width = float(width)
+        self._height = float(height)
         self.bg_color = bg_color
         self.border_color = border_color
         self.graphic_code = graphic_code
@@ -69,34 +76,41 @@ class NodeObject:
         self.compiled_code = None
         if self.graphic_code:
             self.compiled_code = compile(self.graphic_code, f"<node_graphic_{self.id}>", "exec")
+
     @property
-    def width(self):
+    def width(self) -> float:
         return self._width
+
     @property
-    def height(self):
+    def height(self) -> float:
         return self._height
+
     @width.setter
-    def width(self, new_width):
+    def width(self, new_width: float):
         old_width = self._width
+        new_width = float(new_width)
         if old_width != new_width:
             self._width = new_width
             dw = new_width - old_width
             for pin in self.pins:
-                if (pin.rel_x - old_width) == 0.5:
+                if math.isclose(pin.rel_x - old_width, 0.5, abs_tol=1e-4) or pin.rel_x >= old_width:
                     pin.rel_x += dw
+
     @height.setter
-    def height(self,new_height):
+    def height(self, new_height: float):
         old_height = self._height
+        new_height = float(new_height)
         if old_height != new_height:
             self._height = new_height
             dh = new_height - old_height
             for pin in self.pins:
-                if pin.rel_y == old_height:
+                if math.isclose(pin.rel_y - old_height, 0.5, abs_tol=1e-4) or pin.rel_y >= old_height:
                     pin.rel_y += dh
-    def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None) -> Pin:
-        rel_x = cell_x + 0.5
-        rel_y = cell_y + 0.5
-        pin = Pin(self, name, rel_x, rel_y, color)
+
+    def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None, hide_when_wired: bool = True) -> Pin:
+        rel_x = float(cell_x) + 0.5
+        rel_y = float(cell_y) + 0.5
+        pin = Pin(self, name, rel_x, rel_y, color, hide_when_wired=hide_when_wired)
         self.pins.append(pin)
         return pin
 
@@ -130,7 +144,7 @@ class Wire:
         self.vertices: List[Tuple[float, float]] = []
         self.color = color
         self.width = width
-        self.net: Optional['Net'] = None
+        self.net: Optional['WireNet'] = None
 
     def get_full_path(self) -> List[Tuple[float, float]]:
         raw_path = []
@@ -640,8 +654,8 @@ class NodeEditor(ttk.Frame):
         cy = node.height / 2.0
         for pin in node.pins:
             nx, ny = rotatePoint(pin.rel_x, pin.rel_y, cx, cy, angle_deg)
-            pin.rel_x = round(nx * 2.0) / 2.0
-            pin.rel_y = round(ny * 2.0) / 2.0
+            pin.rel_x = float(nx)
+            pin.rel_y = float(ny)
 
         node.angle = (node.angle + angle_deg) % 360.0
         node.x = self.snap_node_coord(node.x)
@@ -649,8 +663,10 @@ class NodeEditor(ttk.Frame):
 
         self.rebuild_nets()
         self.redraw_all()
+
     def rebuild_nets(self):
         self.engine.rebuild_nets(self.wires, self.nodes)
+
     def _get_anim_val(self, key: object, is_active: bool) -> float:
         curr = self.anim_states.get(key, 0.0)
         target = 1.0 if is_active else 0.0
@@ -673,6 +689,8 @@ class NodeEditor(ttk.Frame):
                 needs_redraw = True
 
             for pin in node.pins:
+                if pin.hidden:
+                    continue
                 is_pin_active = (pin == self.hovered_object) or (pin == self.selected_object and not self.active_wire)
                 pval = self._get_anim_val(pin, is_pin_active)
                 if 0.0 < pval < 1.0:
@@ -828,6 +846,10 @@ class NodeEditor(ttk.Frame):
                 exec(node.compiled_code, exec_scope)
 
             for pin in node.pins:
+                # Skip visually rendering the pin when it is hidden
+                if pin.hidden:
+                    continue
+
                 px, py = pin.abs_pos
                 psx, psy = self.world_to_screen(px, py)
                 is_pin_hovered = (pin == self.hovered_object)
@@ -1059,6 +1081,7 @@ class NodeEditor(ttk.Frame):
         clicked_pin = self._hit_test_pin(wx, wy)
         clicked_node = self._hit_test_node(wx, wy)
         clicked_wire, seg_idx = self._hit_test_wire(wx, wy)
+
         if clicked_node:
             self.nodes.append(self.nodes.pop(self.nodes.index(clicked_node)))
         if is_shift:
@@ -1117,7 +1140,14 @@ class NodeEditor(ttk.Frame):
                     self.drag_wire_segment_index = seg_idx
             else:
                 self.selected_object = None
-        self._emit("select", self.selected_object,wx, wy)
+
+        emit_x, emit_y = wx, wy
+        if isinstance(self.selected_object, NodeObject):
+            cx = self.selected_object.x + self.selected_object.width / 2.0
+            cy = self.selected_object.y + self.selected_object.height / 2.0
+            emit_x, emit_y = rotatePoint(wx, wy, cx, cy, -self.selected_object.angle)
+
+        self._emit("select", self.selected_object, emit_x, emit_y)
         self.redraw_all()
 
     def _on_left_drag(self, event):
@@ -1441,7 +1471,6 @@ class NodeEditor(ttk.Frame):
         self.redraw_all()
 
     def _handle_net_event(self, event_type: str, net: WireNet, pin: Optional[Pin]):
-        pin_name = f"{pin.owner.title}:{pin.name}" if pin else "None"
         if event_type == "CONNECT":
             self._emit("connect", net, pin)
         elif event_type == "DISCONNECT":
@@ -1551,7 +1580,7 @@ canvas.create_oval(
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("Node Editor - Dual Edge/Center 0.5 Grid Alignment")
+    root.title("Node Editor - Fixed Pin Rescale & Visually Hidden Interactive Wired Pins")
     root.geometry("1100x700")
 
     app = NodeEditor(root)
@@ -1566,15 +1595,15 @@ if __name__ == "__main__":
         title="Nand Gate",
         x=5,
         y=5,
-        width=4,
-        height=3,
+        width=4.2,
+        height=3.3,
         bg_color="transparent",
         border_color="transparent",
         graphic_code=NAND_GATE_PYICON_CODE
     )
-    nand_gate.add_pin("A", -1, 0, color="#1d2536")
-    nand_gate.add_pin("B", -1, 2, color="#1d2536")
-    nand_gate.add_pin("Y", 4, 1, color="#1d2536")
+    nand_gate.add_pin("A", -1, 0, color="#1d2536", hide_when_wired=True)
+    nand_gate.add_pin("B", -1, 2, color="#1d2536", hide_when_wired=True)
+    nand_gate.add_pin("Y", 4.2, 1.5, color="#1d2536", hide_when_wired=True)
 
     app.rebuild_nets()
     app.redraw_all()

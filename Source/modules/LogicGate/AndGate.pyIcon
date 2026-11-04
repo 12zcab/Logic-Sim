@@ -1,23 +1,31 @@
 import math
 
-y_in0 = y + h * (0.5 / 3.0)
+y_in0 = y + h * (0.75 / 3.0)
 y_out = y + h * (1.5 / 3.0)
-y_in1 = y + h * (2.5 / 3.0)
+y_in1 = y + h * (2.25 / 3.0)
 
-x_gate_back = x + w * (1.0 / 4.0)
+h_scale = 1.0
+
+# Overall width extension to maintain overall span
+wire_extension = w * 0.25
+
+x_gate_back = x + w * (0.75 / 4.0)
 x_gate_flat_end = x + w * (2.0 / 4.0)
 
-y_top = y + h * (0.2 / 3.0)
-y_bot = y + h * (2.8 / 3.0)
 y_mid = y + h * (1.5 / 3.0)
+y_top = y_mid - (y_mid - (y + h * (0.2 / 3.0))) * h_scale
+y_bot = y_mid + ((y + h * (2.8 / 3.0)) - y_mid) * h_scale
 
-rx = w * (1.0 / 4.0)
+# Widened radius for a smoother, fuller arc front
+rx = w * (1.1 / 4.0)
 ry = (y_bot - y_top) / 2.0
 arc_center_x = x_gate_flat_end
 arc_center_y = y_mid
 
 pts = [(x_gate_back, y_top), (x_gate_flat_end, y_top)]
-num_arc_pts = 16
+
+# Increased number of points for a much smoother arc
+num_arc_pts = 32
 for i in range(num_arc_pts + 1):
     a = (math.pi / 2.0) - (i / num_arc_pts) * math.pi
     px = arc_center_x + rx * math.cos(a)
@@ -28,9 +36,9 @@ pts.extend([(x_gate_flat_end, y_bot), (x_gate_back, y_bot)])
 
 gate_tip_x = arc_center_x + rx
 
-line_in0 = [(x, y_in0), (x_gate_back, y_in0)]
-line_in1 = [(x, y_in1), (x_gate_back, y_in1)]
-line_out = [(gate_tip_x, y_out), (x + w, y_out)]
+line_in0 = [(x - wire_extension, y_in0), (x_gate_back, y_in0)]
+line_in1 = [(x - wire_extension, y_in1), (x_gate_back, y_in1)]
+line_out = [(gate_tip_x, y_out), (x + w + wire_extension, y_out)]
 
 pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
 line_in0 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in0]

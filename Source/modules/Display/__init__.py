@@ -26,5 +26,7 @@ class Lamp(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A")], self.update)
         self.state = False
+        self.colour = "#38bdf8"
+        self.showNumber = True
     def update(self):
         self.state = (self.IO.A.Value == Logic.ONE)

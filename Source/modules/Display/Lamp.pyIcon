@@ -1,9 +1,15 @@
 import math
 
 is_on = False
+colour = "#38bdf8"
+showNumber = True
 if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
     if hasattr(node.metadata, "state"):
         is_on = bool(node.metadata.state)
+    if hasattr(node.metadata, "colour"):
+        colour = node.metadata.colour
+    if hasattr(node.metadata, "showNumber"):
+        showNumber = node.metadata.showNumber
 
 box_w = w * (6.0 / 5.0)
 box_h = h * (6.0 / 5.0)
@@ -54,7 +60,7 @@ canvas.create_polygon(
     tags=tags
 )
 
-bg_fill = "#38bdf8" if is_on else "#111111"
+bg_fill = colour if is_on else "#111111"
 text_color = "#000000" if is_on else "#777777"
 border_color = "#38bdf8" if is_on else "#444444"
 
@@ -72,7 +78,7 @@ text_str = "1" if is_on else "0"
 center_pt = rotatePoint(x + w / 2.0, y + h / 2.0, cx, cy, angle)
 font_size = int(12 * (zoom / 35.0))
 
-if font_size > 0:
+if font_size > 0 and showNumber:
     canvas.create_text(
         center_pt[0], center_pt[1],
         text=text_str,
