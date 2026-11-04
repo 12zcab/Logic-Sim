@@ -59,3 +59,27 @@ class Bool:
                             continue 
 
                     Gate
+
+class String:
+    def __init__(self, SimBox : SimBox):
+        self.SimBox = SimBox
+
+    def initLogic(self, Objects, Logic : list[dict, dict], Changes : list):  
+        for Object in self.Objects:
+            if getattr(Objects, Object.name):
+               Object.StringLogic = Logic
+               Object.StringChange - Changes
+
+    def Activate(self, Objects):
+        for Object in self.Objects:
+            if not getattr(Objects, Object.name) or not Object.StringLogic:
+                continue
+
+            for Int, Con in Object.StringLogic:
+                if not getattr(Object, Int):
+                    continue
+                setattr(Object, Int, getattr(Con, getattr(Object, Int)))
+
+            for Int, Info in Object.StringChange:
+                if getattr(Object, Int) == Info.Con:
+                    setattr(Object, Int, Info.Change)   
