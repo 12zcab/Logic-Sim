@@ -82,4 +82,4 @@ class String:
 
             for Int, Info in Object.StringChange:
                 if getattr(Object, Int) == Info.Con:
-                    setattr(Object, Int, Info.Change)   
+                    setattr(Object, Int, Info.Change)
