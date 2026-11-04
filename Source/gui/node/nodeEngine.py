@@ -599,6 +599,9 @@ class NodeEditor(ttk.Frame):
 
         self.anim_states: Dict[object, float] = {}
 
+        # OPTIMIZED: Cache for hit-test shapes to prevent running exec() repeatedly
+        self._hit_test_cache: Dict[str, list] = {}
+
         self._event_listeners: Dict[str, List[Callable[..., None]]] = {
             "connect": [],
             "disconnect": [],
@@ -660,6 +663,9 @@ class NodeEditor(ttk.Frame):
         node.angle = (node.angle + angle_deg) % 360.0
         node.x = self.snap_node_coord(node.x)
         node.y = self.snap_node_coord(node.y)
+
+        # Invalidate cache on rotation
+        self._hit_test_cache.pop(node.id, None)
 
         self.rebuild_nets()
         self.redraw_all()
@@ -764,7 +770,8 @@ class NodeEditor(ttk.Frame):
         return self.canvas.create_polygon(pts, smooth=True, **kwargs)
 
     def redraw_all(self):
-        self.canvas.delete("all")
+        # OPTIMIZED: Clears only targeted canvas layer tags instead of wiping everything with "all"
+        self.canvas.delete("grid", "wire", "active_wire", "node", "ui", "tooltip")
         self._draw_grid()
         self._draw_wires()
         self._draw_nodes()
@@ -819,13 +826,13 @@ class NodeEditor(ttk.Frame):
                     border_w = 2.0 if border_col else 0.0
                 so = 0.25 * self.zoom
                 if node.bg_color:
-                    self._draw_rounded_rect(sx + so, sy + so, sx + sw + so, sy + sh + so, radius=corner_r, fill=self.colors["shadow"], outline="")
+                    self._draw_rounded_rect(sx + so, sy + so, sx + sw + so, sy + sh + so, radius=corner_r, fill=self.colors["shadow"], outline="", tags=("node", f"node_{node.id}"))
                 bg_fill = node.bg_color if node.bg_color else ""
                 b_out = border_col if border_col else ""
-                self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, fill=bg_fill, outline=b_out, width=border_w)
+                self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, fill=bg_fill, outline=b_out, width=border_w, tags=("node", f"node_{node.id}"))
 
             if node.compiled_code:
-                tags = (f"node_{node.id}", f"node_graphic_{node.id}")
+                tags = ("node", f"node_{node.id}", f"node_graphic_{node.id}")
                 exec_scope = {
                     "canvas": self.canvas,
                     "x": sx,
@@ -846,7 +853,6 @@ class NodeEditor(ttk.Frame):
                 exec(node.compiled_code, exec_scope)
 
             for pin in node.pins:
-                # Skip visually rendering the pin when it is hidden
                 if pin.hidden:
                     continue
 
@@ -873,7 +879,7 @@ class NodeEditor(ttk.Frame):
                 self._draw_rounded_rect(
                     psx - pr, psy - pr, psx + pr, psy + pr,
                     radius=pin_r, fill=pin_col, outline="#666666", width=1.5 if is_pin_active else 1.0,
-                    tags=f"node_{node.id}"
+                    tags=("node", f"node_{node.id}")
                 )
 
                 font_size = int(8 * (self.zoom / 35.0))
@@ -881,7 +887,7 @@ class NodeEditor(ttk.Frame):
                     text_col = "#000000" if is_pin_hovered else "#ffffff"
                     self.canvas.create_text(
                         psx, psy, text=pin.name, fill=text_col, anchor="center",
-                        font=("Consolas", font_size, "bold"), tags=f"node_{node.id}"
+                        font=("Consolas", font_size, "bold"), tags=("node", f"node_{node.id}")
                     )
 
     def _draw_wires(self):
@@ -910,7 +916,7 @@ class NodeEditor(ttk.Frame):
                 color = wire.color
                 width = wire.width
 
-            self.canvas.create_line(*flat_pts, fill=color, width=width * (self.zoom / 35.0), smooth=False)
+            self.canvas.create_line(*flat_pts, fill=color, width=width * (self.zoom / 35.0), smooth=False, tags=("wire", f"wire_{wire.id}"))
 
         if self.active_wire:
             path = self.active_wire.get_full_path()
@@ -929,7 +935,7 @@ class NodeEditor(ttk.Frame):
                 s_pts = [self.world_to_screen(pt[0], pt[1]) for pt in ortho_path]
                 flat_s = [c for pt in s_pts for c in pt]
                 if len(flat_s) >= 4:
-                    self.canvas.create_line(*flat_s, fill=self.active_wire.color, width=2.5 * (self.zoom / 35.0), dash=(6, 4))
+                    self.canvas.create_line(*flat_s, fill=self.active_wire.color, width=2.5 * (self.zoom / 35.0), dash=(6, 4), tags="active_wire")
 
     def _draw_instructions(self):
         h = self.canvas.winfo_height() or 700
@@ -945,8 +951,8 @@ class NodeEditor(ttk.Frame):
         x1, y1 = 12, h - 135
         x2, y2 = 380, h - 12
         corner_r = 0.25 * self.zoom
-        self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, fill=self.colors["instruction_bg"], outline="#334155")
-        self.canvas.create_text(x1 + 10, y1 + 61, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8))
+        self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, fill=self.colors["instruction_bg"], outline="#334155", tags="ui")
+        self.canvas.create_text(x1 + 10, y1 + 61, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8), tags="ui")
 
     def _draw_hover_tooltip(self):
         wire = None
@@ -984,14 +990,14 @@ class NodeEditor(ttk.Frame):
         ty2 = ty1 + box_h
 
         corner_r = 0.25 * self.zoom
-        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5)
+        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5, tags="tooltip")
 
         curr_y = ty1 + 14
-        self.canvas.create_text(tx1 + 10, curr_y, text=header, fill=self.colors["tooltip_border"], anchor="w", font=("Helvetica", 9, "bold"))
+        self.canvas.create_text(tx1 + 10, curr_y, text=header, fill=self.colors["tooltip_border"], anchor="w", font=("Helvetica", 9, "bold"), tags="tooltip")
         curr_y += 16
 
         for l in lines[1:]:
-            self.canvas.create_text(tx1 + 10, curr_y, text=l, fill=self.colors["tooltip_fg"], anchor="w", font=("Consolas", 8))
+            self.canvas.create_text(tx1 + 10, curr_y, text=l, fill=self.colors["tooltip_fg"], anchor="w", font=("Consolas", 8), tags="tooltip")
             curr_y += 15
 
     def _get_nearest_point_on_wire(self, wire: Wire, wx: float, wy: float) -> Tuple[float, float]:
@@ -1164,6 +1170,8 @@ class NodeEditor(ttk.Frame):
                 if node.x != new_x or node.y != new_y:
                     node.x = new_x
                     node.y = new_y
+                    # Invalidate cache when node moves
+                    self._hit_test_cache.pop(node.id, None)
                     self._emit("node_move", node)
             elif isinstance(self.drag_target, Wire):
                 wire = self.drag_target
@@ -1311,6 +1319,8 @@ class NodeEditor(ttk.Frame):
         self.pan_x = mx - (mx - self.pan_x) * (new_zoom / self.zoom)
         self.pan_y = my - (my - self.pan_y) * (new_zoom / self.zoom)
         self.zoom = new_zoom
+        # Invalidate shape cache on zoom change since screen coordinates change
+        self._hit_test_cache.clear()
         self.redraw_all()
 
     def _on_middle_press(self, event):
@@ -1338,30 +1348,39 @@ class NodeEditor(ttk.Frame):
             if node.compiled_code:
                 sw, sh = node.width * self.zoom, node.height * self.zoom
                 nsx, nsy = self.world_to_screen(node.x, node.y)
-                recorder = PyIconRecorder()
-                exec_scope = {
-                    "canvas": recorder,
-                    "x": nsx,
-                    "y": nsy,
-                    "w": sw,
-                    "h": sh,
-                    "cx": nsx + sw / 2.0,
-                    "cy": nsy + sh / 2.0,
-                    "angle": node.angle,
-                    "is_selected": (node == self.selected_object),
-                    "tags": (),
-                    "zoom": self.zoom,
-                    "rotatePoint": rotatePoint,
-                    "math": math,
-                    "node": node,
-                    "metadata": node.metadata
-                }
-                try:
-                    exec(node.compiled_code, exec_scope)
-                    if hit_test_shapes(sx, sy, recorder.shapes, tolerance=3.0):
-                        return node
-                except Exception:
-                    pass
+                
+                # OPTIMIZED: Cache recorded hit-test shapes to avoid executing exec() on every single mouse movement
+                cache_key = f"{node.id}_{nsx}_{nsy}_{sw}_{sh}_{node.angle}_{self.zoom}_{node == self.selected_object}"
+                if cache_key in self._hit_test_cache:
+                    shapes = self._hit_test_cache[cache_key]
+                else:
+                    recorder = PyIconRecorder()
+                    exec_scope = {
+                        "canvas": recorder,
+                        "x": nsx,
+                        "y": nsy,
+                        "w": sw,
+                        "h": sh,
+                        "cx": nsx + sw / 2.0,
+                        "cy": nsy + sh / 2.0,
+                        "angle": node.angle,
+                        "is_selected": (node == self.selected_object),
+                        "tags": (),
+                        "zoom": self.zoom,
+                        "rotatePoint": rotatePoint,
+                        "math": math,
+                        "node": node,
+                        "metadata": node.metadata
+                    }
+                    try:
+                        exec(node.compiled_code, exec_scope)
+                        shapes = recorder.shapes
+                        self._hit_test_cache[cache_key] = shapes
+                    except Exception:
+                        shapes = []
+
+                if hit_test_shapes(sx, sy, shapes, tolerance=3.0):
+                    return node
 
             if has_bg or has_border:
                 if node.contains_point(wx, wy):
@@ -1439,6 +1458,7 @@ class NodeEditor(ttk.Frame):
             for w in removed_wires:
                 self.delete_wire(w)
             self.nodes.remove(node)
+            self._hit_test_cache.pop(node.id, None)
             if self.selected_object == node:
                 self.selected_object = None
             self._emit("node_delete", node)
@@ -1461,6 +1481,7 @@ class NodeEditor(ttk.Frame):
         self.selected_object = None
         self.hovered_object = None
         self.active_wire = None
+        self._hit_test_cache.clear()
         self.rebuild_nets()
         self.redraw_all()
 
@@ -1468,6 +1489,7 @@ class NodeEditor(ttk.Frame):
         self.pan_x = 0.0
         self.pan_y = 0.0
         self.zoom = 35.0
+        self._hit_test_cache.clear()
         self.redraw_all()
 
     def _handle_net_event(self, event_type: str, net: WireNet, pin: Optional[Pin]):

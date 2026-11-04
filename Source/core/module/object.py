@@ -44,10 +44,11 @@ class IO:
         if sim and hasattr(sim, "scheduler"):
             sim.scheduler.schedule(self, val, strength, Delay)
         else:
-            self.driveVal = val
-            self.driveStr = strength
-            if self.Net:
-                self.Net.resolve()
+            if self.driveVal != val or self.driveStr != strength:
+                self.driveVal = val
+                self.driveStr = strength
+                if self.Net:
+                    self.Net.resolve()
 
     def __rshift__(self, other):
         if isinstance(other, IO):
