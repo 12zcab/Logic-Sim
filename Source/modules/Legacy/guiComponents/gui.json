@@ -1,5 +1,5 @@
 {
-    "name": "GUI",
+    "name": "GUI\n(Legacy)",
     "components":{
         "Switch":{
             "constructor":"Switch",

@@ -1,5 +1,5 @@
 {
-    "name": "LogicGate",
+    "name": "LogicGate\n(Legacy)",
     "components":{
         "Buffer":{
             "constructor":"Buffer",

@@ -1,5 +1,5 @@
 {
-    "name": "Memory",
+    "name": "Memory\n(Legacy)",
     "components":{
         "ROM":{
             "constructor":"ROM",

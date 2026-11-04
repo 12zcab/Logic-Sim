@@ -1,5 +1,5 @@
 {
-    "name": "FlipFlop",
+    "name": "FlipFlop\n(Legacy)",
     "components":{
         "DFF(PP0)":{
             "constructor":"PP0_DFF",
