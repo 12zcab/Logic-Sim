@@ -10,12 +10,68 @@ import math
 import uuid
 from typing import List, Dict, Set, Optional, Tuple, Callable
 
+
 def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
     rad = math.radians(angle)
     cos_a, sin_a = math.cos(rad), math.sin(rad)
     nx = cos_a * (px - cx) - sin_a * (py - cy) + cx
     ny = sin_a * (px - cx) + cos_a * (py - cy) + cy
     return (nx, ny)
+
+
+class MetadataTracker:
+    """Reactive Proxy: Wraps metadata during exec() to record accessed attribute paths and their values."""
+    def __init__(self, target, path=(), log=None):
+        object.__setattr__(self, "_target", target)
+        object.__setattr__(self, "_path", path)
+        object.__setattr__(self, "_log", log if log is not None else {})
+
+    def __getattr__(self, item):
+        target = object.__getattribute__(self, "_target")
+        path = object.__getattribute__(self, "_path") + (item,)
+        log = object.__getattribute__(self, "_log")
+
+        if not hasattr(target, item):
+            log[path] = None
+            raise AttributeError(f"'{type(target).__name__}' object has no attribute '{item}'")
+
+        val = getattr(target, item)
+        if hasattr(val, "__dict__") or isinstance(val, dict):
+            return MetadataTracker(val, path, log)
+
+        log[path] = val if isinstance(val, (int, float, str, bool, type(None))) else repr(val)
+        return val
+
+    def __getitem__(self, item):
+        target = object.__getattribute__(self, "_target")
+        path = object.__getattribute__(self, "_path") + (item,)
+        log = object.__getattribute__(self, "_log")
+
+        try:
+            val = target[item]
+        except (KeyError, IndexError):
+            log[path] = None
+            raise
+
+        if hasattr(val, "__dict__") or isinstance(val, dict):
+            return MetadataTracker(val, path, log)
+
+        log[path] = val if isinstance(val, (int, float, str, bool, type(None))) else repr(val)
+        return val
+
+
+class NodeProxy:
+    """Wraps NodeObject inside exec() so accessing node.metadata returns the MetadataTracker proxy."""
+    def __init__(self, node: 'NodeObject', tracked_metadata: Optional[MetadataTracker]):
+        object.__setattr__(self, "_node", node)
+        object.__setattr__(self, "metadata", tracked_metadata)
+
+    def __getattr__(self, item):
+        return getattr(object.__getattribute__(self, "_node"), item)
+
+    def __setattr__(self, item, value):
+        setattr(object.__getattribute__(self, "_node"), item, value)
+
 
 class Pin:
     def __init__(self, owner: 'NodeObject', name: str, rel_x: float, rel_y: float, color: Optional[str] = None, hide_when_wired: bool = False):
@@ -45,6 +101,7 @@ class Pin:
         pr_world = (0.275 + 0.125 * anim_val) + tolerance
         return (px - pr_world) <= wx <= (px + pr_world) and (py - pr_world) <= wy <= (py + pr_world)
 
+
 class NodeObject:
     def __init__(
         self,
@@ -72,6 +129,9 @@ class NodeObject:
         self.angle = angle
         self.metadata = metadata
         self.pins: List[Pin] = []
+        self.dirty_graphic: bool = False
+        self._tracked_deps: Dict[tuple, object] = {}
+        self._last_meta_ref: object = metadata
 
         self.compiled_code = None
         if self.graphic_code:
@@ -126,6 +186,7 @@ class NodeObject:
             if pin.contains_point(wx, wy, anim_val=anim_val):
                 return pin
         return None
+
 
 class Wire:
     def __init__(
@@ -212,25 +273,48 @@ class Wire:
         else:
             self.vertices = simplified[1:-1]
 
+
 class WireNet:
-    def __init__(self, net_id: str, name: str = ""):
+    def __init__(self, net_id: str, name: str = "", editor: Optional['NodeEditor'] = None):
         self.id = net_id
         self.name = name or f"NET_{net_id[:6].upper()}"
         self.wires: Set[Wire] = set()
         self.pins: Set[Pin] = set()
+        self.editor: Optional['NodeEditor'] = editor
+        self._color: Optional[str] = None
+
+    @property
+    def color(self) -> Optional[str]:
+        return self._color
+
+    @color.setter
+    def color(self, new_color: str):
+        if self._color != new_color:
+            self._color = new_color
+            for wire in self.wires:
+                wire.color = new_color
+            for pin in self.pins:
+                pin.color = new_color
+
+            if self.editor and hasattr(self.editor, "canvas"):
+                self.editor.canvas.itemconfig(f"net_{self.id}", fill=new_color)
+                for pin in self.pins:
+                    if not pin.hidden:
+                        self.editor.canvas.itemconfig(f"pin_rect_{pin.id}", fill=new_color)
 
     def setAllPinColor(self, color):
         for pin in self.pins:
             pin.color = color
 
     def setColor(self, color):
-        for wire in self.wires:
-            wire.color = color
+        self.color = color
+
 
 class NetEngine:
-    def __init__(self, event_callback: Optional[Callable[[str, WireNet, Optional[Pin]], None]] = None):
+    def __init__(self, event_callback: Optional[Callable[[str, WireNet, Optional[Pin]], None]] = None, editor: Optional['NodeEditor'] = None):
         self.nets: Dict[str, WireNet] = {}
         self.event_callback = event_callback
+        self.editor = editor
 
     def rebuild_nets(self, wires: List[Wire], nodes: List[NodeObject]):
         old_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
@@ -329,9 +413,10 @@ class NetEngine:
                 matched_net_ids.add(net.id)
             else:
                 net_id = str(uuid.uuid4())[:8]
-                net = WireNet(net_id)
+                net = WireNet(net_id, editor=self.editor)
                 created_nets.append(net)
 
+            net.editor = self.editor
             net.pins = comp_pins
             net.wires = comp_wires
             for p in comp_pins:
@@ -376,6 +461,7 @@ class NetEngine:
     def _notify_event(self, event_type: str, net: WireNet, pin: Optional[Pin]):
         if self.event_callback:
             self.event_callback(event_type, net, pin)
+
 
 class PyIconRecorder:
     def __init__(self):
@@ -442,6 +528,7 @@ class PyIconRecorder:
                 pts.append((float(coords[i]), float(coords[i+1])))
         return pts
 
+
 def smooth_polygon(pts, iterations=2):
     curr = pts
     for _ in range(iterations):
@@ -456,6 +543,7 @@ def smooth_polygon(pts, iterations=2):
             next_pts.append(r)
         curr = next_pts
     return curr
+
 
 def point_in_polygon(x: float, y: float, poly: list) -> bool:
     n = len(poly)
@@ -475,6 +563,7 @@ def point_in_polygon(x: float, y: float, poly: list) -> bool:
         p1x, p1y = p2x, p2y
     return inside
 
+
 def point_near_segment(px, py, v, w) -> float:
     vx, vy = v
     wx, wy = w
@@ -486,6 +575,7 @@ def point_near_segment(px, py, v, w) -> float:
     proj_y = vy + t * (wy - vy)
     return math.hypot(px - proj_x, py - proj_y)
 
+
 def point_near_polygon_outline(x: float, y: float, poly: list, threshold: float) -> bool:
     n = len(poly)
     for i in range(n):
@@ -495,11 +585,13 @@ def point_near_polygon_outline(x: float, y: float, poly: list, threshold: float)
             return True
     return False
 
+
 def point_near_polyline(x: float, y: float, pts: list, threshold: float) -> bool:
     for i in range(len(pts) - 1):
         if point_near_segment(x, y, pts[i], pts[i+1]) <= threshold:
             return True
     return False
+
 
 def hit_test_shapes(px: float, py: float, shapes: list, tolerance: float = 3.0) -> bool:
     for shape_type, data, kwargspx in shapes:
@@ -550,6 +642,7 @@ def hit_test_shapes(px: float, py: float, shapes: list, tolerance: float = 3.0) 
 
     return False
 
+
 class NodeEditor(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -577,7 +670,7 @@ class NodeEditor(ttk.Frame):
 
         self.nodes: List[NodeObject] = []
         self.wires: List[Wire] = []
-        self.engine = NetEngine(event_callback=self._handle_net_event)
+        self.engine = NetEngine(event_callback=self._handle_net_event, editor=self)
 
         self.pan_x: float = 0.0
         self.pan_y: float = 0.0
@@ -598,8 +691,8 @@ class NodeEditor(ttk.Frame):
         self._grep_press_callback: Optional[Callable[[float, float], None]] = None
 
         self.anim_states: Dict[object, float] = {}
+        self._anim_running = False
 
-        # OPTIMIZED: Cache for hit-test shapes to prevent running exec() repeatedly
         self._hit_test_cache: Dict[str, list] = {}
 
         self._event_listeners: Dict[str, List[Callable[..., None]]] = {
@@ -636,7 +729,87 @@ class NodeEditor(ttk.Frame):
         self.canvas.focus_set()
         self.canvas.bind("<Key>", self._on_key_press)
 
-        self._animate_loop()
+    @staticmethod
+    def _resolve_attr_path(obj, path: tuple):
+        """Fetches value at a logged attribute/dict key path."""
+        curr = obj
+        for step in path:
+            if curr is None:
+                return None
+            if isinstance(curr, dict):
+                curr = curr.get(step)
+            elif hasattr(curr, step):
+                curr = getattr(curr, step)
+            else:
+                return None
+        return curr if isinstance(curr, (int, float, str, bool, type(None))) else repr(curr)
+
+    def update_dirty_node_graphics(self):
+        """Checks tracked metadata attributes and object reference changes."""
+        for node in self.nodes:
+            if not node.compiled_code:
+                continue
+
+            if node.dirty_graphic:
+                node.dirty_graphic = False
+                self.redraw_node_graphic(node)
+                continue
+
+            last_ref = getattr(node, "_last_meta_ref", object())
+            if last_ref is not node.metadata:
+                node._last_meta_ref = node.metadata
+                self.redraw_node_graphic(node)
+                continue
+
+            deps = getattr(node, "_tracked_deps", None)
+            if deps:
+                for path, cached_val in deps.items():
+                    curr_val = self._resolve_attr_path(node.metadata, path)
+                    if curr_val != cached_val:
+                        self.redraw_node_graphic(node)
+                        break
+
+    def redraw_node_graphic(self, node: NodeObject):
+        """Executes pyIcon script with MetadataTracker & NodeProxy to log dependencies."""
+        if not node or not node.compiled_code:
+            return
+        tag_name = f"node_graphic_{node.id}"
+        self.canvas.delete(tag_name)
+
+        sx, sy = self.world_to_screen(node.x, node.y)
+        sw, sh = node.width * self.zoom, node.height * self.zoom
+        is_selected = (node == self.selected_object)
+
+        deps_log = {}
+        tracked_metadata = MetadataTracker(node.metadata, log=deps_log) if node.metadata is not None else None
+        node_proxy = NodeProxy(node, tracked_metadata)
+
+        exec_scope = {
+            "canvas": self.canvas,
+            "x": sx,
+            "y": sy,
+            "w": sw,
+            "h": sh,
+            "cx": sx + sw / 2.0,
+            "cy": nsy if (nsy := sy + sh / 2.0) else sy + sh / 2.0,
+            "angle": node.angle,
+            "is_selected": is_selected,
+            "tags": ("node", f"node_{node.id}", tag_name),
+            "zoom": self.zoom,
+            "rotatePoint": rotatePoint,
+            "math": math,
+            "node": node_proxy,
+            "metadata": tracked_metadata
+        }
+
+        try:
+            exec(node.compiled_code, exec_scope)
+        except Exception as e:
+            print(f"Error drawing pyIcon for {node.title}: {e}")
+
+        node._tracked_deps = deps_log
+        node._last_meta_ref = node.metadata
+        self._hit_test_cache.pop(node.id, None)
 
     def grepNextPressGridPos(self, returnfunction: Callable[[float, float], None]):
         self._grep_press_callback = returnfunction
@@ -664,7 +837,6 @@ class NodeEditor(ttk.Frame):
         node.x = self.snap_node_coord(node.x)
         node.y = self.snap_node_coord(node.y)
 
-        # Invalidate cache on rotation
         self._hit_test_cache.pop(node.id, None)
 
         self.rebuild_nets()
@@ -684,8 +856,14 @@ class NodeEditor(ttk.Frame):
         self.anim_states[key] = target
         return target
 
+    def request_anim(self):
+        if not self._anim_running:
+            self._anim_running = True
+            self._animate_loop()
+
     def _animate_loop(self):
         needs_redraw = False
+        has_active_anim = False
         selected_net = self.get_selected_net()
 
         for node in self.nodes:
@@ -693,6 +871,9 @@ class NodeEditor(ttk.Frame):
             val = self._get_anim_val(node, is_node_active)
             if 0.0 < val < 1.0:
                 needs_redraw = True
+                has_active_anim = True
+            elif is_node_active and val < 1.0:
+                has_active_anim = True
 
             for pin in node.pins:
                 if pin.hidden:
@@ -701,6 +882,9 @@ class NodeEditor(ttk.Frame):
                 pval = self._get_anim_val(pin, is_pin_active)
                 if 0.0 < pval < 1.0:
                     needs_redraw = True
+                    has_active_anim = True
+                elif is_pin_active and pval < 1.0:
+                    has_active_anim = True
 
         for wire in self.wires:
             is_wire_active = (
@@ -712,11 +896,17 @@ class NodeEditor(ttk.Frame):
             wval = self._get_anim_val(wire, is_wire_active)
             if 0.0 < wval < 1.0:
                 needs_redraw = True
+                has_active_anim = True
+            elif is_wire_active and wval < 1.0:
+                has_active_anim = True
 
         if needs_redraw:
             self.redraw_all()
 
-        self.after(16, self._animate_loop)
+        if has_active_anim:
+            self.after(16, self._animate_loop)
+        else:
+            self._anim_running = False
 
     def bind_event(self, event_name: str, callback: Callable[..., None]):
         if event_name in self._event_listeners:
@@ -770,12 +960,16 @@ class NodeEditor(ttk.Frame):
         return self.canvas.create_polygon(pts, smooth=True, **kwargs)
 
     def redraw_all(self):
-        # OPTIMIZED: Clears only targeted canvas layer tags instead of wiping everything with "all"
         self.canvas.delete("grid", "wire", "active_wire", "node", "ui", "tooltip")
         self._draw_grid()
         self._draw_wires()
         self._draw_nodes()
         self._draw_instructions()
+        self._draw_hover_tooltip()
+
+    def redraw_overlay(self):
+        self.canvas.delete("active_wire", "tooltip")
+        self._draw_active_wire_preview()
         self._draw_hover_tooltip()
 
     def _draw_grid(self):
@@ -832,25 +1026,7 @@ class NodeEditor(ttk.Frame):
                 self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, fill=bg_fill, outline=b_out, width=border_w, tags=("node", f"node_{node.id}"))
 
             if node.compiled_code:
-                tags = ("node", f"node_{node.id}", f"node_graphic_{node.id}")
-                exec_scope = {
-                    "canvas": self.canvas,
-                    "x": sx,
-                    "y": sy,
-                    "w": sw,
-                    "h": sh,
-                    "cx": sx + sw / 2.0,
-                    "cy": nsy if (nsy := sy + sh / 2.0) else sy + sh / 2.0,
-                    "angle": node.angle,
-                    "is_selected": is_selected,
-                    "tags": tags,
-                    "zoom": self.zoom,
-                    "rotatePoint": rotatePoint,
-                    "math": math,
-                    "node": node,
-                    "metadata": node.metadata
-                }
-                exec(node.compiled_code, exec_scope)
+                self.redraw_node_graphic(node)
 
             for pin in node.pins:
                 if pin.hidden:
@@ -876,10 +1052,11 @@ class NodeEditor(ttk.Frame):
                     pin_col = self.colors["pin_default"]
 
                 pin_r = 0.12 * self.zoom
+                pin_tag = f"pin_rect_{pin.id}"
                 self._draw_rounded_rect(
                     psx - pr, psy - pr, psx + pr, psy + pr,
                     radius=pin_r, fill=pin_col, outline="#666666", width=1.5 if is_pin_active else 1.0,
-                    tags=("node", f"node_{node.id}")
+                    tags=("node", f"node_{node.id}", pin_tag)
                 )
 
                 font_size = int(8 * (self.zoom / 35.0))
@@ -916,8 +1093,15 @@ class NodeEditor(ttk.Frame):
                 color = wire.color
                 width = wire.width
 
-            self.canvas.create_line(*flat_pts, fill=color, width=width * (self.zoom / 35.0), smooth=False, tags=("wire", f"wire_{wire.id}"))
+            net_tag = f"net_{wire.net.id}" if wire.net else ""
+            self.canvas.create_line(
+                *flat_pts, fill=color, width=width * (self.zoom / 35.0),
+                smooth=False, tags=("wire", f"wire_{wire.id}", net_tag)
+            )
 
+        self._draw_active_wire_preview()
+
+    def _draw_active_wire_preview(self):
         if self.active_wire:
             path = self.active_wire.get_full_path()
             if len(path) >= 1:
@@ -1154,6 +1338,7 @@ class NodeEditor(ttk.Frame):
             emit_x, emit_y = rotatePoint(wx, wy, cx, cy, -self.selected_object.angle)
 
         self._emit("select", self.selected_object, emit_x, emit_y)
+        self.request_anim()
         self.redraw_all()
 
     def _on_left_drag(self, event):
@@ -1170,7 +1355,6 @@ class NodeEditor(ttk.Frame):
                 if node.x != new_x or node.y != new_y:
                     node.x = new_x
                     node.y = new_y
-                    # Invalidate cache when node moves
                     self._hit_test_cache.pop(node.id, None)
                     self._emit("node_move", node)
             elif isinstance(self.drag_target, Wire):
@@ -1211,7 +1395,7 @@ class NodeEditor(ttk.Frame):
 
             self.redraw_all()
         elif self.active_wire:
-            self.redraw_all()
+            self.redraw_overlay()
 
     def _on_left_release(self, event):
         if self.drag_target:
@@ -1307,9 +1491,10 @@ class NodeEditor(ttk.Frame):
 
         if prev_hovered != self.hovered_object:
             self._emit("hover", self.hovered_object)
+            self.request_anim()
             self.redraw_all()
         elif self.active_wire or isinstance(self.hovered_object, Wire):
-            self.redraw_all()
+            self.redraw_overlay()
 
     def _on_mouse_wheel(self, event):
         factor = 1.12 if event.delta > 0 else 0.88
@@ -1319,7 +1504,6 @@ class NodeEditor(ttk.Frame):
         self.pan_x = mx - (mx - self.pan_x) * (new_zoom / self.zoom)
         self.pan_y = my - (my - self.pan_y) * (new_zoom / self.zoom)
         self.zoom = new_zoom
-        # Invalidate shape cache on zoom change since screen coordinates change
         self._hit_test_cache.clear()
         self.redraw_all()
 
@@ -1349,12 +1533,14 @@ class NodeEditor(ttk.Frame):
                 sw, sh = node.width * self.zoom, node.height * self.zoom
                 nsx, nsy = self.world_to_screen(node.x, node.y)
                 
-                # OPTIMIZED: Cache recorded hit-test shapes to avoid executing exec() on every single mouse movement
                 cache_key = f"{node.id}_{nsx}_{nsy}_{sw}_{sh}_{node.angle}_{self.zoom}_{node == self.selected_object}"
                 if cache_key in self._hit_test_cache:
                     shapes = self._hit_test_cache[cache_key]
                 else:
                     recorder = PyIconRecorder()
+                    deps_log = {}
+                    tracked_metadata = MetadataTracker(node.metadata, log=deps_log) if node.metadata is not None else None
+                    node_proxy = NodeProxy(node, tracked_metadata)
                     exec_scope = {
                         "canvas": recorder,
                         "x": nsx,
@@ -1369,8 +1555,8 @@ class NodeEditor(ttk.Frame):
                         "zoom": self.zoom,
                         "rotatePoint": rotatePoint,
                         "math": math,
-                        "node": node,
-                        "metadata": node.metadata
+                        "node": node_proxy,
+                        "metadata": tracked_metadata
                     }
                     try:
                         exec(node.compiled_code, exec_scope)
@@ -1502,6 +1688,7 @@ class NodeEditor(ttk.Frame):
         elif event_type == "NET_DESTROY":
             self._emit("net_destroy", net)
 
+
 NAND_GATE_PYICON_CODE = """
 import math
 
@@ -1602,7 +1789,7 @@ canvas.create_oval(
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("Node Editor - Fixed Pin Rescale & Visually Hidden Interactive Wired Pins")
+    root.title("Node Editor - Metadata Dependency Tracking")
     root.geometry("1100x700")
 
     app = NodeEditor(root)

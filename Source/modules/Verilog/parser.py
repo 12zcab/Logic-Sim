@@ -35,8 +35,7 @@ def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = No
         yosys_commands.append(gate_level_pipeline)
         yosys_commands.append(f"write_json {output_json_path}")
         
-        yosys_args = ["-l", "log.log"]
-        #yosys_args = []
+        yosys_args = []
         for cmd in yosys_commands:
             yosys_args.extend(["-p", cmd])
 
