@@ -110,7 +110,7 @@ module cmos_4017 (
         Q7 = (count == 4'd7);
         Q8 = (count == 4'd8);
         Q9 = (count == 4'd9);
-        CO = (count < 4'd5); // High for steps 0-4, Low for steps 5-9
+        CO = (count < 4'd5); // High for steps 0-4, Low for steps 5-9  
     end
 
 endmodule
