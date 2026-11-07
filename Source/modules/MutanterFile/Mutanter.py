@@ -346,7 +346,7 @@ class Handler:
                     try:
                         if hasattr(self.DataHandler, "Bucket"):
                             self.DataHandler.Bucket(Table)
-                        elif hasattr(self.DataHandler, "Backet"):
+                        elif hasattr(self.DataHandler, "Backet"):  
                             self.DataHandler.Backet(Table)
                         self.DataHandler.Store("CloneLog")
                     except Exception as e:

@@ -32,4 +32,4 @@ module sig_8T28 (
         pin_RX4 = pin_B4;
     end
 
-endmodule
+endmodule 
