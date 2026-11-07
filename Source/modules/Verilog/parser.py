@@ -38,7 +38,7 @@ def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = No
         
         yosys_args = []
         for cmd in yosys_commands:
-            yosys_args.extend(["-p", cmd])
+            yosys_args.extend(["-p", cmd])  
 
         print(f"[*] Parsing to pure gate netlist: {safe_verilog_path}")
         
