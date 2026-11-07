@@ -1,15 +1,22 @@
 import math
 
-is_on = False
+value = Logic.ZERO
 colour = "#38bdf8"
 showNumber = True
 if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
     if hasattr(node.metadata, "state"):
-        is_on = bool(node.metadata.state)
+        value = node.metadata.state
     if hasattr(node.metadata, "colour"):
         colour = node.metadata.colour
     if hasattr(node.metadata, "showNumber"):
         showNumber = node.metadata.showNumber
+
+color_map = {
+    Logic.ONE: colour,
+    Logic.X: "#f8bd38",
+    Logic.ZERO: "#222222",
+    Logic.Z: "black"
+}
 
 box_w = w * (6.0 / 5.0)
 box_h = h * (6.0 / 5.0)
@@ -60,9 +67,9 @@ canvas.create_polygon(
     tags=tags
 )
 
-bg_fill = colour if is_on else "#111111"
-text_color = "#000000" if is_on else "#777777"
-border_color = "#38bdf8" if is_on else "#444444"
+bg_fill = color_map.get(value, "#114C06")
+text_color = "#000000" if value == Logic.ONE else "#777777"
+border_color = "#38bdf8" if value == Logic.ONE else "#444444"
 
 canvas.create_polygon(
     flat_box,
@@ -74,7 +81,7 @@ canvas.create_polygon(
     tags=tags
 )
 
-text_str = "1" if is_on else "0"
+text_str = value
 center_pt = rotatePoint(x + w / 2.0, y + h / 2.0, cx, cy, angle)
 font_size = int(12 * (zoom / 35.0))
 

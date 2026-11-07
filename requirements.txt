@@ -5,5 +5,4 @@ tabulate
 yowasp-yosys~=0.69.0
 wasmtime
 bidict
-nuitka
-zstandard
+pyinstaller

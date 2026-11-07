@@ -56,14 +56,11 @@ class LogicSimApp:
         }
 
     def updateMainApp(self):
-        # 1. Step simulation engine logic tick
         self.simBox.stepDeltaLoop()
         self.simBox.scheduler.advanceToNext()
 
-        # 2. Update wire/pin logic net colors only when values change
         self.updateNetStates()
 
-        # 3. Microsecond dependency check for reactive pyIcon re-renders
         if hasattr(self, "node_editor"):
             self.node_editor.update_dirty_node_graphics()
 
@@ -74,13 +71,14 @@ class LogicSimApp:
         color_map = {
             Logic.ONE: "#38bdf8",
             Logic.X: "#f8bd38",
-            Logic.ZERO: "#222222"
+            Logic.ZERO: "#222222",
+            Logic.Z: "black"
         }
         for sim_net, gui_net in list(self.logicNetToNodeNet.items()):
             val = sim_net.Value
             if self._last_net_values.get(sim_net) != val:
                 self._last_net_values[sim_net] = val
-                gui_net.color = color_map.get(val, "#222222")
+                gui_net.color = color_map.get(val, "#114C06")
 
     def setup_ui(self):
         self.root.bind("<Configure>", self.on_window_resize)
@@ -256,8 +254,11 @@ class LogicSimApp:
         self.simBox.expandNet()
 
     def addLogic(self, logicObj, nodeObj):
+        logicObj.guiNode = nodeObj
         self.simBox.addObject(logicObj)
         self.logicToNode[logicObj] = nodeObj
+        if hasattr(self, "node_editor") and nodeObj not in self.node_editor.nodes:
+            self.node_editor.nodes.append(nodeObj)
         self.node_editor.rebuild_nets()
 
     def deleteLogicObj(self, node):
@@ -266,6 +267,8 @@ class LogicSimApp:
             self.attributePanel.clearCategories()
             self.lastSelectedNode = None
         if logic_obj:
+            if hasattr(logic_obj, "guiNode"):
+                logic_obj.guiNode = None
             for io in logic_obj.IO.values():
                 io.disconnectNet()
                 if io.Net:
@@ -301,45 +304,24 @@ class LogicSimApp:
             bt.config(command=lambda name=module_name: self.switch_module(name))
 
     def SaveAll(self):
-        def create_sample(class_name):
-            for mod_name, mod_data in self.all_jsons.items():
-                components = mod_data.get("components", {})
-                for comp_name, comp_def in components.items():
-                    if comp_def.get("constructor") == class_name:
-                        module_dir = os.path.dirname(mod_data["__path__"])
-                        return loadObject(comp_name, comp_def, self.node_editor, module_dir, 0, 0)
-            return None
         filename = filedialog.asksaveasfilename(
             defaultextension=".LSproj",
             filetypes=[("LogicSim File", "*.LSproj")],
             title="Save LogicSim Project"
         )
-        if not filename == "":
-            exporter = Exporter(self, filename, "UntitledApp", sample_factory=create_sample)
+        if filename:
+            exporter = Exporter(self, filename, "UntitledApp")
             exporter.Catch()
             exporter.Store()
 
     def LoadAll(self):
-        def recreate_node(constructor_name, x, y, angle):
-            for mod_name, mod_data in self.all_jsons.items():
-                components = mod_data.get("components", {})
-                for comp_name, comp_def in components.items():
-                    if comp_def.get("constructor") == constructor_name:
-                        module_dir = os.path.dirname(mod_data["__path__"])
-                        logic_obj, node_obj = loadObject(comp_name, comp_def, self.node_editor, module_dir, x, y)
-                        if angle != 0.0 and hasattr(self.node_editor, "rotate_node"):
-                            self.node_editor.rotate_node(node_obj, angle_deg=angle)
-                        self.addLogic(logic_obj, node_obj)
-                        return logic_obj, node_obj
-            return None, None
-        filename = filedialog.asksaveasfilename(
+        filename = filedialog.askopenfilename(
             defaultextension=".LSproj",
             filetypes=[("LogicSim File", "*.LSproj")],
-            title="Load LogicSim Project",
-            confirmoverwrite=False
+            title="Load LogicSim Project"
         )
-        if not filename == "":
-            importer = Importer(filename, "UntitledApp", self, spawn_callback=recreate_node)
+        if filename:
+            importer = Importer(filename, "UntitledApp", self, globals_dict=globals())
             importer.Import()
 
     def ClearAll(self):

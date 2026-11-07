@@ -44,7 +44,7 @@ canvas.create_polygon(
 
 canvas.create_line(*flat_clk, fill="#FFFFFF", width=stroke_w, tags=tags)
 
-font_size = round(int(2 * h * 0.05))
+font_size = round(int(1.6 * h * 0.05))
 if font_size > 0:
     canvas.create_text(
         txt_x, txt_y,

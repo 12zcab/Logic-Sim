@@ -36,7 +36,8 @@ shadow_corners = [
 
 rot_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in corners]
 flat_box = [coord for pt in rot_corners for coord in pt]
-flat_shadow = [coord for pt in shadow_corners for coord in pt]
+rot_shadow_corners = [(px + shadow_offset, py + shadow_offset) for px, py in rot_corners]
+flat_shadow = [coord for pt in rot_shadow_corners for coord in pt]
 
 stroke_w = max(2, int(min(box_w, box_h) * 0.05))
 select_w = stroke_w + max(2, int(min(box_w, box_h) * 0.04))

@@ -35,7 +35,7 @@ font_size = int(18 * (zoom / 35.0))
 for r in range(num_rows):
     for c in range(num_cols):
         val = table[c][r] if c < len(table) and r < len(table[c]) else 0
-        is_one = val == "1"
+        is_one = val == Logic.ONE
 
         cx1 = offset_x + (c * cell_w) + 0.5
         cy1 = offset_y + (r * cell_h) + 0.5
@@ -69,7 +69,7 @@ for r in range(num_rows):
 
             canvas.create_text(
                 rot_mid[0], rot_mid[1],
-                text="1" if is_one else "0",
+                text=Logic.ONE if is_one else Logic.ZERO,
                 fill="#000000" if is_one else "#555555",
                 font=("Consolas", font_size, "bold"),
                 tags=tags

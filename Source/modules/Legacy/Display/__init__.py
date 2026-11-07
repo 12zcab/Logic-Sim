@@ -21,12 +21,23 @@ class SevenSegment(Component):
         self.F = True if self.IO.F.Value == (Logic.ONE if self.ActivateLevel else Logic.ZERO) else False
         self.G = True if self.IO.G.Value == (Logic.ONE if self.ActivateLevel else Logic.ZERO) else False
         self.DP = True if self.IO.DP.Value == (Logic.ONE if self.ActivateLevel else Logic.ZERO) else False
-        
+    def export_custom_data(self):
+        return {"ActivateLevel": self.ActivateLevel}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.ActivateLevel = custom_data.get("ActivateLevel", True)
+        self.update()
 class Lamp(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A")], self.update)
-        self.state = False
+        self.state = Logic.ZERO
         self.colour = "#38bdf8"
         self.showNumber = True
     def update(self):
-        self.state = (self.IO.A.Value == Logic.ONE)
+        self.state = self.IO.A.Value
+        print(self.state)
+    def export_custom_data(self):
+        return {"colour": self.ActivateLevel,"showNumber": self.showNumber}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.colour = custom_data.get("colour", "#38bdf8")
+        self.showNumber = custom_data.get("showNumber",True)
+        self.update()

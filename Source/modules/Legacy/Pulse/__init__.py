@@ -21,6 +21,11 @@ class RiseEdge(Module):
     @delay.setter
     def delay(self,value):
         self.child["Buffer"].delay = value
+    def export_custom_data(self):
+        return {"delay": self.delay}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.delay = custom_data.get("delay", 1)
+        self.update()
 
 class FallEdge(Module):
     def __init__(self, Name):
@@ -42,6 +47,11 @@ class FallEdge(Module):
     @delay.setter
     def delay(self,value):
         self.child["Buffer"].delay = value
+    def export_custom_data(self):
+        return {"delay": self.delay}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.delay = custom_data.get("delay", 1)
+        self.update()
     
 class Edge(Module):
     def __init__(self, Name):
@@ -63,6 +73,11 @@ class Edge(Module):
     @delay.setter
     def delay(self,value):
         self.child["Buffer"].delay = value
+    def export_custom_data(self):
+        return {"delay": self.delay}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.delay = custom_data.get("delay", 1)
+        self.update()
     
 
 class PulseGenerator(Component):
@@ -86,3 +101,8 @@ class PulseGenerator(Component):
                 self.lastupdate = time.perf_counter_ns()
             self.state = not self.state
             self.IO.Y.Value = Logic.ONE if self.state else Logic.ZERO
+    def export_custom_data(self):
+        return {"Frequency": self.Frequency}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.Frequency = custom_data.get("Frequency", 1)
+        self.update()

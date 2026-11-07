@@ -2,7 +2,7 @@ import math
 import os
 import tkinter.font as tkFont
 from tkinter import *
-
+from core import Logic
 
 def rotatePoint(px, py, cx, cy, angle):
     rad = math.radians(angle)
@@ -112,6 +112,7 @@ class ToolBarButton(Canvas):
                 "tags": ("icon_graphics",),
                 "rotatePoint": rotatePoint,
                 "math": math,
+                "Logic":Logic
             }
 
             try:

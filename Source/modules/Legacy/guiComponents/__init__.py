@@ -9,6 +9,11 @@ class Switch(Component):
     def onclick(self,rx,ry):
         self.state = not self.state
         self.update()
+    def export_custom_data(self):
+        return {"state": self.state}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.state = custom_data.get("state", False)
+        self.update()
         
 class Constant(Component):
     def __init__(self, Name):
@@ -22,6 +27,11 @@ class Constant(Component):
     @power.setter
     def power(self,newval):
         self.state = newval
+        self.update()
+    def export_custom_data(self):
+        return {"state": self.state}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.state = custom_data.get("state", True)
         self.update()
 
 
@@ -38,3 +48,8 @@ class VisualAnalyzer(Component):
         self.graph.append(value)
         while len(self.graph) > self.keepTicks:
             self.graph.pop(0)
+    def export_custom_data(self):
+        return {"keepTicks": self.keepTicks}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.keepTicks = custom_data.get("keepTicks", True)
+        self.update()

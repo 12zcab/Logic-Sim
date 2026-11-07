@@ -6,7 +6,11 @@ class Label(Component):
         self.text = "Text"
     def update(self):
         pass
-    
+    def export_custom_data(self):
+        return {"text": self.text}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.colour = custom_data.get("text", "Text")
+        self.update()
 class TPS(Component):
     def __init__(self, Name):
         # Register self.update as the callback (or rename logic to update)

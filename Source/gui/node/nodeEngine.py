@@ -1,15 +1,11 @@
-# Disclaimer: 
-# YES, THIS SCRIPT IS MOSTLY WRITTEN BY AI (70-80%)
-# I AM SORRY BUT I REALLY DONT KNOW HOW TO DO THIS PART
-# I ALREADY SPENT 1.5WEEKS ON THE nodeEngine :|
-# By 12zcab :|
+# Note: After a few weeks of modification, this file has only about 20-40% AI content left
 
 import tkinter as tk
 from tkinter import ttk
 import math
 import uuid
 from typing import List, Dict, Set, Optional, Tuple, Callable
-
+from core import Logic
 
 def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
     rad = math.radians(angle)
@@ -105,6 +101,7 @@ class Pin:
 class NodeObject:
     def __init__(
         self,
+        editor,
         node_id: str,
         title: str,
         x: float,
@@ -117,7 +114,7 @@ class NodeObject:
         angle: float = 0.0,
         metadata: Optional[object] = None
     ):
-        self.id = node_id
+        self.id = str(node_id)
         self.title = title
         self.x = float(x)
         self.y = float(y)
@@ -126,16 +123,74 @@ class NodeObject:
         self.bg_color = bg_color
         self.border_color = border_color
         self.graphic_code = graphic_code
-        self.angle = angle
+        self.angle = float(angle)
         self.metadata = metadata
         self.pins: List[Pin] = []
-        self.dirty_graphic: bool = False
+        self.dirty_graphic: bool = True
         self._tracked_deps: Dict[tuple, object] = {}
         self._last_meta_ref: object = metadata
-
+        self.editor = editor
         self.compiled_code = None
         if self.graphic_code:
             self.compiled_code = compile(self.graphic_code, f"<node_graphic_{self.id}>", "exec")
+
+    def export(self) -> dict:
+        """Exports the complete configuration, geometry, and pyIcon graphic code of the GUI node."""
+        return {
+            "__class__": "NodeObject",
+            "id": self.id,
+            "title": self.title,
+            "x": self.x,
+            "y": self.y,
+            "width": self._width,
+            "height": self._height,
+            "bg_color": self.bg_color,
+            "border_color": self.border_color,
+            "graphic_code": self.graphic_code,
+            "angle": self.angle,
+            "pins": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "rel_x": p.rel_x,
+                    "rel_y": p.rel_y,
+                    "color": p.color,
+                    "hide_when_wired": p.hide_when_wired
+                } for p in self.pins
+            ]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict, metadata: Optional[object] = None) -> 'NodeObject':
+        """Reconstructs a NodeObject instance directly from exported data dictionary."""
+        node = cls(
+            node_id=str(data["id"]),
+            title=data.get("title", ""),
+            x=float(data.get("x", 0.0)),
+            y=float(data.get("y", 0.0)),
+            width=float(data.get("width", 4.0)),
+            height=float(data.get("height", 3.0)),
+            bg_color=data.get("bg_color"),
+            border_color=data.get("border_color"),
+            graphic_code=data.get("graphic_code"),
+            angle=float(data.get("angle", 0.0)),
+            metadata=metadata
+        )
+        if "pins" in data and data["pins"]:
+            node.pins.clear()
+            for pdata in data["pins"]:
+                pin = Pin(
+                    owner=node,
+                    name=pdata["name"],
+                    rel_x=float(pdata["rel_x"]),
+                    rel_y=float(pdata["rel_y"]),
+                    color=pdata.get("color"),
+                    hide_when_wired=pdata.get("hide_when_wired", False)
+                )
+                if "id" in pdata:
+                    pin.id = str(pdata["id"])
+                node.pins.append(pin)
+        return node
 
     @property
     def width(self) -> float:
@@ -151,10 +206,13 @@ class NodeObject:
         new_width = float(new_width)
         if old_width != new_width:
             self._width = new_width
+            self.dirty_graphic = True
             dw = new_width - old_width
             for pin in self.pins:
-                if math.isclose(pin.rel_x - old_width, 0.5, abs_tol=1e-4) or pin.rel_x >= old_width:
+                if (pin.rel_x >= (old_width/2)) and pin.rel_y <= self.height and pin.rel_y >= 0:
                     pin.rel_x += dw
+            self.editor.rebuild_nets()
+            self.editor.redraw_all()
 
     @height.setter
     def height(self, new_height: float):
@@ -162,16 +220,20 @@ class NodeObject:
         new_height = float(new_height)
         if old_height != new_height:
             self._height = new_height
+            self.dirty_graphic = True
             dh = new_height - old_height
             for pin in self.pins:
-                if math.isclose(pin.rel_y - old_height, 0.5, abs_tol=1e-4) or pin.rel_y >= old_height:
+                if (pin.rel_y >= (old_height/2)) and pin.rel_x <= self.width and pin.rel_x >= 0:
                     pin.rel_y += dh
+            self.editor.rebuild_nets()
+            self.editor.redraw_all()
 
     def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None, hide_when_wired: bool = False) -> Pin:
         rel_x = float(cell_x) + 0.5
         rel_y = float(cell_y) + 0.5
         pin = Pin(self, name, rel_x, rel_y, color, hide_when_wired=hide_when_wired)
         self.pins.append(pin)
+        self.dirty_graphic = True
         return pin
 
     def contains_point(self, wx: float, wy: float) -> bool:
@@ -206,6 +268,22 @@ class Wire:
         self.color = color
         self.width = width
         self.net: Optional['WireNet'] = None
+
+    def export(self) -> dict:
+        """Exports wire paths and connected node pin references."""
+        return {
+            "__class__": "Wire",
+            "id": self.id,
+            "start_node_id": self.start_pin.owner.id if self.start_pin and self.start_pin.owner else None,
+            "start_pin": self.start_pin.name if self.start_pin else None,
+            "start_pos": list(self.start_pos) if self.start_pos else None,
+            "end_node_id": self.end_pin.owner.id if self.end_pin and self.end_pin.owner else None,
+            "end_pin": self.end_pin.name if self.end_pin else None,
+            "end_pos": list(self.end_pos) if self.end_pos else None,
+            "vertices": [list(v) for v in self.vertices],
+            "color": self.color,
+            "width": self.width
+        }
 
     def get_full_path(self) -> List[Tuple[float, float]]:
         raw_path = []
@@ -499,7 +577,7 @@ class PyIconRecorder:
         if isinstance(font, (list, tuple)) and len(font) > 1:
             try:
                 font_size = int(font[1])
-            except:
+            except Exception:
                 pass
         w_est = max(10.0, len(str(text)) * font_size * 0.7)
         h_est = max(10.0, font_size * 1.4)
@@ -523,9 +601,13 @@ class PyIconRecorder:
         if len(coords) == 1 and isinstance(coords[0], (list, tuple)):
             coords = coords[0]
         pts = []
-        for i in range(0, len(coords), 2):
-            if i + 1 < len(coords):
-                pts.append((float(coords[i]), float(coords[i+1])))
+        for item in coords:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                pts.append((float(item[0]), float(item[1])))
+        if not pts:
+            for i in range(0, len(coords), 2):
+                if i + 1 < len(coords):
+                    pts.append((float(coords[i]), float(coords[i+1])))
         return pts
 
 
@@ -731,7 +813,6 @@ class NodeEditor(ttk.Frame):
 
     @staticmethod
     def _resolve_attr_path(obj, path: tuple):
-        """Fetches value at a logged attribute/dict key path."""
         curr = obj
         for step in path:
             if curr is None:
@@ -745,7 +826,6 @@ class NodeEditor(ttk.Frame):
         return curr if isinstance(curr, (int, float, str, bool, type(None))) else repr(curr)
 
     def update_dirty_node_graphics(self):
-        """Checks tracked metadata attributes and object reference changes."""
         for node in self.nodes:
             if not node.compiled_code:
                 continue
@@ -770,7 +850,6 @@ class NodeEditor(ttk.Frame):
                         break
 
     def redraw_node_graphic(self, node: NodeObject):
-        """Executes pyIcon script with MetadataTracker & NodeProxy to log dependencies."""
         if not node or not node.compiled_code:
             return
         tag_name = f"node_graphic_{node.id}"
@@ -791,7 +870,7 @@ class NodeEditor(ttk.Frame):
             "w": sw,
             "h": sh,
             "cx": sx + sw / 2.0,
-            "cy": nsy if (nsy := sy + sh / 2.0) else sy + sh / 2.0,
+            "cy": sy + sh / 2.0,
             "angle": node.angle,
             "is_selected": is_selected,
             "tags": ("node", f"node_{node.id}", tag_name),
@@ -799,7 +878,8 @@ class NodeEditor(ttk.Frame):
             "rotatePoint": rotatePoint,
             "math": math,
             "node": node_proxy,
-            "metadata": tracked_metadata
+            "metadata": tracked_metadata,
+            "Logic": Logic
         }
 
         try:
@@ -943,22 +1023,53 @@ class NodeEditor(ttk.Frame):
     def screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:
         return ((sx - self.pan_x) / self.zoom, (sy - self.pan_y) / self.zoom)
 
-    def _draw_rounded_rect(self, x1: float, y1: float, x2: float, y2: float, radius: Optional[float] = None, **kwargs):
+    def _draw_rounded_rect(
+        self,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        radius: Optional[float] = None,
+        angle: float = 0.0,
+        steps_per_corner: int = 8,
+        **kwargs
+    ):
         if radius is None:
             radius = 0.25 * self.zoom
-        if radius <= 0:
-            return self.canvas.create_rectangle(x1, y1, x2, y2, **kwargs)
-        w, h = abs(x2 - x1), abs(y2 - y1)
-        r = min(radius, w / 2.0, h / 2.0)
-        pts = [
-            x1 + r, y1, x1 + r, y1, x2 - r, y1, x2 - r, y1,
-            x2, y1, x2, y1 + r, x2, y1 + r, x2, y2 - r,
-            x2, y2 - r, x2, y2, x2 - r, y2, x2 - r, y2,
-            x1 + r, y2, x1 + r, y2, x1, y2, x1, y2 - r,
-            x1, y2 - r, x1, y1 + r, x1, y1 + r, x1, y1
-        ]
-        return self.canvas.create_polygon(pts, smooth=True, **kwargs)
 
+        w, h = abs(x2 - x1), abs(y2 - y1)
+        cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+        r = min(radius, w / 2.0, h / 2.0)
+
+        if r <= 0:
+            raw_pts = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
+        else:
+            raw_pts = []
+            corners = [
+                (x2 - r, y1 + r, -math.pi / 2, 0.0),
+                (x2 - r, y2 - r, 0.0, math.pi / 2),
+                (x1 + r, y2 - r, math.pi / 2, math.pi),
+                (x1 + r, y1 + r, math.pi, 1.5 * math.pi)
+            ]
+
+            for ccx, ccy, start_a, end_a in corners:
+                for i in range(steps_per_corner + 1):
+                    t = i / float(steps_per_corner)
+                    a = start_a + t * (end_a - start_a)
+                    px = ccx + r * math.cos(a)
+                    py = ccy + r * math.sin(a)
+                    raw_pts.append((px, py))
+
+        if angle != 0.0:
+            flat_pts = []
+            for px, py in raw_pts:
+                nx, ny = rotatePoint(px, py, cx, cy, angle)
+                flat_pts.extend([nx, ny])
+        else:
+            flat_pts = [c for pt in raw_pts for c in pt]
+
+        return self.canvas.create_polygon(flat_pts, smooth=False, **kwargs)
+    
     def redraw_all(self):
         self.canvas.delete("grid", "wire", "active_wire", "node", "ui", "tooltip")
         self._draw_grid()
@@ -1020,10 +1131,10 @@ class NodeEditor(ttk.Frame):
                     border_w = 2.0 if border_col else 0.0
                 so = 0.25 * self.zoom
                 if node.bg_color:
-                    self._draw_rounded_rect(sx + so, sy + so, sx + sw + so, sy + sh + so, radius=corner_r, fill=self.colors["shadow"], outline="", tags=("node", f"node_{node.id}"))
+                    self._draw_rounded_rect(sx + so, sy + so, sx + sw + so, sy + sh + so, radius=corner_r, angle=node.angle, fill=self.colors["shadow"], outline="", tags=("node", f"node_{node.id}"))
                 bg_fill = node.bg_color if node.bg_color else ""
                 b_out = border_col if border_col else ""
-                self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, fill=bg_fill, outline=b_out, width=border_w, tags=("node", f"node_{node.id}"))
+                self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, angle=node.angle, fill=bg_fill, outline=b_out, width=border_w, tags=("node", f"node_{node.id}"))
 
             if node.compiled_code:
                 self.redraw_node_graphic(node)
@@ -1135,7 +1246,7 @@ class NodeEditor(ttk.Frame):
         x1, y1 = 12, h - 135
         x2, y2 = 380, h - 12
         corner_r = 0.25 * self.zoom
-        self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, fill=self.colors["instruction_bg"], outline="#334155", tags="ui")
+        self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, angle=0, fill=self.colors["instruction_bg"], outline="#334155", tags="ui")
         self.canvas.create_text(x1 + 10, y1 + 61, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8), tags="ui")
 
     def _draw_hover_tooltip(self):
@@ -1153,7 +1264,7 @@ class NodeEditor(ttk.Frame):
             return
 
         msx, msy = self.current_mouse_screen
-        header = f"Net: {wire.net.name}"
+        header = f"Wire Net"
         lines = [header, "Connected Pins:"] + [f" • {item}" for item in connected_items]
 
         box_w = max(len(l) for l in lines) * 7.5 + 20
@@ -1174,7 +1285,7 @@ class NodeEditor(ttk.Frame):
         ty2 = ty1 + box_h
 
         corner_r = 0.25 * self.zoom
-        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5, tags="tooltip")
+        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, angle = 0, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5, tags="tooltip")
 
         curr_y = ty1 + 14
         self.canvas.create_text(tx1 + 10, curr_y, text=header, fill=self.colors["tooltip_border"], anchor="w", font=("Helvetica", 9, "bold"), tags="tooltip")
@@ -1532,8 +1643,8 @@ class NodeEditor(ttk.Frame):
             if node.compiled_code:
                 sw, sh = node.width * self.zoom, node.height * self.zoom
                 nsx, nsy = self.world_to_screen(node.x, node.y)
-                
-                cache_key = f"{node.id}_{nsx}_{nsy}_{sw}_{sh}_{node.angle}_{self.zoom}_{node == self.selected_object}"
+
+                cache_key = f"{node.id}_{nsx}_{nsy}_{sw}_{sh}_{node.angle}_{self.zoom}_{node == self.selected_object}_{id(node.metadata)}"
                 if cache_key in self._hit_test_cache:
                     shapes = self._hit_test_cache[cache_key]
                 else:
@@ -1556,13 +1667,15 @@ class NodeEditor(ttk.Frame):
                         "rotatePoint": rotatePoint,
                         "math": math,
                         "node": node_proxy,
-                        "metadata": tracked_metadata
+                        "metadata": tracked_metadata,
+                        "Logic":Logic
                     }
                     try:
                         exec(node.compiled_code, exec_scope)
                         shapes = recorder.shapes
                         self._hit_test_cache[cache_key] = shapes
-                    except Exception:
+                    except Exception as e:
+                        print(f"[PyIcon HitTest Error] Node {node.title}: {e}")
                         shapes = []
 
                 if hit_test_shapes(sx, sy, shapes, tolerance=3.0):
@@ -1626,7 +1739,7 @@ class NodeEditor(ttk.Frame):
     ) -> NodeObject:
         sx = self.snap_node_coord(x)
         sy = self.snap_node_coord(y)
-        node = NodeObject(
+        node = NodeObject(self,
             f"node_{len(self.nodes)+1}", title, sx, sy, width, height,
             bg_color=bg_color, border_color=border_color, graphic_code=graphic_code, angle=angle,
             metadata=metadata
@@ -1687,134 +1800,3 @@ class NodeEditor(ttk.Frame):
             self._emit("net_create", net)
         elif event_type == "NET_DESTROY":
             self._emit("net_destroy", net)
-
-
-NAND_GATE_PYICON_CODE = """
-import math
-
-u = zoom
-
-y_in0 = y + 0.5 * u
-y_out = y + 1.5 * u
-y_in1 = y + 2.5 * u
-
-x_gate_back = x + 1.0 * u
-x_gate_flat_end = x + 2.0 * u
-
-y_top = y + 0.0 * u
-y_bot = y + 3.0 * u
-y_mid = y + 1.5 * u
-
-rx = 0.8 * u
-ry = (y_bot - y_top) / 2.0
-arc_center_x = x_gate_flat_end
-arc_center_y = y_mid
-
-pts = [(x_gate_back, y_top), (x_gate_flat_end, y_top)]
-num_arc_pts = 16
-for i in range(num_arc_pts + 1):
-    a = (math.pi / 2.0) - (i / num_arc_pts) * math.pi
-    px = arc_center_x + rx * math.cos(a)
-    py = arc_center_y - ry * math.sin(a)
-    pts.append((px, py))
-
-pts.extend([(x_gate_flat_end, y_bot), (x_gate_back, y_bot)])
-
-gate_tip_x = arc_center_x + rx
-r_bubble = 0.2 * u
-cx_bubble = gate_tip_x + r_bubble
-
-line_in0 = [(x - 0.5 * u, y_in0), (x_gate_back, y_in0)]
-line_in1 = [(x - 0.5 * u, y_in1), (x_gate_back, y_in1)]
-line_out = [(cx_bubble + r_bubble, y_out), (x + 4.5 * u, y_out)]
-
-pts = [rotatePoint(px, py, cx, cy, angle) for px, py in pts]
-line_in0 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in0]
-line_in1 = [rotatePoint(px, py, cx, cy, angle) for px, py in line_in1]
-line_out = [rotatePoint(px, py, cx, cy, angle) for px, py in line_out]
-
-bubble_center = rotatePoint(cx_bubble, y_mid, cx, cy, angle)
-
-stroke_w = max(2, int(u * 0.08))
-select_w = stroke_w + max(2, int(u * 0.06))
-
-flat_line0 = [coord for pt in line_in0 for coord in pt]
-flat_line1 = [coord for pt in line_in1 for coord in pt]
-flat_out = [coord for pt in line_out for coord in pt]
-
-canvas.create_line(*flat_line0, fill="#FFFFFF", width=stroke_w, tags=tags)
-canvas.create_line(*flat_line1, fill="#FFFFFF", width=stroke_w, tags=tags)
-canvas.create_line(*flat_out, fill="#FFFFFF", width=stroke_w, tags=tags)
-
-flat_pts = [coord for pt in pts for coord in pt]
-
-if is_selected:
-    canvas.create_polygon(
-        flat_pts,
-        fill="",
-        outline="#00E5FF",
-        width=select_w,
-        joinstyle="miter",
-        smooth=False,
-        tags=tags
-    )
-    canvas.create_oval(
-        bubble_center[0] - r_bubble - select_w / 2, bubble_center[1] - r_bubble - select_w / 2,
-        bubble_center[0] + r_bubble + select_w / 2, bubble_center[1] + r_bubble + select_w / 2,
-        fill="",
-        outline="#00E5FF",
-        width=stroke_w,
-        tags=tags
-    )
-
-canvas.create_polygon(
-    flat_pts,
-    fill="#181818",
-    outline="#FFFFFF",
-    width=stroke_w,
-    joinstyle="miter",
-    smooth=False,
-    tags=tags
-)
-
-canvas.create_oval(
-    bubble_center[0] - r_bubble, bubble_center[1] - r_bubble,
-    bubble_center[0] + r_bubble, bubble_center[1] + r_bubble,
-    fill="#181818",
-    outline="#FFFFFF",
-    width=stroke_w,
-    tags=tags
-)
-"""
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Node Editor - Metadata Dependency Tracking")
-    root.geometry("1100x700")
-
-    app = NodeEditor(root)
-    app.pack(fill=tk.BOTH, expand=True)
-
-    app.bind_event("net_create", lambda net: print(f"[EVENT] Net Created: {net.name} (ID: {net.id})"))
-    app.bind_event("net_destroy", lambda net: print(f"[EVENT] Net Destroyed: {net.name} (ID: {net.id})"))
-    app.bind_event("connect", lambda net, pin: print(f"[EVENT] Connected Pin {pin.owner.title}:{pin.name} to {net.name}"))
-    app.bind_event("disconnect", lambda net, pin: print(f"[EVENT] Disconnected Pin {pin.owner.title}:{pin.name} from {net.name}"))
-
-    nand_gate = app.create_node(
-        title="Nand Gate",
-        x=5,
-        y=5,
-        width=4.2,
-        height=3.3,
-        bg_color="transparent",
-        border_color="transparent",
-        graphic_code=NAND_GATE_PYICON_CODE
-    )
-    nand_gate.add_pin("A", -1, 0, color="#1d2536", hide_when_wired=True)
-    nand_gate.add_pin("B", -1, 2, color="#1d2536", hide_when_wired=True)
-    nand_gate.add_pin("Y", 4.2, 1.5, color="#1d2536", hide_when_wired=True)
-
-    app.rebuild_nets()
-    app.redraw_all()
-
-    root.mainloop()

@@ -1,0 +1,51 @@
+{
+    "name": "En/Decoder",
+    "components":{
+        "Encoder":{
+            "constructor":"Encoder",
+            "size": [1,8],
+            "color": "black",
+            "bcolor": "white",
+            "pins": {
+                "0": {"position":[-1,0]},
+                "1": {"position":[-1,1]},
+                "2": {"position":[-1,2]},
+                "3": {"position":[-1,3]},
+                "4": {"position":[-1,4]},
+                "5": {"position":[-1,5]},
+                "6": {"position":[-1,6]},
+                "7": {"position":[-1,7]},
+                "OUT": {"position":[1,3.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Encoder.pyIcon",
+                    "size": [1,8]
+                }
+            }
+        },
+        "Decoder":{
+            "constructor":"Decoder",
+            "size": [1,8],
+            "color": "black",
+            "bcolor": "white",
+            "pins": {
+                "0": {"position":[1,0]},
+                "1": {"position":[1,1]},
+                "2": {"position":[1,2]},
+                "3": {"position":[1,3]},
+                "4": {"position":[1,4]},
+                "5": {"position":[1,5]},
+                "6": {"position":[1,6]},
+                "7": {"position":[1,7]},
+                "IN": {"position":[-1,3.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Decoder.pyIcon",
+                    "size": [1,8]
+                }
+            }
+        }
+    }
+}

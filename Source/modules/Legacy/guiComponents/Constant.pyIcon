@@ -1,9 +1,9 @@
 import math
 
-is_on = False
+value = False
 if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
     if hasattr(node.metadata, "state"):
-        is_on = bool(node.metadata.state)
+        value = bool(node.metadata.state)
 
 box_w = w * (6.0 / 5.0)
 box_h = h * (6.0 / 5.0)
@@ -11,6 +11,8 @@ box_x1 = x + (w - box_w) / 2.0
 box_y1 = y + (h - box_h) / 2.0
 box_x2 = box_x1 + box_w
 box_y2 = box_y1 + box_h
+
+
 
 corners = [
     (box_x1, box_y1),
@@ -55,9 +57,9 @@ canvas.create_polygon(
     tags=tags
 )
 
-bg_fill = "#38bdf8" if is_on else "#000000"
-text_color = "#000000" if is_on else "#FFFFFF"
-border_color = "#38bdf8" if is_on else "#FFFFFF"
+bg_fill = "#38bdf8" if value else "#222222"
+text_color = "#000000" if value else "#FFFFFF"
+border_color = "#38bdf8" if value else "#FFFFFF"
 
 canvas.create_polygon(
     flat_box,
@@ -69,14 +71,13 @@ canvas.create_polygon(
     tags=tags
 )
 
-text_str = "1" if is_on else "0"
 center_pt = rotatePoint(x + w / 2.0, y + h / 2.0, cx, cy, angle)
 font_size = int(8 * (zoom / 35.0))
 
 if font_size > 0:
     canvas.create_text(
         center_pt[0], center_pt[1],
-        text=text_str,
+        text=value,
         fill=text_color,
         font=("Consolas", font_size, "bold"),
         tags=tags

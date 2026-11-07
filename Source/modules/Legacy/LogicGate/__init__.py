@@ -30,7 +30,12 @@ class Buffer(Component):
         self.delay = 1
     def update(self):
         self.IO.Y.setPower(self.IO.A.Value, Delay=self.delay)
-
+    def export_custom_data(self):
+        return {"delay": self.delay}
+    def import_custom_data(self, custom_data: dict, globals_dict: dict = None):
+        self.delay = custom_data.get("delay", 1)
+        self.update()
+    
 class NotGate(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A"), IO("Y")], self.update)

@@ -1,7 +1,7 @@
 {
     "name": "Verilog",
     "function": {
-        "Import Verilog": {
+        "Import\nVerilog": {
             "parameters": {"path": "path"},
             "code": "VerilogGUI.py"
         }
