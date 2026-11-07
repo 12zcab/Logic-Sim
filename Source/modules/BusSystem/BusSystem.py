@@ -5,8 +5,6 @@ from core.module.object import *
 # from core.module.object import *
 # from modules.LogicGate import *
 
-
-
 class Bus:
     def __init__(self, SimBox : SimBox, name : str, Input : int, Output : int):
         self.Name = name
@@ -31,7 +29,7 @@ class Bus:
         if getattr(self.LogicConnection, str(InSlot)):
             return
         else:
-            self.LogicConnection[str(InSlot)] = Logic
+            self.LogicConnection[str(InSlot)] = Logic 
 
     def BuildCombination(self, Output, Logic : str):
         if getattr(self.CombineConnection, Output):
@@ -42,7 +40,7 @@ class Bus:
 
     def Combine(self, OutSlot):
         try:
-           String = getattr(self.CombineConnection, str(OutSlot))
+           String = getattr(self.CombineConnection, str(OutSlot)) 
         except AttributeError:
             return
 
@@ -54,4 +52,5 @@ class Bus:
         except AttributeError:
             return
 
-        return exec(String)  
+        return exec(String)
+    
