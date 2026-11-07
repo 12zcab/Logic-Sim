@@ -15,3 +15,4 @@ module reg8bit (
     end
 
 endmodule
+
