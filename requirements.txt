@@ -1,15 +1,8 @@
-pyinstaller
 svglib
 reportlab
 keyboard
 tabulate
-typing
-tempfile
-json
-time
-random
-collections
-yowasp_yosys
+yowasp-yosys~=0.69.0
 wasmtime
 bidict
-tkinter
+pyinstaller

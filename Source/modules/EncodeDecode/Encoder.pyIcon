@@ -1,0 +1,17 @@
+
+import math
+y_mid = y + h * (3.0 / 6.0)
+cx = x + w / 2.0
+cy = y + h / 2.0
+txt_x, txt_y = rotatePoint(cx, cy, cx, cy, angle)
+padding = 0.85  # Keep text within 85% of node width
+char_count = max(len("Encoder"), 1)
+size_from_w = int((w * padding) / (char_count * 0.6))
+size_from_h = int(h * 0.4)  # Prevent text from overflowing height
+font_size = int(8 * (zoom / 35.0))
+if font_size > 0:
+    canvas.create_text(
+        txt_x, txt_y,
+        text="Encoder", fill="#FFFFFF", anchor="center",
+        font=("Arial", font_size, "bold"), tags=tags,angle=270
+    )

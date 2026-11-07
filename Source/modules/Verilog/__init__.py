@@ -4,6 +4,7 @@ from .parser import *
 import re
 from collections import defaultdict
 
+
 def analyse_file(filename):
     data = parse_verilog_to_pure_gates(os.path.abspath(filename))
     data = BetterDict(data)
@@ -35,7 +36,7 @@ def analyse_file(filename):
     print("\n\n")
     
     
-def parseFileIntoObject(filename,objonly = True):
+def parseFileIntoObject(filename="",objonly = True,existingModule = None):
     data = parse_verilog_to_pure_gates(os.path.abspath(filename))
     data = BetterDict(data)
     
@@ -124,8 +125,14 @@ def parseFileIntoObject(filename,objonly = True):
                 net_obj = get_net(bit_id)
                 if netValue["hide_name"] == 0:
                     net_obj.Name = netKey
-
-        mod = Module(str(moduleKey), IOArray, InnerBlocks)
+        if existingModule is not None:
+            existingModule.IO = IOArray
+            existingModule.InnerBlocks = InnerBlocks
+            with open(os.path.abspath(filename), "r") as f:
+                existingModule.Source = f.read()
+            mod = existingModule
+        else:
+            mod = Module(str(moduleKey), IOArray, InnerBlocks)
         resultModules.append(mod)
         inputPinsForEach.append(inputPins)
         outputPinsForEach.append(outputPins)

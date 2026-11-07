@@ -32,7 +32,6 @@ def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = No
             "abc -g gates; "
             "opt; check"
         )
-        
         yosys_commands.append(gate_level_pipeline)
         yosys_commands.append(f"write_json {output_json_path}")
         

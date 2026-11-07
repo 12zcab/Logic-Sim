@@ -2,7 +2,7 @@ import math
 import os
 import tkinter.font as tkFont
 from tkinter import *
-
+from core import Logic
 
 def rotatePoint(px, py, cx, cy, angle):
     rad = math.radians(angle)
@@ -112,6 +112,7 @@ class ToolBarButton(Canvas):
                 "tags": ("icon_graphics",),
                 "rotatePoint": rotatePoint,
                 "math": math,
+                "Logic":Logic
             }
 
             try:
@@ -121,6 +122,9 @@ class ToolBarButton(Canvas):
             except Exception as e:
                 print(f"Error rendering pyIcon {self.pyicon_path}: {e}")
         if self.text:
+            lines = self.text.split("\n")
+            num_lines = len(lines)
+
             text_y = h * 0.82 if self.pyicon_path else h / 2
             max_text_h = h * 0.25 if self.pyicon_path else h * 0.6
             max_text_w = w * 0.9
@@ -134,10 +138,12 @@ class ToolBarButton(Canvas):
             while low <= high:
                 mid = (low + high) // 2
                 test_font.configure(size=mid)
-                if (
-                    test_font.measure(self.text) <= max_text_w
-                    and test_font.metrics("linespace") <= max_text_h
-                ):
+
+                # Measure longest line width and total height across all lines
+                max_line_w = max(test_font.measure(line) for line in lines)
+                total_text_h = test_font.metrics("linespace") * num_lines
+
+                if max_line_w <= max_text_w and total_text_h <= max_text_h:
                     best_size = mid
                     low = mid + 1
                 else:
@@ -152,8 +158,8 @@ class ToolBarButton(Canvas):
                 fill=self.fg_color,
                 font=test_font,
                 anchor="center",
+                justify="center",  # Ensures centered alignment for multiple lines
             )
-
 
 class ToolBar(Frame):
 

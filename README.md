@@ -16,6 +16,9 @@
 #### 3rd prep-week Contributor : MoonMinor
 #### Day-1-Believer : @astrokoala23 for giving this project the first star
 
+Python 3.13.17 Used
+Yowasp Yosys 0.69 Used
+
 # What is Logic-Sim?
 Logic-Sim is a easy to use logic simulator written with pure python aiming for high modularization and Simple-to-use.
 
@@ -37,7 +40,7 @@ Erm sorry i hv not yet prepared
 ## Setup Environment
 You can use setupDev.bat in project Source to install the directory so that modules can be correctly  imported
 ## Build
-To build it,just delete the internal_lib and build_cache and execute build.bat
+To build it,just execute build.bat
 
 # Brief File Structure
 - Core
@@ -79,12 +82,8 @@ Modules basically consist of 3 parts:
 - cleanpycache.py a small script to clean all the caches before we upload stuff XD
 - register.v a small verilog thing for verilog test!
 
-- target.md  a note written in day 1 :O
-- bootstrap.py a loader for the exe file so that the exe can directly execute the code
-- improvements.md a record of brainstorm with Ai that contains some suggestions for us to try implement later
 - README.md  WELP U R READING ME RN -_-
-- build.bat erm yah the script i use to build the project
-- bootstrap.exe  pyinstaller compiled directly executable exe! 
+- build.bat  building the project
 - requirements.txt  for pip install
 - setupDev.bat  setting up developing environment you need for editing this project and build it yourself
 

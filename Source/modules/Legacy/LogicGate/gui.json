@@ -1,0 +1,183 @@
+{
+    "name": "LogicGate\n(Legacy)",
+    "components":{
+        "Buffer":{
+            "constructor":"Buffer",
+            "size": [2,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "Y": {"hide_when_wired":true, "position":[2,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Buffer.pyIcon",
+                    "size": [2,1]
+                }
+            },
+            "attributes":{
+                "Settings":{
+                    "Delay":{
+                        "attribute":"delay",
+                        "type":"integer",
+                        "callFunc": "update"
+                    }
+                }
+            }
+        },
+        "Not Gate":{
+            "constructor":"NotGate",
+            "size": [2,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "Y": {"hide_when_wired":true, "position":[2,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"NotGate.pyIcon",
+                    "size": [2,1]
+                }
+            }
+        },
+        "And Gate":{
+            "constructor":"AndGate",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"AndGate.pyIcon",
+                    "size": [2,2]
+                }
+            }
+        },
+        "Nand Gate":{
+            "constructor":"NandGate",  
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"NandGate.pyIcon",
+                    "size": [2,2]
+                }
+            }
+        },
+        "Or Gate":{
+            "constructor":"OrGate",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"OrGate.pyIcon",
+                    "size": [2,2]
+                }
+            }
+        },
+        "Nor Gate":{
+            "constructor":"NorGate",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"NorGate.pyIcon",
+                    "size": [2,2]
+                }
+            }
+        },
+        "Xor Gate":{
+            "constructor":"XorGate",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"XorGate.pyIcon",
+                    "size": [2,2]
+                }
+            }
+        },
+        "Xnor Gate":{
+            "constructor":"XnorGate",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"XnorGate.pyIcon",
+                    "size": [2,2]
+                }
+            }
+        },
+        "3 Input Nand Gate":{
+            "constructor":"NandGate3",
+            "size": [3,3],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "C": {"hide_when_wired":true, "position":[-1,2]},
+                "Y": {"hide_when_wired":true, "position":[3,1]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"NandGate3.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "OrNot Gate":{
+            "constructor":"OrNotGate",
+            "size": [2,2],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A": {"hide_when_wired":true, "position":[-1,0]},
+                "B": {"hide_when_wired":true, "position":[-1,1]},
+                "Y": {"hide_when_wired":true, "position":[2,0.5]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"OrNotGate.pyIcon",
+                    "size": [2,2]
+                }
+            }
+        }
+    }
+}

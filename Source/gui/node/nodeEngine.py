@@ -1,40 +1,86 @@
-# Disclaimer: 
-# YES, THIS SCRIPT IS MOSTLY WRITTEN BY AI (70-80%)
-# I AM SORRY BUT I REALLY DONT KNOW HOW TO DO THIS PART
-# I ALREADY SPENT 1.5WEEKS ON THE nodeEngine :|
-# By 12zcab :|
-
-
+# Note: After a few weeks of modification, this file has only about 20-40% AI content left
 
 import tkinter as tk
 from tkinter import ttk
 import math
-import copy
-from tkinter import *
-from typing import Dict, List, Tuple, Optional, Any
+import uuid
+from typing import List, Dict, Set, Optional, Tuple, Callable
+from core import Logic
 
 
-def rotatePoint(x: float, y: float, cx: float, cy: float, angle_deg: float) -> Tuple[float, float]:
-    if angle_deg % 360 == 0:
-        return x, y
-    rad = math.radians(angle_deg)
-    cos_a = math.cos(rad)
-    sin_a = math.sin(rad)
-    nx = cx + (x - cx) * cos_a - (y - cy) * sin_a
-    ny = cy + (x - cx) * sin_a + (y - cy) * cos_a
-    return nx, ny
-   
 
-class ChildrenModel:
-    def __init__(self, name: str, grid_x: float, grid_y: float, grid_w: float = 1.0, grid_h: float = 1.0,
-                 python_script: str = ""):
+class MetadataTracker:
+    """Reactive Proxy: Wraps metadata during exec() to record accessed attribute paths and their values."""
+    def __init__(self, target, path=(), log=None):
+        object.__setattr__(self, "_target", target)
+        object.__setattr__(self, "_path", path)
+        object.__setattr__(self, "_log", log if log is not None else {})
+
+    def __getattr__(self, item):
+        target = object.__getattribute__(self, "_target")
+        path = object.__getattribute__(self, "_path") + (item,)
+        log = object.__getattribute__(self, "_log")
+
+        if not hasattr(target, item):
+            log[path] = None
+            raise AttributeError(f"'{type(target).__name__}' object has no attribute '{item}'")
+
+        val = getattr(target, item)
+        if hasattr(val, "__dict__") or isinstance(val, dict):
+            return MetadataTracker(val, path, log)
+
+        log[path] = val if isinstance(val, (int, float, str, bool, type(None))) else repr(val)
+        return val
+
+    def __getitem__(self, item):
+        target = object.__getattribute__(self, "_target")
+        path = object.__getattribute__(self, "_path") + (item,)
+        log = object.__getattribute__(self, "_log")
+
+        try:
+            val = target[item]
+        except (KeyError, IndexError):
+            log[path] = None
+            raise
+
+        if hasattr(val, "__dict__") or isinstance(val, dict):
+            return MetadataTracker(val, path, log)
+
+        log[path] = val if isinstance(val, (int, float, str, bool, type(None))) else repr(val)
+        return val
+
+
+class NodeProxy:
+    """Wraps NodeObject inside exec() so accessing node.metadata returns the MetadataTracker proxy."""
+    def __init__(self, node: 'NodeObject', tracked_metadata: Optional[MetadataTracker]):
+        object.__setattr__(self, "_node", node)
+        object.__setattr__(self, "metadata", tracked_metadata)
+
+    def __getattr__(self, item):
+        return getattr(object.__getattribute__(self, "_node"), item)
+
+    def __setattr__(self, item, value):
+        setattr(object.__getattribute__(self, "_node"), item, value)
+
+
+class Pin:
+    def __init__(self, owner: 'NodeObject', name: str, rel_x: float, rel_y: float, color: Optional[str] = None, hide_when_wired: bool = False):
+        self.id = str(uuid.uuid4())[:8]
+        self.owner = owner
         self.name = name
-        self.gridX = float(grid_x)
-        self.gridY = float(grid_y)
-        self.gridW = float(grid_w)
-        self.gridH = float(grid_h)
-        self.python_script = python_script
-        self.canvasId = None
+        self.rel_x = float(rel_x)
+        self.rel_y = float(rel_y)
+        self.color = color
+        self.net: Optional['WireNet'] = None
+        self.hide_when_wired = hide_when_wired
+
+    @property
+    def is_wired(self) -> bool:
+        return self.net is not None and len(self.net.wires) > 0
+
+    @property
+    def hidden(self) -> bool:
+        return self.hide_when_wired and self.is_wired
 
 
     def contains_point(self, wx: float, wy: float, anim_val: float = 0.0, tolerance: float = 0.2) -> bool:
@@ -42,9 +88,11 @@ class ChildrenModel:
         pr_world = (0.275 + 0.125 * anim_val) + tolerance
         return (px - pr_world) <= wx <= (px + pr_world) and (py - pr_world) <= wy <= (py + pr_world)
 
+
 class NodeObject:
     def __init__(
         self,
+        editor,
         node_id: str,
         title: str,
         x: float,
@@ -57,51 +105,126 @@ class NodeObject:
         angle: float = 0.0,
         metadata: Optional[object] = None
     ):
-        self.id = node_id
+        self.id = str(node_id)
         self.title = title
-        self.x = float(round(x * 2.0) / 2.0)
-        self.y = float(round(y * 2.0) / 2.0)
-        self._width = float(round(width * 2.0) / 2.0)
-        self._height = float(round(height * 2.0) / 2.0)
+        self.x = float(x)
+        self.y = float(y)
+        self._width = float(width)
+        self._height = float(height)
         self.bg_color = bg_color
         self.border_color = border_color
         self.graphic_code = graphic_code
-        self.angle = angle
+        self.angle = float(angle)
         self.metadata = metadata
         self.pins: List[Pin] = []
-
+        self.dirty_graphic: bool = True
+        self._tracked_deps: Dict[tuple, object] = {}
+        self._last_meta_ref: object = metadata
+        self.editor = editor
         self.compiled_code = None
         if self.graphic_code:
             self.compiled_code = compile(self.graphic_code, f"<node_graphic_{self.id}>", "exec")
+
+    def export(self) -> dict:
+        """Exports the complete configuration, geometry, and pyIcon graphic code of the GUI node."""
+        return {
+            "__class__": "NodeObject",
+            "id": self.id,
+            "title": self.title,
+            "x": self.x,
+            "y": self.y,
+            "width": self._width,
+            "height": self._height,
+            "bg_color": self.bg_color,
+            "border_color": self.border_color,
+            "graphic_code": self.graphic_code,
+            "angle": self.angle,
+            "pins": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "rel_x": p.rel_x,
+                    "rel_y": p.rel_y,
+                    "color": p.color,
+                    "hide_when_wired": p.hide_when_wired
+                } for p in self.pins
+            ]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict, metadata: Optional[object] = None) -> 'NodeObject':
+        """Reconstructs a NodeObject instance directly from exported data dictionary."""
+        node = cls(
+            node_id=str(data["id"]),
+            title=data.get("title", ""),
+            x=float(data.get("x", 0.0)),
+            y=float(data.get("y", 0.0)),
+            width=float(data.get("width", 4.0)),
+            height=float(data.get("height", 3.0)),
+            bg_color=data.get("bg_color"),
+            border_color=data.get("border_color"),
+            graphic_code=data.get("graphic_code"),
+            angle=float(data.get("angle", 0.0)),
+            metadata=metadata
+        )
+        if "pins" in data and data["pins"]:
+            node.pins.clear()
+            for pdata in data["pins"]:
+                pin = Pin(
+                    owner=node,
+                    name=pdata["name"],
+                    rel_x=float(pdata["rel_x"]),
+                    rel_y=float(pdata["rel_y"]),
+                    color=pdata.get("color"),
+                    hide_when_wired=pdata.get("hide_when_wired", False)
+                )
+                if "id" in pdata:
+                    pin.id = str(pdata["id"])
+                node.pins.append(pin)
+        return node
+
     @property
-    def width(self):
+    def width(self) -> float:
         return self._width
+
     @property
-    def height(self):
+    def height(self) -> float:
         return self._height
+
     @width.setter
-    def width(self, new_width):
+    def width(self, new_width: float):
         old_width = self._width
+        new_width = float(new_width)
         if old_width != new_width:
             self._width = new_width
+            self.dirty_graphic = True
             dw = new_width - old_width
             for pin in self.pins:
-                if (pin.rel_x - old_width) == 0.5:
+                if (pin.rel_x >= (old_width/2)) and pin.rel_y <= self.height and pin.rel_y >= 0:
                     pin.rel_x += dw
+            self.editor.rebuild_nets()
+            self.editor.redraw_all()
+
     @height.setter
-    def height(self,new_height):
+    def height(self, new_height: float):
         old_height = self._height
+        new_height = float(new_height)
         if old_height != new_height:
             self._height = new_height
+            self.dirty_graphic = True
             dh = new_height - old_height
             for pin in self.pins:
-                if pin.rel_y == old_height:
+                if (pin.rel_y >= (old_height/2)) and pin.rel_x <= self.width and pin.rel_x >= 0:
                     pin.rel_y += dh
-    def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None) -> Pin:
-        rel_x = cell_x + 0.5
-        rel_y = cell_y + 0.5
-        pin = Pin(self, name, rel_x, rel_y, color)
+            self.editor.rebuild_nets()
+            self.editor.redraw_all()
+
+    def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None, hide_when_wired: bool = False) -> Pin:
+        rel_x = float(cell_x) + 0.5
+        rel_y = float(cell_y) + 0.5
+        pin = Pin(self, name, rel_x, rel_y, color, hide_when_wired=hide_when_wired)
         self.pins.append(pin)
+        self.dirty_graphic = True
         return pin
 
     def contains_point(self, wx: float, wy: float) -> bool:
@@ -116,6 +239,7 @@ class NodeObject:
             if pin.contains_point(wx, wy, anim_val=anim_val):
                 return pin
         return None
+
 
 class Wire:
     def __init__(
@@ -134,7 +258,23 @@ class Wire:
         self.vertices: List[Tuple[float, float]] = []
         self.color = color
         self.width = width
-        self.net: Optional['Net'] = None
+        self.net: Optional['WireNet'] = None
+
+    def export(self) -> dict:
+        """Exports wire paths and connected node pin references."""
+        return {
+            "__class__": "Wire",
+            "id": self.id,
+            "start_node_id": self.start_pin.owner.id if self.start_pin and self.start_pin.owner else None,
+            "start_pin": self.start_pin.name if self.start_pin else None,
+            "start_pos": list(self.start_pos) if self.start_pos else None,
+            "end_node_id": self.end_pin.owner.id if self.end_pin and self.end_pin.owner else None,
+            "end_pin": self.end_pin.name if self.end_pin else None,
+            "end_pos": list(self.end_pos) if self.end_pos else None,
+            "vertices": [list(v) for v in self.vertices],
+            "color": self.color,
+            "width": self.width
+        }
 
     def get_full_path(self) -> List[Tuple[float, float]]:
         raw_path = []
@@ -202,25 +342,48 @@ class Wire:
         else:
             self.vertices = simplified[1:-1]
 
+
 class WireNet:
-    def __init__(self, net_id: str, name: str = ""):
+    def __init__(self, net_id: str, name: str = "", editor: Optional['NodeEditor'] = None):
         self.id = net_id
         self.name = name or f"NET_{net_id[:6].upper()}"
         self.wires: Set[Wire] = set()
         self.pins: Set[Pin] = set()
+        self.editor: Optional['NodeEditor'] = editor
+        self._color: Optional[str] = None
+
+    @property
+    def color(self) -> Optional[str]:
+        return self._color
+
+    @color.setter
+    def color(self, new_color: str):
+        if self._color != new_color:
+            self._color = new_color
+            for wire in self.wires:
+                wire.color = new_color
+            for pin in self.pins:
+                pin.color = new_color
+
+            if self.editor and hasattr(self.editor, "canvas"):
+                self.editor.canvas.itemconfig(f"net_{self.id}", fill=new_color)
+                for pin in self.pins:
+                    if not pin.hidden:
+                        self.editor.canvas.itemconfig(f"pin_rect_{pin.id}", fill=new_color)
 
     def setAllPinColor(self, color):
         for pin in self.pins:
             pin.color = color
 
     def setColor(self, color):
-        for wire in self.wires:
-            wire.color = color
+        self.color = color
+
 
 class NetEngine:
-    def __init__(self, event_callback: Optional[Callable[[str, WireNet, Optional[Pin]], None]] = None):
+    def __init__(self, event_callback: Optional[Callable[[str, WireNet, Optional[Pin]], None]] = None, editor: Optional['NodeEditor'] = None):
         self.nets: Dict[str, WireNet] = {}
         self.event_callback = event_callback
+        self.editor = editor
 
     def rebuild_nets(self, wires: List[Wire], nodes: List[NodeObject]):
         old_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
@@ -319,9 +482,10 @@ class NetEngine:
                 matched_net_ids.add(net.id)
             else:
                 net_id = str(uuid.uuid4())[:8]
-                net = WireNet(net_id)
+                net = WireNet(net_id, editor=self.editor)
                 created_nets.append(net)
 
+            net.editor = self.editor
             net.pins = comp_pins
             net.wires = comp_wires
             for p in comp_pins:
@@ -367,6 +531,7 @@ class NetEngine:
         if self.event_callback:
             self.event_callback(event_type, net, pin)
 
+
 class PyIconRecorder:
     def __init__(self):
         self.shapes = []
@@ -403,7 +568,7 @@ class PyIconRecorder:
         if isinstance(font, (list, tuple)) and len(font) > 1:
             try:
                 font_size = int(font[1])
-            except:
+            except Exception:
                 pass
         w_est = max(10.0, len(str(text)) * font_size * 0.7)
         h_est = max(10.0, font_size * 1.4)
@@ -427,10 +592,15 @@ class PyIconRecorder:
         if len(coords) == 1 and isinstance(coords[0], (list, tuple)):
             coords = coords[0]
         pts = []
-        for i in range(0, len(coords), 2):
-            if i + 1 < len(coords):
-                pts.append((float(coords[i]), float(coords[i+1])))
+        for item in coords:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                pts.append((float(item[0]), float(item[1])))
+        if not pts:
+            for i in range(0, len(coords), 2):
+                if i + 1 < len(coords):
+                    pts.append((float(coords[i]), float(coords[i+1])))
         return pts
+
 
 def smooth_polygon(pts, iterations=2):
     curr = pts
@@ -446,6 +616,7 @@ def smooth_polygon(pts, iterations=2):
             next_pts.append(r)
         curr = next_pts
     return curr
+
 
 def point_in_polygon(x: float, y: float, poly: list) -> bool:
     n = len(poly)
@@ -465,6 +636,7 @@ def point_in_polygon(x: float, y: float, poly: list) -> bool:
         p1x, p1y = p2x, p2y
     return inside
 
+
 def point_near_segment(px, py, v, w) -> float:
     vx, vy = v
     wx, wy = w
@@ -476,6 +648,7 @@ def point_near_segment(px, py, v, w) -> float:
     proj_y = vy + t * (wy - vy)
     return math.hypot(px - proj_x, py - proj_y)
 
+
 def point_near_polygon_outline(x: float, y: float, poly: list, threshold: float) -> bool:
     n = len(poly)
     for i in range(n):
@@ -485,11 +658,13 @@ def point_near_polygon_outline(x: float, y: float, poly: list, threshold: float)
             return True
     return False
 
+
 def point_near_polyline(x: float, y: float, pts: list, threshold: float) -> bool:
     for i in range(len(pts) - 1):
         if point_near_segment(x, y, pts[i], pts[i+1]) <= threshold:
             return True
     return False
+
 
 def hit_test_shapes(px: float, py: float, shapes: list, tolerance: float = 3.0) -> bool:
     for shape_type, data, kwargspx in shapes:
@@ -540,6 +715,7 @@ def hit_test_shapes(px: float, py: float, shapes: list, tolerance: float = 3.0) 
 
     return False
 
+
 class NodeEditor(ttk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
@@ -567,7 +743,7 @@ class NodeEditor(ttk.Frame):
 
         self.nodes: List[NodeObject] = []
         self.wires: List[Wire] = []
-        self.engine = NetEngine(event_callback=self._handle_net_event)
+        self.engine = NetEngine(event_callback=self._handle_net_event, editor=self)
 
         self.pan_x: float = 0.0
         self.pan_y: float = 0.0
@@ -588,6 +764,9 @@ class NodeEditor(ttk.Frame):
         self._grep_press_callback: Optional[Callable[[float, float], None]] = None
 
         self.anim_states: Dict[object, float] = {}
+        self._anim_running = False
+
+        self._hit_test_cache: Dict[str, list] = {}
 
         self._event_listeners: Dict[str, List[Callable[..., None]]] = {
             "connect": [],
@@ -623,7 +802,85 @@ class NodeEditor(ttk.Frame):
         self.canvas.focus_set()
         self.canvas.bind("<Key>", self._on_key_press)
 
-        self._animate_loop()
+    @staticmethod
+    def _resolve_attr_path(obj, path: tuple):
+        curr = obj
+        for step in path:
+            if curr is None:
+                return None
+            if isinstance(curr, dict):
+                curr = curr.get(step)
+            elif hasattr(curr, step):
+                curr = getattr(curr, step)
+            else:
+                return None
+        return curr if isinstance(curr, (int, float, str, bool, type(None))) else repr(curr)
+
+    def update_dirty_node_graphics(self):
+        for node in self.nodes:
+            if not node.compiled_code:
+                continue
+
+            if node.dirty_graphic:
+                node.dirty_graphic = False
+                self.redraw_node_graphic(node)
+                continue
+
+            last_ref = getattr(node, "_last_meta_ref", object())
+            if last_ref is not node.metadata:
+                node._last_meta_ref = node.metadata
+                self.redraw_node_graphic(node)
+                continue
+
+            deps = getattr(node, "_tracked_deps", None)
+            if deps:
+                for path, cached_val in deps.items():
+                    curr_val = self._resolve_attr_path(node.metadata, path)
+                    if curr_val != cached_val:
+                        self.redraw_node_graphic(node)
+                        break
+
+    def redraw_node_graphic(self, node: NodeObject):
+        if not node or not node.compiled_code:
+            return
+        tag_name = f"node_graphic_{node.id}"
+        self.canvas.delete(tag_name)
+
+        sx, sy = self.world_to_screen(node.x, node.y)
+        sw, sh = node.width * self.zoom, node.height * self.zoom
+        is_selected = (node == self.selected_object)
+
+        deps_log = {}
+        tracked_metadata = MetadataTracker(node.metadata, log=deps_log) if node.metadata is not None else None
+        node_proxy = NodeProxy(node, tracked_metadata)
+
+        exec_scope = {
+            "canvas": self.canvas,
+            "x": sx,
+            "y": sy,
+            "w": sw,
+            "h": sh,
+            "cx": sx + sw / 2.0,
+            "cy": sy + sh / 2.0,
+            "angle": node.angle,
+            "is_selected": is_selected,
+            "tags": ("node", f"node_{node.id}", tag_name),
+            "zoom": self.zoom,
+            "rotatePoint": rotatePoint,
+            "math": math,
+            "node": node_proxy,
+            "metadata": tracked_metadata,
+            "Logic": Logic
+        }
+
+        try:
+            exec(node.compiled_code, exec_scope)
+        except Exception as e:
+            print(f"Error drawing pyIcon for {node.title}: {e}")
+
+        node._tracked_deps = deps_log
+        node._last_meta_ref = node.metadata
+        self._hit_test_cache.pop(node.id, None)
 
     def grepNextPressGridPos(self, returnfunction: Callable[[float, float], None]):
         self._grep_press_callback = returnfunction
@@ -644,17 +901,21 @@ class NodeEditor(ttk.Frame):
         cy = node.height / 2.0
         for pin in node.pins:
             nx, ny = rotatePoint(pin.rel_x, pin.rel_y, cx, cy, angle_deg)
-            pin.rel_x = round(nx * 2.0) / 2.0
-            pin.rel_y = round(ny * 2.0) / 2.0
+            pin.rel_x = float(nx)
+            pin.rel_y = float(ny)
 
         node.angle = (node.angle + angle_deg) % 360.0
         node.x = self.snap_node_coord(node.x)
         node.y = self.snap_node_coord(node.y)
 
+        self._hit_test_cache.pop(node.id, None)
+
         self.rebuild_nets()
         self.redraw_all()
+
     def rebuild_nets(self):
         self.engine.rebuild_nets(self.wires, self.nodes)
+
     def _get_anim_val(self, key: object, is_active: bool) -> float:
         curr = self.anim_states.get(key, 0.0)
         target = 1.0 if is_active else 0.0
@@ -666,8 +927,14 @@ class NodeEditor(ttk.Frame):
         self.anim_states[key] = target
         return target
 
+    def request_anim(self):
+        if not self._anim_running:
+            self._anim_running = True
+            self._animate_loop()
+
     def _animate_loop(self):
         needs_redraw = False
+        has_active_anim = False
         selected_net = self.get_selected_net()
 
         for node in self.nodes:
@@ -675,12 +942,20 @@ class NodeEditor(ttk.Frame):
             val = self._get_anim_val(node, is_node_active)
             if 0.0 < val < 1.0:
                 needs_redraw = True
+                has_active_anim = True
+            elif is_node_active and val < 1.0:
+                has_active_anim = True
 
             for pin in node.pins:
+                if pin.hidden:
+                    continue
                 is_pin_active = (pin == self.hovered_object) or (pin == self.selected_object and not self.active_wire)
                 pval = self._get_anim_val(pin, is_pin_active)
                 if 0.0 < pval < 1.0:
                     needs_redraw = True
+                    has_active_anim = True
+                elif is_pin_active and pval < 1.0:
+                    has_active_anim = True
 
         for wire in self.wires:
             is_wire_active = (
@@ -692,11 +967,17 @@ class NodeEditor(ttk.Frame):
             wval = self._get_anim_val(wire, is_wire_active)
             if 0.0 < wval < 1.0:
                 needs_redraw = True
+                has_active_anim = True
+            elif is_wire_active and wval < 1.0:
+                has_active_anim = True
 
         if needs_redraw:
             self.redraw_all()
 
-        self.after(16, self._animate_loop)
+        if has_active_anim:
+            self.after(16, self._animate_loop)
+        else:
+            self._anim_running = False
 
     def bind_event(self, event_name: str, callback: Callable[..., None]):
         if event_name in self._event_listeners:
@@ -733,28 +1014,64 @@ class NodeEditor(ttk.Frame):
     def screen_to_world(self, sx: float, sy: float) -> Tuple[float, float]:
         return ((sx - self.pan_x) / self.zoom, (sy - self.pan_y) / self.zoom)
 
-    def _draw_rounded_rect(self, x1: float, y1: float, x2: float, y2: float, radius: Optional[float] = None, **kwargs):
+    def _draw_rounded_rect(
+        self,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        radius: Optional[float] = None,
+        angle: float = 0.0,
+        steps_per_corner: int = 8,
+        **kwargs
+    ):
         if radius is None:
             radius = 0.25 * self.zoom
-        if radius <= 0:
-            return self.canvas.create_rectangle(x1, y1, x2, y2, **kwargs)
-        w, h = abs(x2 - x1), abs(y2 - y1)
-        r = min(radius, w / 2.0, h / 2.0)
-        pts = [
-            x1 + r, y1, x1 + r, y1, x2 - r, y1, x2 - r, y1,
-            x2, y1, x2, y1 + r, x2, y1 + r, x2, y2 - r,
-            x2, y2 - r, x2, y2, x2 - r, y2, x2 - r, y2,
-            x1 + r, y2, x1 + r, y2, x1, y2, x1, y2 - r,
-            x1, y2 - r, x1, y1 + r, x1, y1 + r, x1, y1
-        ]
-        return self.canvas.create_polygon(pts, smooth=True, **kwargs)
 
+        w, h = abs(x2 - x1), abs(y2 - y1)
+        cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
+        r = min(radius, w / 2.0, h / 2.0)
+
+        if r <= 0:
+            raw_pts = [(x1, y1), (x2, y1), (x2, y2), (x1, y2)]
+        else:
+            raw_pts = []
+            corners = [
+                (x2 - r, y1 + r, -math.pi / 2, 0.0),
+                (x2 - r, y2 - r, 0.0, math.pi / 2),
+                (x1 + r, y2 - r, math.pi / 2, math.pi),
+                (x1 + r, y1 + r, math.pi, 1.5 * math.pi)
+            ]
+
+            for ccx, ccy, start_a, end_a in corners:
+                for i in range(steps_per_corner + 1):
+                    t = i / float(steps_per_corner)
+                    a = start_a + t * (end_a - start_a)
+                    px = ccx + r * math.cos(a)
+                    py = ccy + r * math.sin(a)
+                    raw_pts.append((px, py))
+
+        if angle != 0.0:
+            flat_pts = []
+            for px, py in raw_pts:
+                nx, ny = rotatePoint(px, py, cx, cy, angle)
+                flat_pts.extend([nx, ny])
+        else:
+            flat_pts = [c for pt in raw_pts for c in pt]
+
+        return self.canvas.create_polygon(flat_pts, smooth=False, **kwargs)
+    
     def redraw_all(self):
-        self.canvas.delete("all")
+        self.canvas.delete("grid", "wire", "active_wire", "node", "ui", "tooltip")
         self._draw_grid()
         self._draw_wires()
         self._draw_nodes()
         self._draw_instructions()
+        self._draw_hover_tooltip()
+
+    def redraw_overlay(self):
+        self.canvas.delete("active_wire", "tooltip")
+        self._draw_active_wire_preview()
         self._draw_hover_tooltip()
 
     def _draw_grid(self):
@@ -805,33 +1122,18 @@ class NodeEditor(ttk.Frame):
                     border_w = 2.0 if border_col else 0.0
                 so = 0.25 * self.zoom
                 if node.bg_color:
-                    self._draw_rounded_rect(sx + so, sy + so, sx + sw + so, sy + sh + so, radius=corner_r, fill=self.colors["shadow"], outline="")
+                    self._draw_rounded_rect(sx + so, sy + so, sx + sw + so, sy + sh + so, radius=corner_r, angle=node.angle, fill=self.colors["shadow"], outline="", tags=("node", f"node_{node.id}"))
                 bg_fill = node.bg_color if node.bg_color else ""
                 b_out = border_col if border_col else ""
-                self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, fill=bg_fill, outline=b_out, width=border_w)
+                self._draw_rounded_rect(sx, sy, sx + sw, sy + sh, radius=corner_r, angle=node.angle, fill=bg_fill, outline=b_out, width=border_w, tags=("node", f"node_{node.id}"))
 
             if node.compiled_code:
-                tags = (f"node_{node.id}", f"node_graphic_{node.id}")
-                exec_scope = {
-                    "canvas": self.canvas,
-                    "x": sx,
-                    "y": sy,
-                    "w": sw,
-                    "h": sh,
-                    "cx": sx + sw / 2.0,
-                    "cy": nsy if (nsy := sy + sh / 2.0) else sy + sh / 2.0,
-                    "angle": node.angle,
-                    "is_selected": is_selected,
-                    "tags": tags,
-                    "zoom": self.zoom,
-                    "rotatePoint": rotatePoint,
-                    "math": math,
-                    "node": node,
-                    "metadata": node.metadata
-                }
-                exec(node.compiled_code, exec_scope)
+                self.redraw_node_graphic(node)
 
             for pin in node.pins:
+                if pin.hidden:
+                    continue
+
                 px, py = pin.abs_pos
                 psx, psy = self.world_to_screen(px, py)
                 is_pin_hovered = (pin == self.hovered_object)
@@ -852,10 +1154,11 @@ class NodeEditor(ttk.Frame):
                     pin_col = self.colors["pin_default"]
 
                 pin_r = 0.12 * self.zoom
+                pin_tag = f"pin_rect_{pin.id}"
                 self._draw_rounded_rect(
                     psx - pr, psy - pr, psx + pr, psy + pr,
                     radius=pin_r, fill=pin_col, outline="#666666", width=1.5 if is_pin_active else 1.0,
-                    tags=f"node_{node.id}"
+                    tags=("node", f"node_{node.id}", pin_tag)
                 )
 
                 font_size = int(8 * (self.zoom / 35.0))
@@ -863,7 +1166,7 @@ class NodeEditor(ttk.Frame):
                     text_col = "#000000" if is_pin_hovered else "#ffffff"
                     self.canvas.create_text(
                         psx, psy, text=pin.name, fill=text_col, anchor="center",
-                        font=("Consolas", font_size, "bold"), tags=f"node_{node.id}"
+                        font=("Consolas", font_size, "bold"), tags=("node", f"node_{node.id}")
                     )
 
     def _draw_wires(self):
@@ -892,8 +1195,15 @@ class NodeEditor(ttk.Frame):
                 color = wire.color
                 width = wire.width
 
-            self.canvas.create_line(*flat_pts, fill=color, width=width * (self.zoom / 35.0), smooth=False)
+            net_tag = f"net_{wire.net.id}" if wire.net else ""
+            self.canvas.create_line(
+                *flat_pts, fill=color, width=width * (self.zoom / 35.0),
+                smooth=False, tags=("wire", f"wire_{wire.id}", net_tag)
+            )
 
+        self._draw_active_wire_preview()
+
+    def _draw_active_wire_preview(self):
         if self.active_wire:
             path = self.active_wire.get_full_path()
             if len(path) >= 1:
@@ -911,7 +1221,7 @@ class NodeEditor(ttk.Frame):
                 s_pts = [self.world_to_screen(pt[0], pt[1]) for pt in ortho_path]
                 flat_s = [c for pt in s_pts for c in pt]
                 if len(flat_s) >= 4:
-                    self.canvas.create_line(*flat_s, fill=self.active_wire.color, width=2.5 * (self.zoom / 35.0), dash=(6, 4))
+                    self.canvas.create_line(*flat_s, fill=self.active_wire.color, width=2.5 * (self.zoom / 35.0), dash=(6, 4), tags="active_wire")
 
     def _draw_instructions(self):
         h = self.canvas.winfo_height() or 700
@@ -927,8 +1237,8 @@ class NodeEditor(ttk.Frame):
         x1, y1 = 12, h - 135
         x2, y2 = 380, h - 12
         corner_r = 0.25 * self.zoom
-        self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, fill=self.colors["instruction_bg"], outline="#334155")
-        self.canvas.create_text(x1 + 10, y1 + 61, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8))
+        self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, angle=0, fill=self.colors["instruction_bg"], outline="#334155", tags="ui")
+        self.canvas.create_text(x1 + 10, y1 + 61, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8), tags="ui")
 
     def _draw_hover_tooltip(self):
         wire = None
@@ -945,7 +1255,7 @@ class NodeEditor(ttk.Frame):
             return
 
         msx, msy = self.current_mouse_screen
-        header = f"Net: {wire.net.name}"
+        header = f"Wire Net"
         lines = [header, "Connected Pins:"] + [f" • {item}" for item in connected_items]
 
         box_w = max(len(l) for l in lines) * 7.5 + 20
@@ -966,14 +1276,14 @@ class NodeEditor(ttk.Frame):
         ty2 = ty1 + box_h
 
         corner_r = 0.25 * self.zoom
-        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5)
+        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, angle = 0, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5, tags="tooltip")
 
         curr_y = ty1 + 14
-        self.canvas.create_text(tx1 + 10, curr_y, text=header, fill=self.colors["tooltip_border"], anchor="w", font=("Helvetica", 9, "bold"))
+        self.canvas.create_text(tx1 + 10, curr_y, text=header, fill=self.colors["tooltip_border"], anchor="w", font=("Helvetica", 9, "bold"), tags="tooltip")
         curr_y += 16
 
         for l in lines[1:]:
-            self.canvas.create_text(tx1 + 10, curr_y, text=l, fill=self.colors["tooltip_fg"], anchor="w", font=("Consolas", 8))
+            self.canvas.create_text(tx1 + 10, curr_y, text=l, fill=self.colors["tooltip_fg"], anchor="w", font=("Consolas", 8), tags="tooltip")
             curr_y += 15
 
     def _get_nearest_point_on_wire(self, wire: Wire, wx: float, wy: float) -> Tuple[float, float]:
@@ -1063,6 +1373,7 @@ class NodeEditor(ttk.Frame):
         clicked_pin = self._hit_test_pin(wx, wy)
         clicked_node = self._hit_test_node(wx, wy)
         clicked_wire, seg_idx = self._hit_test_wire(wx, wy)
+
         if clicked_node:
             self.nodes.append(self.nodes.pop(self.nodes.index(clicked_node)))
         if is_shift:
@@ -1121,7 +1432,15 @@ class NodeEditor(ttk.Frame):
                     self.drag_wire_segment_index = seg_idx
             else:
                 self.selected_object = None
-        self._emit("select", self.selected_object,wx, wy)
+
+        emit_x, emit_y = wx, wy
+        if isinstance(self.selected_object, NodeObject):
+            cx = self.selected_object.x + self.selected_object.width / 2.0
+            cy = self.selected_object.y + self.selected_object.height / 2.0
+            emit_x, emit_y = rotatePoint(wx, wy, cx, cy, -self.selected_object.angle)
+
+        self._emit("select", self.selected_object, emit_x, emit_y)
+        self.request_anim()
         self.redraw_all()
 
     def _on_left_drag(self, event):
@@ -1138,6 +1457,7 @@ class NodeEditor(ttk.Frame):
                 if node.x != new_x or node.y != new_y:
                     node.x = new_x
                     node.y = new_y
+                    self._hit_test_cache.pop(node.id, None)
                     self._emit("node_move", node)
             elif isinstance(self.drag_target, Wire):
                 wire = self.drag_target
@@ -1177,7 +1497,7 @@ class NodeEditor(ttk.Frame):
 
             self.redraw_all()
         elif self.active_wire:
-            self.redraw_all()
+            self.redraw_overlay()
 
     def _on_left_release(self, event):
         if self.drag_target:
@@ -1273,9 +1593,10 @@ class NodeEditor(ttk.Frame):
 
         if prev_hovered != self.hovered_object:
             self._emit("hover", self.hovered_object)
+            self.request_anim()
             self.redraw_all()
         elif self.active_wire or isinstance(self.hovered_object, Wire):
-            self.redraw_all()
+            self.redraw_overlay()
 
     def _on_mouse_wheel(self, event):
         factor = 1.12 if event.delta > 0 else 0.88
@@ -1285,6 +1606,7 @@ class NodeEditor(ttk.Frame):
         self.pan_x = mx - (mx - self.pan_x) * (new_zoom / self.zoom)
         self.pan_y = my - (my - self.pan_y) * (new_zoom / self.zoom)
         self.zoom = new_zoom
+        self._hit_test_cache.clear()
         self.redraw_all()
 
     def _on_middle_press(self, event):
@@ -1312,30 +1634,43 @@ class NodeEditor(ttk.Frame):
             if node.compiled_code:
                 sw, sh = node.width * self.zoom, node.height * self.zoom
                 nsx, nsy = self.world_to_screen(node.x, node.y)
-                recorder = PyIconRecorder()
-                exec_scope = {
-                    "canvas": recorder,
-                    "x": nsx,
-                    "y": nsy,
-                    "w": sw,
-                    "h": sh,
-                    "cx": nsx + sw / 2.0,
-                    "cy": nsy + sh / 2.0,
-                    "angle": node.angle,
-                    "is_selected": (node == self.selected_object),
-                    "tags": (),
-                    "zoom": self.zoom,
-                    "rotatePoint": rotatePoint,
-                    "math": math,
-                    "node": node,
-                    "metadata": node.metadata
-                }
-                try:
-                    exec(node.compiled_code, exec_scope)
-                    if hit_test_shapes(sx, sy, recorder.shapes, tolerance=3.0):
-                        return node
-                except Exception:
-                    pass
+
+                cache_key = f"{node.id}_{nsx}_{nsy}_{sw}_{sh}_{node.angle}_{self.zoom}_{node == self.selected_object}_{id(node.metadata)}"
+                if cache_key in self._hit_test_cache:
+                    shapes = self._hit_test_cache[cache_key]
+                else:
+                    recorder = PyIconRecorder()
+                    deps_log = {}
+                    tracked_metadata = MetadataTracker(node.metadata, log=deps_log) if node.metadata is not None else None
+                    node_proxy = NodeProxy(node, tracked_metadata)
+                    exec_scope = {
+                        "canvas": recorder,
+                        "x": nsx,
+                        "y": nsy,
+                        "w": sw,
+                        "h": sh,
+                        "cx": nsx + sw / 2.0,
+                        "cy": nsy + sh / 2.0,
+                        "angle": node.angle,
+                        "is_selected": (node == self.selected_object),
+                        "tags": (),
+                        "zoom": self.zoom,
+                        "rotatePoint": rotatePoint,
+                        "math": math,
+                        "node": node_proxy,
+                        "metadata": tracked_metadata,
+                        "Logic":Logic
+                    }
+                    try:
+                        exec(node.compiled_code, exec_scope)
+                        shapes = recorder.shapes
+                        self._hit_test_cache[cache_key] = shapes
+                    except Exception as e:
+                        print(f"[PyIcon HitTest Error] Node {node.title}: {e}")
+                        shapes = []
+
+                if hit_test_shapes(sx, sy, shapes, tolerance=3.0):
+                    return node
 
             if has_bg or has_border:
                 if node.contains_point(wx, wy):
@@ -1395,7 +1730,7 @@ class NodeEditor(ttk.Frame):
     ) -> NodeObject:
         sx = self.snap_node_coord(x)
         sy = self.snap_node_coord(y)
-        node = NodeObject(
+        node = NodeObject(self,
             f"node_{len(self.nodes)+1}", title, sx, sy, width, height,
             bg_color=bg_color, border_color=border_color, graphic_code=graphic_code, angle=angle,
             metadata=metadata
@@ -1406,11 +1741,17 @@ class NodeEditor(ttk.Frame):
         self.rebuild_nets()
         return node
 
-    def addChild(self, name: str, gridX: float, gridY: float, gridW: float = 1.0, gridH: float = 1.0,
-                 python_script: str = "") -> ChildrenModel:
-        child = ChildrenModel(name, gridX, gridY, gridW, gridH, python_script=python_script)
-        self.children[name] = child
-        return child 
+    def delete_node(self, node: NodeObject):
+        if node in self.nodes:
+            node_pins = set(node.pins)
+            removed_wires = [w for w in self.wires if w.start_pin in node_pins or w.end_pin in node_pins]
+            for w in removed_wires:
+                self.delete_wire(w)
+            self.nodes.remove(node)
+            self._hit_test_cache.pop(node.id, None)
+            if self.selected_object == node:
+                self.selected_object = None
+            self._emit("node_delete", node)
 
 
     def clear(self):
@@ -1424,14 +1765,18 @@ class NodeEditor(ttk.Frame):
         self.selected_object = None
         self.hovered_object = None
         self.active_wire = None
+        self._hit_test_cache.clear()
         self.rebuild_nets()
         self.redraw_all()
 
-        self.canvas = Canvas(self, bg="#181818", highlightthickness=0)
-        self.canvas.pack(fill=BOTH, expand=True)
+    def reset_view(self):
+        self.pan_x = 0.0
+        self.pan_y = 0.0
+        self.zoom = 35.0
+        self._hit_test_cache.clear()
+        self.redraw_all()
 
     def _handle_net_event(self, event_type: str, net: WireNet, pin: Optional[Pin]):
-        pin_name = f"{pin.owner.title}:{pin.name}" if pin else "None"
         if event_type == "CONNECT":
             self._emit("connect", net, pin)
         elif event_type == "DISCONNECT":
@@ -1440,861 +1785,3 @@ class NodeEditor(ttk.Frame):
             self._emit("net_create", net)
         elif event_type == "NET_DESTROY":
             self._emit("net_destroy", net)
-
-        self.canvas.bind("<MouseWheel>", self.onMouseWheel)
-        self.canvas.bind("<Button-4>", self.onMouseWheel)
-        self.canvas.bind("<Button-5>", self.onMouseWheel)
-
-        self.canvas.bind("<ButtonPress-2>", self.startPan)
-        self.canvas.bind("<B2-Motion>", self.panCanvas)
-
-        self.canvas.focus_set()
-
-        self.master.bind_all("r", self.rotateSelectedContainer)
-        self.master.bind_all("R", self.rotateSelectedContainer)
-
-        self.zoom = 1.0
-        self.panX = 0.0
-        self.panY = 0.0
-        self.gridSize = 20
-
-        self.containers: List[ContainerModel] = []
-        self.connections: List[Dict[str, Any]] = []
-        self.selectedContainer: Optional[ContainerModel] = None
-        self.selectedConnectionIndex = None
-        self.hoveredNode = None
-        self.hoveredWaypoint = None
-        self.hoveredConnectionSegment = None
-        self.draggingWaypoint = None
-
-        self.connectingStart = None
-        self.connectingWaypoints = []
-        self.connectingMousePos = (0, 0)
-
-        self.dragOffsetGridX = 0.0
-        self.dragOffsetGridY = 0.0
-        self.dragStartX = 0
-        self.dragStartY = 0
-
-        self.nodeScaleAnim = {}
-        self.activeAnimators = set()
-
-    def getContainerCenterLogical(self, container: ContainerModel) -> Tuple[float, float]:
-        cx = (container.gridX + container.gridW / 2.0) * self.gridSize
-        cy = (container.gridY + container.gridH / 2.0) * self.gridSize
-        
-        if container.gridW % 2 != container.gridH % 2:
-            if container.gridW % 2 == 0:
-                cx += 0.5 * self.gridSize
-            else:
-                cy += 0.5 * self.gridSize
-                
-        return cx, cy
-
-    def rotateSelectedContainer(self, event=None):
-        if self.selectedContainer:
-            self.selectedContainer.angle = (self.selectedContainer.angle + 90) % 360
-            self.renderAll()
-
-    def addContainer(self, name: str, gridX: float, gridY: float, gridW: float = 1.0, gridH: float = 1.0,
-                     bg_color: str = "#2D3748", border_color: str = "#4A5568", angle: float = 0.0) -> ContainerModel:
-        container = ContainerModel(self, name, gridX, gridY, gridW, gridH, bg_color=bg_color, border_color=border_color, angle=angle)
-        self.containers.append(container)
-        return container
-
-    def deleteContainer(self, container: ContainerModel):
-        if container in self.containers:
-            self.containers.remove(container)
-        if self.selectedContainer == container:
-            self.selectedContainer = None
-
-        new_connections = []
-        for conn in self.connections:
-            fromC, _ = conn["from"]
-            if fromC == container:
-                continue
-
-            def filterBranches(branches):
-                valid_branches = []
-                for b in branches:
-                    if "to" in b:
-                        toC, _ = b["to"]
-                        if toC == container:
-                            continue
-                    b["sub_branches"] = filterBranches(b.get("sub_branches", []))
-                    valid_branches.append(b)
-                return valid_branches
-
-            conn["branches"] = filterBranches(conn["branches"])
-            if conn["branches"]:
-                new_connections.append(conn)
-
-        self.connections = new_connections
-
-    def addConnection(self, from_container: ContainerModel, from_pin: str, to_container: ContainerModel, to_pin: str):
-        conn = {
-            "from": (from_container, from_pin),
-            "branches": [
-                {
-                    "waypoints": [],
-                    "to": (to_container, to_pin),
-                    "sub_branches": []
-                }
-            ],
-            "Activated": True
-        }
-        self.connections.append(conn)
-        return conn
-
-    def snapToMidGrid(self, logX: float, logY: float) -> Tuple[float, float]:
-        snappedX = (math.floor(logX / self.gridSize) + 0.5) * self.gridSize
-        snappedY = (math.floor(logY / self.gridSize) + 0.5) * self.gridSize
-        return snappedX, snappedY
-
-    def getCenter(self) -> Tuple[float, float, int, int]:
-        w = max(self.canvas.winfo_width(), 800)
-        h = max(self.canvas.winfo_height(), 600)
-        return w / 2, h / 2, w, h
-
-    def toLogicalSpace(self, winX: float, winY: float) -> Tuple[float, float]:
-        cx, cy, _, _ = self.getCenter()
-        logX = (winX - cx - self.panX) / self.zoom
-        logY = (winY - cy - self.panY) / self.zoom
-        return logX, logY
-
-    def toWindowSpace(self, logX: float, logY: float) -> Tuple[float, float]:
-        cx, cy, _, _ = self.getCenter()
-        winX = logX * self.zoom + cx + self.panX
-        winY = logY * self.zoom + cy + self.panY
-        return winX, winY
-
-    def getNodeCenterWindowSpace(self, container: ContainerModel, nName: str) -> Tuple[float, float]:
-        logX, logY = self.getNodeCenterLogicalSpace(container, nName)
-        return self.toWindowSpace(logX, logY)
-
-    def getNodeCenterLogicalSpace(self, container: ContainerModel, nName: str) -> Tuple[float, float]:
-        node = container.nodes[nName]
-        unrotated_x = (container.gridX + node.gridX + 0.5) * self.gridSize
-        unrotated_y = (container.gridY + node.gridY + 0.5) * self.gridSize
-        center_x, center_y = self.getContainerCenterLogical(container)
-        return rotatePoint(unrotated_x, unrotated_y, center_x, center_y, container.angle)
-
-    def isPointInRotatedRect(self, winX: float, winY: float, container: ContainerModel) -> bool:
-        logX, logY = self.toLogicalSpace(winX, winY)
-        cx, cy = self.getContainerCenterLogical(container)
-        unrotX, unrotY = rotatePoint(logX, logY, cx, cy, -container.angle)
-
-        x0 = container.gridX * self.gridSize
-        x1 = (container.gridX + container.gridW) * self.gridSize
-        y0 = container.gridY * self.gridSize
-        y1 = (container.gridY + container.gridH) * self.gridSize
-
-        return (x0 <= unrotX <= x1) and (y0 <= unrotY <= y1)
-
-    def isPointObscuredByHigherContainer(self, winX: float, winY: float, current_container: ContainerModel) -> bool:
-        for c in reversed(self.containers):
-            if c == current_container:
-                return False
-            
-            items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
-            if items:
-                hit_tags = set()
-                for item in items:
-                    hit_tags.update(self.canvas.gettags(item))
-                for child in c.children.values():
-                    if f"child_{id(child)}" in hit_tags:
-                        return True
-
-            is_transparent = (
-                c.bg_color in ("transparent", "", "none", None) and 
-                c.border_color in ("transparent", "", "none", None)
-            )
-            if not is_transparent and self.isPointInRotatedRect(winX, winY, c):
-                return True
-
-        return False
-
-    def findContainerAtWindowPos(self, winX: float, winY: float) -> Optional[ContainerModel]:
-        items = self.canvas.find_overlapping(winX - 2, winY - 2, winX + 2, winY + 2)
-        hit_tags = set()
-        if items:
-            for item in items:
-                hit_tags.update(self.canvas.gettags(item))
-
-        for container in reversed(self.containers):
-            for child in container.children.values():
-                if f"child_{id(child)}" in hit_tags:
-                    return container
-
-            is_transparent = (
-                container.bg_color in ("transparent", "", "none", None) and 
-                container.border_color in ("transparent", "", "none", None)
-            )
-            
-            if not is_transparent:
-                if self.isPointInRotatedRect(winX, winY, container):
-                    return container
-
-        return None
-
-    def findNodeAtPosition(self, winX: float, winY: float, maxDistance: float = 10):
-        for container in reversed(self.containers):
-            if self.isPointObscuredByHigherContainer(winX, winY, container):
-                continue
-
-            for nName in container.nodes:
-                nx, ny = self.getNodeCenterWindowSpace(container, nName)
-                dist = math.hypot(winX - nx, winY - ny)
-                if dist <= maxDistance * self.zoom:
-                    return (container, nName)
-        return None
-
-    def findWaypointAtPosition(self, winX: float, winY: float, maxDistance: float = 8):
-        for idx, conn in enumerate(self.connections):
-            fromC, _ = conn["from"]
-            if self.isPointObscuredByHigherContainer(winX, winY, fromC):
-                continue
-
-            def searchBranch(branch):
-                for wpIdx, (wLogX, wLogY) in enumerate(branch["waypoints"]):
-                    wx, wy = self.toWindowSpace(wLogX, wLogY)
-                    if math.hypot(winX - wx, winY - wy) <= maxDistance:
-                        return (idx, branch, wpIdx)
-                for sb in branch.get("sub_branches", []):
-                    res = searchBranch(sb)
-                    if res:
-                        return res
-                return None
-
-            for branch in conn["branches"]:
-                res = searchBranch(branch)
-                if res:
-                    return res
-        return None
-
-    def findConnectionSegmentAtPosition(self, winX: float, winY: float, maxDistance: float = 5):
-        if self.findNodeAtPosition(winX, winY, maxDistance=6):
-            return None
-
-        for idx, conn in enumerate(self.connections):
-            fromC, fromN = conn["from"]
-            if self.isPointObscuredByHigherContainer(winX, winY, fromC):
-                continue
-
-            startLog = self.getNodeCenterLogicalSpace(fromC, fromN)
-
-            def checkBranchSegments(startPoint, branch):
-                pts = [startPoint] + branch["waypoints"]
-                if "to" in branch:
-                    pts.append(self.getNodeCenterLogicalSpace(*branch["to"]))
-
-                winPts = [self.toWindowSpace(px, py) for px, py in pts]
-
-                for segIdx in range(len(winPts) - 1):
-                    wx1, wy1 = winPts[segIdx]
-                    wx2, wy2 = winPts[segIdx + 1]
-
-                    lineLenSq = (wx2 - wx1) ** 2 + (wy2 - wy1) ** 2
-                    if lineLenSq == 0:
-                        continue
-
-                    t = max(0, min(1, ((winX - wx1) * (wx2 - wx1) + (winY - wy1) * (wy2 - wy1)) / lineLenSq))
-                    projWinX = wx1 + t * (wx2 - wx1)
-                    projWinY = wy1 + t * (wy2 - wy1)
-
-                    if math.hypot(winX - projWinX, winY - projWinY) <= maxDistance:
-                        projLogX, projLogY = self.toLogicalSpace(projWinX, projWinY)
-                        return (idx, branch, segIdx, projLogX, projLogY)
-
-                for sb in branch.get("sub_branches", []):
-                    tapPt = branch["waypoints"][sb["tap_waypoint_idx"]] if sb["tap_waypoint_idx"] < len(branch["waypoints"]) else startPoint
-                    res = checkBranchSegments(tapPt, sb)
-                    if res:
-                        return res
-                return None
-
-            for bIdx, branch in enumerate(conn["branches"]):
-                res = checkBranchSegments(startLog, branch)
-                if res:
-                    return res
-
-        return None
-
-    def insertWaypointInBranch(self, branch, segIdx, coord):
-        branch["waypoints"].insert(segIdx, coord)
-        for sb in branch.get("sub_branches", []):
-            if sb["tap_waypoint_idx"] >= segIdx:
-                sb["tap_waypoint_idx"] += 1
-
-    def removeWaypointFromBranch(self, branch, wpIdx):
-        if wpIdx < len(branch["waypoints"]):
-            branch["waypoints"].pop(wpIdx)
-            subs_to_keep = []
-            for sb in branch.get("sub_branches", []):
-                if sb["tap_waypoint_idx"] > wpIdx:
-                    sb["tap_waypoint_idx"] -= 1
-                    subs_to_keep.append(sb)
-                elif sb["tap_waypoint_idx"] < wpIdx:
-                    subs_to_keep.append(sb)
-            branch["sub_branches"] = subs_to_keep
-
-    def executePythonIconScript(self, child: ChildrenModel, wx0: float, wy0: float, width: float, height: float, tags: Any, angle: float = 0.0, center_win: Tuple[float, float] = (0, 0), is_selected: bool = False):
-        if not child.python_script or width <= 0 or height <= 0:
-            return
-
-        def draw_oval(cx_circle, cy_circle, r, fill="", outline="#FFFFFF", width=2):
-            if angle != 0:
-                cx_circle, cy_circle = rotatePoint(cx_circle, cy_circle, center_win[0], center_win[1], angle)
-            return self.canvas.create_oval(cx_circle - r, cy_circle - r, cx_circle + r, cy_circle + r,
-                                           fill=fill, outline=outline, width=width, tags=tags)
-
-        def draw_polygon(points, fill="", outline="#FFFFFF", width=2):
-            rot_points = []
-            for i in range(0, len(points), 2):
-                px, py = points[i], points[i+1]
-                if angle != 0:
-                    px, py = rotatePoint(px, py, center_win[0], center_win[1], angle)
-                rot_points.extend([px, py])
-            return self.canvas.create_polygon(rot_points, fill=fill, outline=outline, width=width, tags=tags)
-
-        def draw_rect(rx0, ry0, rx1, ry1, fill="", outline="#FFFFFF", width=2):
-            rect_pts = [rx0, ry0, rx1, ry0, rx1, ry1, rx0, ry1]
-            return draw_polygon(rect_pts, fill=fill, outline=outline, width=width)
-
-        def draw_line(x1_l, y1_l, x2_l, y2_l, fill="#FFFFFF", width=2):
-            if angle != 0:
-                x1_l, y1_l = rotatePoint(x1_l, y1_l, center_win[0], center_win[1], angle)
-                x2_l, y2_l = rotatePoint(x2_l, y2_l, center_win[0], center_win[1], angle)
-            return self.canvas.create_line(x1_l, y1_l, x2_l, y2_l, fill=fill, width=width, tags=tags)
-
-        scope = {
-            "canvas": self.canvas,
-            "x": wx0,
-            "y": wy0,
-            "w": width,
-            "h": height,
-            "tags": tags,
-            "angle": angle,
-            "cx": center_win[0],
-            "cy": center_win[1],
-            "is_selected": is_selected,
-            "rotatePoint": rotatePoint,
-            "draw_oval": draw_oval,
-            "draw_polygon": draw_polygon,
-            "draw_rect": draw_rect,
-            "draw_line": draw_line,
-            "math": math
-        }
-
-        try:
-            exec(child.python_script, scope)
-        except Exception as e:
-            print(f"[PythonIconScript Execution Error] {e}")
-
-    def createRoundedRectPoints(self, x0, y0, x1, y1, radius, angle=0.0, center=None):
-        radius = max(1, min(radius, (x1 - x0) / 2.0, (y1 - y0) / 2.0))
-        points = []
-        corners = [
-            (x1 - radius, y0 + radius, 0, 90),
-            (x0 + radius, y0 + radius, 90, 180),
-            (x0 + radius, y1 - radius, 180, 270),
-            (x1 - radius, y1 - radius, 270, 360),
-        ]
-        for cx, cy, startAngle, endAngle in corners:
-            for step in range(startAngle, endAngle + 1, 15):
-                rad = math.radians(step)
-                px = cx + radius * math.cos(rad)
-                py = cy - radius * math.sin(rad)
-                if angle != 0 and center:
-                    px, py = rotatePoint(px, py, center[0], center[1], angle)
-                points.extend([px, py])
-        return points
-
-    def drawRoundedRect(self, x0, y0, x1, y1, radius, fill, outline, width=2, tags="container", angle=0.0, center=None):
-        points = self.createRoundedRectPoints(x0, y0, x1, y1, radius, angle=angle, center=center)
-        fill_val = "" if fill in ("transparent", "", "none", None) else fill
-        outline_val = "" if outline in ("transparent", "", "none", None) else outline
-        return self.canvas.create_polygon(points, fill=fill_val, outline=outline_val, width=width, tags=tags)
-
-    def renderGrid(self):
-        self.canvas.delete("gridLine")
-        _, _, w, h = self.getCenter()
-
-        logLeft, logTop = self.toLogicalSpace(0, 0)
-        logRight, logBottom = self.toLogicalSpace(w, h)
-
-        step = self.gridSize
-        startX = (int(logLeft) // step) * step
-        startY = (int(logTop) // step) * step
-
-        for lx in range(startX, int(logRight) + step, step):
-            wx, _ = self.toWindowSpace(lx, 0)
-            self.canvas.create_line(wx, 0, wx, h, fill="#222222", tags="gridLine")
-
-        for ly in range(startY, int(logBottom) + step, step):
-            _, wy = self.toWindowSpace(0, ly)
-            self.canvas.create_line(0, wy, w, wy, fill="#222222", tags="gridLine")
-
-        self.canvas.tag_lower("gridLine")
-
-    def renderConnections(self):
-        self.canvas.delete("connection")
-        self.canvas.delete("waypoint")
-
-        for idx, conn in enumerate(self.connections):
-            fromC, fromN = conn["from"]
-            startWin = self.getNodeCenterWindowSpace(fromC, fromN)
-
-            isSelected = (idx == self.selectedConnectionIndex)
-            isHovered = (self.hoveredConnectionSegment and self.hoveredConnectionSegment[0] == idx)
-            isActivated = conn.get("Activated", True)
-
-            wireColor = "#FF2E93" if isSelected else ("#00E5FF" if isHovered else ("#00ADB5" if isActivated else "#555555"))
-            wireWidth = max(1, int((4 if isSelected else 3) * self.zoom))
-
-            def drawBranchTree(startPtWin, branch):
-                pts = [startPtWin[0], startPtWin[1]]
-                for wLogX, wLogY in branch["waypoints"]:
-                    wx, wy = self.toWindowSpace(wLogX, wLogY)
-                    pts.extend([wx, wy])
-
-                if "to" in branch:
-                    endWin = self.getNodeCenterWindowSpace(*branch["to"])
-                    pts.extend([endWin[0], endWin[1]])
-
-                self.canvas.create_line(
-                    pts, fill=wireColor, width=wireWidth,
-                    capstyle=ROUND, joinstyle=ROUND, tags="connection"
-                )
-
-                for wpIdx, (wLogX, wLogY) in enumerate(branch["waypoints"]):
-                    isWpHovered = (self.hoveredWaypoint and self.hoveredWaypoint[0] == idx and self.hoveredWaypoint[1] is branch and self.hoveredWaypoint[2] == wpIdx)
-
-                    if isSelected or isWpHovered or isHovered:
-                        wx, wy = self.toWindowSpace(wLogX, wLogY)
-                        r = max(3, int(5 * self.zoom))
-                        dotFill = "#FFFFFF" if isWpHovered else "#00ADB5"
-                        self.canvas.create_oval(
-                            wx - r, wy - r, wx + r, wy + r,
-                            fill=dotFill, outline="#FFFFFF", width=max(1, int(1.5 * self.zoom)), tags="waypoint"
-                        )
-
-                for sb in branch.get("sub_branches", []):
-                    if sb["tap_waypoint_idx"] < len(branch["waypoints"]):
-                        tapWp = branch["waypoints"][sb["tap_waypoint_idx"]]
-                        tapWin = self.toWindowSpace(*tapWp)
-                        drawBranchTree(tapWin, sb)
-
-            for branch in conn["branches"]:
-                drawBranchTree(startWin, branch)
-
-        if self.connectingStart:
-            if self.connectingStart["mode"] == "new_tree":
-                startWin = self.getNodeCenterWindowSpace(*self.connectingStart["from"])
-            elif self.connectingStart["mode"] == "branch_tree":
-                parentBranch = self.connectingStart["parentBranch"]
-                tapIdx = self.connectingStart["tapIdx"]
-                tapLog = parentBranch["waypoints"][tapIdx]
-                startWin = self.toWindowSpace(*tapLog)
-
-            pts = [startWin[0], startWin[1]]
-            for wLogX, wLogY in self.connectingWaypoints:
-                wx, wy = self.toWindowSpace(wLogX, wLogY)
-                pts.extend([wx, wy])
-            pts.extend([self.connectingMousePos[0], self.connectingMousePos[1]])
-
-            self.canvas.create_line(
-                pts, fill="#FF2E93", width=max(1, int(2 * self.zoom)),
-                dash=(4, 4), capstyle=ROUND, joinstyle=ROUND, tags="connection"
-            )
-
-    def renderAll(self):
-        self.canvas.delete("all")
-
-        self.renderGrid()
-        self.renderConnections()
-
-        cornerRadiusPixels = self.gridSize * 0.4 * self.zoom
-        borderWidth = max(1, int(2 * self.zoom))
-
-        for container in self.containers:
-            cLogX = container.gridX * self.gridSize
-            cLogY = container.gridY * self.gridSize
-            cLogW = container.gridW * self.gridSize
-            cLogH = container.gridH * self.gridSize
-
-            wx0, wy0 = self.toWindowSpace(cLogX, cLogY)
-            wx1, wy1 = self.toWindowSpace(cLogX + cLogW, cLogY + cLogH)
-
-            centerLogX, centerLogY = self.getContainerCenterLogical(container)
-            centerWin = self.toWindowSpace(centerLogX, centerLogY)
-
-            isSelected = container is self.selectedContainer
-
-            border_color = container.border_color
-            if isSelected and container.border_color != "transparent":
-                border_color = "#FFFFFF"
-
-            container.canvasId = self.drawRoundedRect(
-                wx0, wy0, wx1, wy1,
-                radius=cornerRadiusPixels,
-                fill=container.bg_color,
-                outline=border_color,
-                width=borderWidth,
-                tags=("container",),
-                angle=container.angle,
-                center=centerWin
-            )
-
-            for chName, child in container.children.items():
-                chLogX = (container.gridX + child.gridX) * self.gridSize
-                chLogY = (container.gridY + child.gridY) * self.gridSize
-                chLogW = child.gridW * self.gridSize
-                chLogH = child.gridH * self.gridSize
-
-                chWx0, chWy0 = self.toWindowSpace(chLogX, chLogY)
-                chWx1, chWy1 = self.toWindowSpace(chLogX + chLogW, chLogY + chLogH)
-
-                w_px = chWx1 - chWx0
-                h_px = chWy1 - chWy0
-
-                if child.python_script:
-                    child_tag = f"child_{id(child)}"
-                    self.executePythonIconScript(
-                        child, chWx0, chWy0, w_px, h_px,
-                        tags=("child_python_icon", child_tag),
-                        angle=container.angle,
-                        center_win=centerWin,
-                        is_selected=isSelected
-                    )
-
-            for nName, node in container.nodes.items():
-                nodeKey = (container, nName)
-                currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
-
-                scaledSize = self.gridSize * currentScale
-                offset = (self.gridSize - scaledSize) / 2.0
-
-                nLogX = (container.gridX + node.gridX) * self.gridSize + offset
-                nLogY = (container.gridY + node.gridY) * self.gridSize + offset
-
-                nWx0, nWy0 = self.toWindowSpace(nLogX, nLogY)
-                nWx1, nWy1 = self.toWindowSpace(nLogX + scaledSize, nLogY + scaledSize)
-
-                pinRadius = (scaledSize * 0.25) * self.zoom
-                isNodeHovered = (self.hoveredNode == (container, nName))
-
-                if isNodeHovered or currentScale > 0.6:
-                    glowPoints = self.createRoundedRectPoints(nWx0, nWy0, nWx1, nWy1, pinRadius, angle=container.angle, center=centerWin)
-                    self.canvas.create_polygon(
-                        glowPoints, fill="", outline="#FFFFFF", width=int(2 * self.zoom), tags="nodeGlow"
-                    )
-
-                node.canvasId = self.drawRoundedRect(
-                    nWx0, nWy0, nWx1, nWy1,
-                    radius=pinRadius,
-                    fill=node.bg_color,
-                    outline=node.border_color,
-                    width=borderWidth,
-                    tags=("node",),
-                    angle=container.angle,
-                    center=centerWin
-                )
-
-                nodeCenterLogX, nodeCenterLogY = self.getNodeCenterLogicalSpace(container, nName)
-                textWinX, textWinY = self.toWindowSpace(nodeCenterLogX, nodeCenterLogY)
-
-                scaledFontSize = int(4 * self.zoom * currentScale)
-
-                if scaledFontSize > 0:
-                    self.canvas.create_text(
-                        textWinX,
-                        textWinY,
-                        fill="white",
-                        font=("Arial", scaledFontSize, "bold"),
-                        text=node.name,
-                        tags="node"
-                    )
-
-        self.canvas.tag_lower("connection")
-        self.canvas.tag_lower("gridLine")
-
-    def animateNodeScale(self, container: ContainerModel, nName: str, targetScale: float):
-        nodeKey = (container, nName)
-
-        def stepAnimation():
-            currentScale = self.nodeScaleAnim.get(nodeKey, 0.6)
-            if abs(currentScale - targetScale) < 0.02:
-                self.nodeScaleAnim[nodeKey] = targetScale
-                self.activeAnimators.discard(nodeKey)
-                self.renderAll()
-                return
-
-            newScale = currentScale + (targetScale - currentScale) * 0.35
-            self.nodeScaleAnim[nodeKey] = newScale
-            self.renderAll()
-            self.after(16, stepAnimation)
-
-        if nodeKey not in self.activeAnimators:
-            self.activeAnimators.add(nodeKey)
-            stepAnimation()
-
-    def onHover(self, event):
-        if self.draggingWaypoint:
-            connIdx, branch, wpIdx = self.draggingWaypoint
-            logX, logY = self.toLogicalSpace(event.x, event.y)
-            snappedX, snappedY = self.snapToMidGrid(logX, logY)
-            branch["waypoints"][wpIdx] = (snappedX, snappedY)
-            self.renderAll()
-            return
-
-        self.hoveredNode = self.findNodeAtPosition(event.x, event.y, maxDistance=8)
-        self.hoveredWaypoint = self.findWaypointAtPosition(event.x, event.y, maxDistance=6)
-        self.hoveredConnectionSegment = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5)
-
-        for container in self.containers:
-            for nName, node in container.nodes.items():
-                nodeKey = (container, nName)
-                targetScale = 1.0 if self.hoveredNode == (container, nName) else 0.6
-                if self.nodeScaleAnim.get(nodeKey, 0.6) != targetScale:
-                    self.animateNodeScale(container, nName, targetScale)
-
-        self.connectingMousePos = (event.x, event.y)
-        self.renderAll()
-
-    def onRightClick(self, event):
-        if self.connectingStart:
-            self.connectingStart = None
-            self.connectingWaypoints.clear()
-            self.renderAll()
-            return
-
-        wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
-        if wp:
-            connIdx, branch, wpIdx = wp
-            self.removeWaypointFromBranch(branch, wpIdx)
-            self.hoveredWaypoint = None
-            self.renderAll()
-            return
-
-        seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5)
-        if seg:
-            connIdx = seg[0]
-            self.connections.pop(connIdx)
-            self.selectedConnectionIndex = None
-            self.hoveredConnectionSegment = None
-            self.renderAll()
-            return
-
-        container = self.findContainerAtWindowPos(event.x, event.y)
-        if container:
-            self.deleteContainer(container)
-            self.renderAll()
-            return
-
-    def onPress(self, event):
-        self.canvas.focus_set()
-        nodeAtPress = self.findNodeAtPosition(event.x, event.y, maxDistance=10)
-
-        if nodeAtPress:
-            if not self.connectingStart:
-                self.connectingStart = {
-                    "mode": "new_tree",
-                    "from": nodeAtPress
-                }
-                self.connectingWaypoints = []
-            else:
-                if self.connectingStart["mode"] == "new_tree":
-                    wps = list(self.connectingWaypoints)
-                    self.connections.append({
-                        "from": self.connectingStart["from"],
-                        "branches": [
-                            {
-                                "waypoints": wps,
-                                "to": nodeAtPress,
-                                "sub_branches": []
-                            }
-                        ],
-                        "Activated": True
-                    })
-                elif self.connectingStart["mode"] == "branch_tree":
-                    parentBranch = self.connectingStart["parentBranch"]
-                    tapIdx = self.connectingStart["tapIdx"]
-
-                    newBranch = {
-                        "tap_waypoint_idx": tapIdx,
-                        "waypoints": list(self.connectingWaypoints),
-                        "to": nodeAtPress,
-                        "sub_branches": []
-                    }
-                    parentBranch.setdefault("sub_branches", []).append(newBranch)
-
-                self.connectingStart = None
-                self.connectingWaypoints.clear()
-            self.renderAll()
-            return
-
-        if event.state & 0x0001:
-            wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
-            if wp and not self.connectingStart:
-                connIdx, branch, wpIdx = wp
-                self.connectingStart = {
-                    "mode": "branch_tree",
-                    "connIdx": connIdx,
-                    "parentBranch": branch,
-                    "tapIdx": wpIdx
-                }
-                self.connectingWaypoints = []
-                self.renderAll()
-                return
-
-            seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=6)
-            if seg and not self.connectingStart:
-                connIdx, parent_branch, segIdx, projX, projY = seg
-                snapped = self.snapToMidGrid(projX, projY)
-
-                self.insertWaypointInBranch(parent_branch, segIdx, snapped)
-
-                self.connectingStart = {
-                    "mode": "branch_tree",
-                    "connIdx": connIdx,
-                    "parentBranch": parent_branch,
-                    "tapIdx": segIdx
-                }
-                self.connectingWaypoints = []
-                self.renderAll()
-                return
-
-        wp = self.findWaypointAtPosition(event.x, event.y, maxDistance=8)
-        if wp and not self.connectingStart:
-            connIdx, branch, wpIdx = wp
-            self.selectedConnectionIndex = connIdx
-            self.draggingWaypoint = (connIdx, branch, wpIdx)
-            self.renderAll()
-            return
-
-        seg = self.findConnectionSegmentAtPosition(event.x, event.y, maxDistance=5)
-        if seg and not self.connectingStart:
-            connIdx, branch, segIdx, projX, projY = seg
-            snapped = self.snapToMidGrid(projX, projY)
-
-            self.selectedConnectionIndex = connIdx
-            self.insertWaypointInBranch(branch, segIdx, snapped)
-            self.draggingWaypoint = (connIdx, branch, segIdx)
-            self.renderAll()
-            return
-
-        if self.connectingStart:
-            logX, logY = self.toLogicalSpace(event.x, event.y)
-            snapped = self.snapToMidGrid(logX, logY)
-            if not self.connectingWaypoints or self.connectingWaypoints[-1] != snapped:
-                self.connectingWaypoints.append(snapped)
-            self.renderAll()
-            return
-
-        container = self.findContainerAtWindowPos(event.x, event.y)
-        if container:
-            mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-            self.selectedContainer = container
-            self.dragOffsetGridX = (mouseLogX / self.gridSize) - container.gridX
-            self.dragOffsetGridY = (mouseLogY / self.gridSize) - container.gridY
-            self.selectedConnectionIndex = None
-
-            if container in self.containers:
-                self.containers.remove(container)
-                self.containers.append(container)
-
-            self.renderAll()
-            return
-
-        self.selectedContainer = None
-        self.selectedConnectionIndex = None
-        self.renderAll()
-
-    def onDrag(self, event):
-        if self.draggingWaypoint:
-            connIdx, branch, wpIdx = self.draggingWaypoint
-            logX, logY = self.toLogicalSpace(event.x, event.y)
-            snappedX, snappedY = self.snapToMidGrid(logX, logY)
-            branch["waypoints"][wpIdx] = (snappedX, snappedY)
-            self.renderAll()
-            return
-
-        if self.connectingStart:
-            self.connectingMousePos = (event.x, event.y)
-            self.renderAll()
-            return
-
-        if self.selectedContainer:
-            mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-            newGridX = math.floor((mouseLogX / self.gridSize) - self.dragOffsetGridX)
-            newGridY = math.floor((mouseLogY / self.gridSize) - self.dragOffsetGridY)
-            self.selectedContainer.gridX = newGridX
-            self.selectedContainer.gridY = newGridY
-            self.renderAll()
-
-    def onRelease(self, event):
-        self.draggingWaypoint = None
-
-    def onMouseWheel(self, event):
-        if event.num == 4 or event.delta > 0:
-            zoom_factor = 1.1
-        else:
-            zoom_factor = 0.9
-
-        mouseLogX, mouseLogY = self.toLogicalSpace(event.x, event.y)
-
-        self.zoom *= zoom_factor
-
-        cx, cy, _, _ = self.getCenter()
-        self.panX = event.x - cx - (mouseLogX * self.zoom)
-        self.panY = event.y - cy - (mouseLogY * self.zoom)
-
-        self.renderAll()
-
-    def startPan(self, event):
-        self.dragStartX = event.x
-        self.dragStartY = event.y
-
-    def panCanvas(self, event):
-        dx = event.x - self.dragStartX
-        dy = event.y - self.dragStartY
-        self.panX += dx
-        self.panY += dy
-        self.dragStartX = event.x
-        self.dragStartY = event.y
-        self.renderAll()
-
-
-if __name__ == "__main__":
-
-    root = Tk()
-    root.title("Node Editor")  
-    root.geometry("1000x700")
-
-    editor = NodeEditor(root)
-    editor.pack(fill=BOTH, expand=True)
-  
-    c1 = editor.addContainer("Container 1", gridX=-2, gridY=-2, gridW=3, gridH=2, bg_color="#2D3748")
-    c1.addNode("A", 0, 0)
-    c1.addNode("B", 2, 1)
-
-    nand_gate = app.create_node(
-        title="Nand Gate",
-        x=5,
-        y=5,
-        width=4,
-        height=3,
-        bg_color="transparent",
-        border_color="transparent",
-        graphic_code=NAND_GATE_PYICON_CODE
-    )
-    nand_gate.add_pin("A", -1, 0, color="#1d2536")
-    nand_gate.add_pin("B", -1, 2, color="#1d2536")
-    nand_gate.add_pin("Y", 4, 1, color="#1d2536")
-
-    app.rebuild_nets()
-    app.redraw_all()
-
-    editor.renderAll()
-    root.mainloop()

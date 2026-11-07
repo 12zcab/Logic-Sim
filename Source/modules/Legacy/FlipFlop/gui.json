@@ -1,0 +1,118 @@
+{
+    "name": "FlipFlop\n(Legacy)",
+    "components":{
+        "DFF(PP0)":{
+            "constructor":"PP0_DFF",
+            "size": [3,5],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "R": {"position":[-1,4]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,4]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"PP0_DFF.pyIcon",
+                    "size": [3,5]
+                }
+            }
+        },
+        "D Latch":{
+            "constructor":"BasicDLatch",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"BasicDLatch.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "MSDFF":{
+            "constructor":"MSDFF",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"MSDFF.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "SRDLatch":{
+            "constructor":"SRDLatch",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]},
+                "/R": {"position":[1,3]},
+                "/S": {"position":[1,-1]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"BasicDLatch.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "SRMSDFF":{
+            "constructor":"SRMSDFF",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "D": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]},
+                "/R": {"position":[1,3]},
+                "/S": {"position":[1,-1]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"MSDFF.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        },
+        "TFF":{
+            "constructor":"TFF",
+            "size": [3,3],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "T": {"position":[-1,0]},
+                "C": {"position":[-1,2]},
+                "Q": {"position":[3,0]},
+                "QM": {"position":[3,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"TFF.pyIcon",
+                    "size": [3,3]
+                }
+            }
+        }
+    }
+}

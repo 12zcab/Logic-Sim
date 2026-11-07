@@ -1,0 +1,50 @@
+{
+    "name": "Label\n(Legacy)",
+    "components":{
+        "Label":{
+            "constructor":"Label",
+            "size": [2,1],
+            "color": "#222222",
+            "bcolor": "black",
+            "pins": {
+                "Pin": {"position":[-1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Label.pyIcon",
+                    "size": [2,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Text": {
+                        "attribute":"text",
+                        "type":"string"
+                    }
+                }
+            }
+        },
+        "TPS":{
+            "constructor":"TPS",
+            "size": [2,1],
+            "color": "#222222",
+            "bcolor": "black",
+            "pins": {
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Label.pyIcon",
+                    "size": [2,1]
+                }
+            },
+            "attributes": {
+                "Data": {
+                    "TPS": {
+                        "attribute":"text",
+                        "type":"readonly"
+                    }
+                }
+            }
+        }
+    }
+}

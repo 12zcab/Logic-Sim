@@ -1,0 +1,77 @@
+{
+    "name": "GUI\n(Legacy)",
+    "components":{
+        "Switch":{
+            "constructor":"Switch",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Switch.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Activated": {
+                        "attribute":"state",
+                        "type":"boolean",
+                        "callFunc": "update"
+                    }
+                }
+            }
+        },
+        "Logic Analyzer":{
+            "constructor":"VisualAnalyzer",
+            "size": [10,5],
+            "color": "white",
+            "bcolor": "black",
+            "pins": {
+                "A": {"position":[10,2]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Visualizer.pyIcon",
+                    "size": [10,5]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Monitoring Period": {
+                        "attribute":"keepTicks",
+                        "type":"integer",
+                        "callFunc": "update"
+                    }
+                }
+            }
+        },
+        "Constant":{
+            "constructor":"Constant",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y": {"position":[1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Constant.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Activated": {
+                        "attribute":"power",
+                        "type":"boolean",
+                        "callFunc": "update"
+                    }
+                }
+            }
+        }
+    }
+}
