@@ -174,4 +174,3 @@ module ttl_74181 (
     end
 
 endmodule
-

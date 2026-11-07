@@ -112,7 +112,7 @@ module cmos_4017 (
         Q9 = (count == 4'd9);
         CO = (count < 4'd5); // High for steps 0-4, Low for steps 5-9  
     end
-
+ 
 endmodule
 
 module cmos_4066 (
@@ -123,8 +123,8 @@ module cmos_4066 (
     input wire 2CONT,    // Switch 2 Control Pin (Active-High to close switch)
     output reg 2B,       // Switch 2 Terminal B (Input/Output data path)
     input wire 3A,       // Switch 3 Terminal A (Input/Output data path)
-    input wire 3CONT,    // Switch 3 Control Pin (Active-High to close switch)
-    output reg 3B,       // Switch 3 Terminal B (Input/Output data path)
+    input wire 3CONT,    // Switch 3 Control Pin (Active-High to close switch) 
+    output reg 3B,       // Switch 3 Terminal B (Input/Output data path) 
     input wire 4A,       // Switch 4 Terminal A (Input/Output data path)
     input wire 4CONT,    // Switch 4 Control Pin (Active-High to close switch)
     output reg 4B        // Switch 4 Terminal B (Input/Output data path)
@@ -132,7 +132,7 @@ module cmos_4066 (
 
     // Pure digital behavioral representation of the transmission pass-gates
     always @(*) begin
-        1B = (1CONT) ? 1A : 1'bz; // Passes data if closed, otherwise High-Impedance (Disconnected)
+        1B = (1CONT) ? 1A : 1'bz; // Passes data if closed, otherwise High-Impedance (Disconnected) 
         2B = (2CONT) ? 2A : 1'bz; // Passes data if closed, otherwise High-Impedance (Disconnected)
         3B = (3CONT) ? 3A : 1'bz; // Passes data if closed, otherwise High-Impedance (Disconnected)
         4B = (4CONT) ? 4A : 1'bz; // Passes data if closed, otherwise High-Impedance (Disconnected)
