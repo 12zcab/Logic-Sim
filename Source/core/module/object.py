@@ -485,10 +485,10 @@ class SimBox:
                 break
             events = self.scheduler.getNextEvent()
             affectedComponent = set()
-            affectedNets = set()
+            affectedNets = set()  
             for evt in events:
                 evt.targetIO.driveVal = evt.Val
-                evt.targetIO.driveStr = evt.Strength
+                evt.targetIO.driveStr = evt.Strength  
                 if evt.targetIO.Net:
                     affectedNets.add(evt.targetIO.Net.root)
             for net in affectedNets:
