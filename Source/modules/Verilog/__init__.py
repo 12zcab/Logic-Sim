@@ -104,6 +104,18 @@ def parseFileIntoObject(filename="",objonly = True,existingModule = None):
                     ind_comp = OrNotGate(cellKey)
                 case "DFF":
                     ind_comp = PP0_DFF(cellKey)
+                case "NOT":
+                    ind_comp = NotGate(cellKey)
+                case "AND":
+                    ind_comp = AndGate(cellKey)
+                case "OR":
+                    ind_comp = OrGate(cellKey)
+                case "NOR":
+                    ind_comp = NorGate(cellKey)
+                case "XOR":
+                    ind_comp = XorGate(cellKey)
+                case "XNOR":
+                    ind_comp = XnorGate(cellKey)
                 case _:
                     print(f"  [!] UNHANDLED CELL TYPE: '{raw_type}' (parsed: '{gate_type}') on cell '{cellKey}'")
                     continue

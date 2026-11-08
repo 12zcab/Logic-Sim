@@ -499,3 +499,7 @@ class SimBox:
             for comp in affectedComponent:
                 if hasattr(comp, "update"):
                     comp.update()
+    def clear(self):
+        self.Objects.clear()
+        self.Nets.clear()
+        self.scheduler = Kairos()

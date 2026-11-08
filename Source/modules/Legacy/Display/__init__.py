@@ -34,7 +34,6 @@ class Lamp(Component):
         self.showNumber = True
     def update(self):
         self.state = self.IO.A.Value
-        print(self.state)
     def export_custom_data(self):
         return {"colour": self.ActivateLevel,"showNumber": self.showNumber}
     def import_custom_data(self, custom_data: dict, globals_dict: dict = None):

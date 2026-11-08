@@ -122,8 +122,8 @@ class LogicSimApp:
         
         self.node_editor.bind_event("net_create", lambda net: self.createNetEvent(net))
         self.node_editor.bind_event("net_destroy", lambda net: self.destroyNetEvent(net))
-        self.node_editor.bind_event("connect", lambda net, pin: self.connectPinEvent(net,pin))
-        self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net,pin))
+        self.node_editor.bind_event("connect", lambda net, pin: self.connectPinEvent(net, pin))
+        self.node_editor.bind_event("disconnect", lambda net, pin: self.disconnectPinEvent(net, pin))
         self.node_editor.bind_event("node_delete", lambda node: self.deleteLogicObj(node))
         self.node_editor.bind_event("select", lambda obj, rx, ry: self.handle_node_click(obj, rx, ry))
         self.node_editor.bind_event("node_move", lambda node: self.handle_node_move(node))
@@ -204,50 +204,64 @@ class LogicSimApp:
 
     def guiPinToLogicPin(self, guiPin):
         return self.logicToNode.inv[guiPin.owner].IO[guiPin.name]
-    def createNetEvent(self,net):
-        self.logicNetToNodeNet[Net(value=Logic.ZERO)] = net
+
+    def createNetEvent(self, net):
+        sim_net = Net(value=Logic.ZERO)
+        self.logicNetToNodeNet[sim_net] = net
         self.simBox.expandNet()
-    def destroyNetEvent(self,net):
-        del self.logicNetToNodeNet.inv[net]
+
+    def destroyNetEvent(self, net):
+        sim_net = self.logicNetToNodeNet.inv.get(net)
+        if sim_net:
+            for io in list(sim_net.IO):
+                io.disconnectNet()
+                if io.Net:
+                    io.Net.resolve()
+                if io.parent and hasattr(io.parent, "update"):
+                    io.parent.update()
+            if sim_net in self.logicNetToNodeNet:
+                del self.logicNetToNodeNet[sim_net]
         self.simBox.expandNet()
+
     def connectPinEvent(self, net, pin):
         logic_io = self.guiPinToLogicPin(pin)
-        
         sim_net = self.logicNetToNodeNet.inv.get(net)
-        
-        logic_io.connectNet(sim_net, force=True)
-        
-        if logic_io.Net:
-            logic_io.Net.resolve()
-            
-        if logic_io.parent:
-            if hasattr(logic_io.parent, "update"):
-                logic_io.parent.update()
-                
+        if sim_net:
+            logic_io.connectNet(sim_net)
+            sim_net.resolve()
+            for io in list(sim_net.IO):
+                if io.parent and hasattr(io.parent, "update"):
+                    io.parent.update()
         self.simBox.expandNet()
 
     def disconnectPinEvent(self, net, pin):
         logic_io = self.guiPinToLogicPin(pin)
-        
+        sim_net = self.logicNetToNodeNet.inv.get(net)
+
         logic_io.disconnectNet()
-        
-        if net and self.logicNetToNodeNet.inv.get(net):
-            self.logicNetToNodeNet.inv.get(net).resolve()
-            
+
+        if sim_net:
+            sim_net.resolve()
+            for io in list(sim_net.IO):
+                if io.parent and hasattr(io.parent, "update"):
+                    io.parent.update()
+
         if logic_io.Net:
             logic_io.Net.resolve()
+
         if logic_io.parent and hasattr(logic_io.parent, "update"):
             logic_io.parent.update()
-            
         self.simBox.expandNet()
 
     def addLogic(self, logicObj, nodeObj):
         logicObj.guiNode = nodeObj
         self.simBox.addObject(logicObj)
         self.logicToNode[logicObj] = nodeObj
-        if hasattr(self, "node_editor") and nodeObj not in self.node_editor.nodes:
-            self.node_editor.nodes.append(nodeObj)
-        self.node_editor.rebuild_nets()
+        if hasattr(self, "node_editor"):
+            nodeObj.on_changed = lambda: (self.node_editor.rebuild_nets(), self.node_editor.redraw_all())
+            if nodeObj not in self.node_editor.nodes:
+                self.node_editor.nodes.append(nodeObj)
+            self.node_editor.rebuild_nets()
 
     def deleteLogicObj(self, node):
         logic_obj = self.logicToNode.inv.get(node)
@@ -315,10 +329,22 @@ class LogicSimApp:
     def ClearAll(self):
         self.node_editor.clear()
         self.attributePanel.clearCategories()
+        self.logicToNode.clear()
+        self.logicNetToNodeNet.clear()
+        self.simBox.clear()
 
     def switch_module(self, module_name):
+        if module_name == "File":
+            self.sub_toolbar.clear_buttons()
+            savebt = self.sub_toolbar.add_button("Save")
+            savebt.config(command=self.SaveAll)
+            loadbt = self.sub_toolbar.add_button("Load")
+            loadbt.config(command=self.LoadAll)
+            clearbt = self.sub_toolbar.add_button("Clear")
+            clearbt.config(command=self.ClearAll)
+            self.sub_toolbar.force_update()
+            return
         self.sub_toolbar.clear_buttons()
-        
         module_data = self.all_jsons[module_name]
         component_names = getComponents(module_data)
         function_names = getFunctions(module_data)
@@ -368,7 +394,7 @@ class LogicSimApp:
         returnstuff = loader(x, y)
         logicObj = returnstuff[0]
         nodeObj = returnstuff[1]
-        self.addLogic(logicObj,nodeObj)
+        self.addLogic(logicObj, nodeObj)
 
     def get_component_data(self, module_dir, components_obj, component_name):
         component_def = getComponentDefinition(components_obj, component_name)

@@ -7,6 +7,12 @@ import uuid
 from typing import List, Dict, Set, Optional, Tuple, Callable
 from core import Logic
 
+def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
+    rad = math.radians(angle)
+    cos_a, sin_a = math.cos(rad), math.sin(rad)
+    nx = cos_a * (px - cx) - sin_a * (py - cy) + cx
+    ny = sin_a * (px - cx) + cos_a * (py - cy) + cy
+    return (nx, ny)
 
 
 class MetadataTracker:
@@ -82,6 +88,9 @@ class Pin:
     def hidden(self) -> bool:
         return self.hide_when_wired and self.is_wired
 
+    @property
+    def abs_pos(self) -> Tuple[float, float]:
+        return (self.owner.x + self.rel_x, self.owner.y + self.rel_y)
 
     def contains_point(self, wx: float, wy: float, anim_val: float = 0.0, tolerance: float = 0.2) -> bool:
         px, py = self.abs_pos
@@ -92,7 +101,6 @@ class Pin:
 class NodeObject:
     def __init__(
         self,
-        editor,
         node_id: str,
         title: str,
         x: float,
@@ -120,7 +128,7 @@ class NodeObject:
         self.dirty_graphic: bool = True
         self._tracked_deps: Dict[tuple, object] = {}
         self._last_meta_ref: object = metadata
-        self.editor = editor
+        self.on_changed: Optional[Callable[[], None]] = None
         self.compiled_code = None
         if self.graphic_code:
             self.compiled_code = compile(self.graphic_code, f"<node_graphic_{self.id}>", "exec")
@@ -200,10 +208,10 @@ class NodeObject:
             self.dirty_graphic = True
             dw = new_width - old_width
             for pin in self.pins:
-                if (pin.rel_x >= (old_width/2)) and pin.rel_y <= self.height and pin.rel_y >= 0:
+                if (pin.rel_x >= (old_width / 2)) and pin.rel_y <= self.height and pin.rel_y >= 0:
                     pin.rel_x += dw
-            self.editor.rebuild_nets()
-            self.editor.redraw_all()
+            if self.on_changed:
+                self.on_changed()
 
     @height.setter
     def height(self, new_height: float):
@@ -214,10 +222,10 @@ class NodeObject:
             self.dirty_graphic = True
             dh = new_height - old_height
             for pin in self.pins:
-                if (pin.rel_y >= (old_height/2)) and pin.rel_x <= self.width and pin.rel_x >= 0:
+                if (pin.rel_y >= (old_height / 2)) and pin.rel_x <= self.width and pin.rel_x >= 0:
                     pin.rel_y += dh
-            self.editor.rebuild_nets()
-            self.editor.redraw_all()
+            if self.on_changed:
+                self.on_changed()
 
     def add_pin(self, name: str, cell_x: float, cell_y: float, color: Optional[str] = None, hide_when_wired: bool = False) -> Pin:
         rel_x = float(cell_x) + 0.5
@@ -1730,11 +1738,12 @@ class NodeEditor(ttk.Frame):
     ) -> NodeObject:
         sx = self.snap_node_coord(x)
         sy = self.snap_node_coord(y)
-        node = NodeObject(self,
+        node = NodeObject(
             f"node_{len(self.nodes)+1}", title, sx, sy, width, height,
             bg_color=bg_color, border_color=border_color, graphic_code=graphic_code, angle=angle,
             metadata=metadata
         )
+        node.on_changed = lambda: (self.rebuild_nets(), self.redraw_all())
         self.nodes.append(node)
         self._emit("node_add", node)
         self.redraw_all()
@@ -1753,6 +1762,12 @@ class NodeEditor(ttk.Frame):
                 self.selected_object = None
             self._emit("node_delete", node)
 
+    def delete_wire(self, wire: Wire):
+        if wire in self.wires:
+            self.wires.remove(wire)
+            if self.selected_object == wire:
+                self.selected_object = None
+            self._emit("wire_delete", wire)
 
     def clear(self):
         for net_id, net in list(self.engine.nets.items()):
