@@ -1,4 +1,16 @@
 from core.module.object import *
+import json
+import sys
+
+
+def ChooseGate(Name):
+    with open("CreatedGate.json", "r", encoding=None) as file:
+        Read = file.read()
+        GateInfo = getattr(Read, Name)
+
+def RebuildGate(Info):
+    Object = Component(Info["Name"], Info["Nets"])
+    Object.updateFunction = [sys.modules.get(QualName) for QualName in Info["Funcs"]]
 
 class SpecialGate:
     def __init__(self, name, InSlot : list, OutSlot : list):
@@ -29,9 +41,10 @@ class SpecialGate:
                 return self.Func == Turning
 
     def StoreComponentInfo(self):
-        Nets = self.Module.getNet()
+        Nets =  self.Module.getNet()
         Funcs = []
-        for Func in self.Funcs:
-            Funcs.append(Func.__name__)
+        for Func in self.Funcs:  
+            Funcs.append(Func.__qualname__)
 
-        return {"Name" : self.Name, "Nets" : Nets, "Funcs" : Funcs}
+        with open("CreatedGate.json", "r", encoding=None) as file:
+            json.dump({"Name" : self.Name, "Nets" : Nets, "Funcs" : Funcs}, file, indent=4)

@@ -1,1 +1,5 @@
-Did not build anything function now, most of them are still stucture and ideas
+
+This allow user to build self-defined logic gate
+For example, increasing increase the value of input while decreasing decrease the value of input
+For classic, user can use turning to change the value oppositely
+This acts more like a component-liked gate instead of classic logic gate
