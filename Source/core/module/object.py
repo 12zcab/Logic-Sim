@@ -308,7 +308,10 @@ class Component:
         for io in self.IO.values():
             io.parent = self
         self._freeze_internal_nets()
-
+    def addIO(self,IOName):
+        self.IO[IOName] = IO(IOName)
+    def delIO(self,IOName):
+        self.IO[IOName].disconnectNet()
     def export(self) -> dict:
         """Base export for all Component subclasses (exports class name, Name, IOs, guiNode, and custom_data)."""
         node_obj = getattr(self, "guiNode", None)

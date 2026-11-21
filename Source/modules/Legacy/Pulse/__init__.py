@@ -90,6 +90,8 @@ class PulseGenerator(Component):
     def update(self):
         pass
     def perdeltatick(self):
+        if self.Frequency == 0:
+            self.Frequency = 1
         now = time.perf_counter_ns()
         if self.lastupdate is None or self.lastupdate > now:
             self.lastupdate = now

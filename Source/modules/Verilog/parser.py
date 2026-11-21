@@ -25,13 +25,23 @@ def parse_verilog_to_pure_gates(verilog_absolute_path: str, top_module: str = No
         else:
             yosys_commands.append("hierarchy -auto-top")
         
+        # gate_level_pipeline = (
+        #     "proc; opt; memory; pmuxtree; "
+        #     "techmap; simplemap; splitcells; "
+        #     "dfflegalize -cell $_DFF_P_ 0 -cell $_DFF_PP0_ 0; "
+        #     "abc -g gates; "
+        #     "opt; check"
+        # )
+        
         gate_level_pipeline = (
-            "proc; opt; memory; pmuxtree; "
+            "proc; async2sync; opt; memory; pmuxtree; "  # async2sync converts async resets to synchronous logic
             "techmap; simplemap; splitcells; "
+            "dffunmap; "
             "dfflegalize -cell $_DFF_P_ 0 -cell $_DFF_PP0_ 0; "
             "abc -g gates; "
             "opt; check"
         )
+        
         yosys_commands.append(gate_level_pipeline)
         yosys_commands.append(f"write_json {output_json_path}")
         

@@ -77,6 +77,15 @@ class OrNotGate(Component):
         not_b = NOT_LUT.get(b_val, Logic.X)
         self.IO.Y.Value = OR_LUT.get((a_val, not_b), Logic.X)
         
+class AndNotGate(Component):
+    def __init__(self, Name):
+        super().__init__(Name, [IO("A"), IO("B"), IO("Y")], self.update)
+    def update(self):
+        a_val = self.IO.A.Value
+        b_val = self.IO.B.Value
+        not_b = NOT_LUT.get(b_val, Logic.X)
+        self.IO.Y.Value = AND_LUT.get((a_val, not_b), Logic.X)
+        
 class NandGate3(Component):
     def __init__(self, Name):
         super().__init__(Name, [IO("A"), IO("B"), IO("C"), IO("Y")], self.update)

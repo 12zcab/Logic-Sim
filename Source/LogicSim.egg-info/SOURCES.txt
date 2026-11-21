@@ -5,6 +5,13 @@ Source/LogicSim.egg-info/SOURCES.txt
 Source/LogicSim.egg-info/dependency_links.txt
 Source/LogicSim.egg-info/top_level.txt
 Source/Temp/test.py
+Source/Temp/Handler/Main.py
+Source/Temp/Handler/Variant.py
+Source/Temp/Handler/TVA/Prediction.py
+Source/Temp/Handler/TVA/Snap.py
+Source/Temp/Handler/TVA/TimeLine.py
+Source/Temp/Handler/TVA/XmenDayOfFUTUREPAST.py
+Source/Temp/Handler/TVA/disabled__init__.py
 Source/Temp/OldVersion/Imp.py
 Source/Temp/OldVersion/Importer.py
 Source/Temp/TimeScriptsLibrary/Timer.py
@@ -23,14 +30,9 @@ Source/gui/node/nodeEngine.py
 Source/gui/node/oldHumanWritten(heavymodified by Ai too).py
 Source/gui/toolbar/toolbar.py
 Source/modules/__init__.py
-Source/modules/CombinationResult/CombinationCalculator.py
 Source/modules/DataLogger/__init__.py
+Source/modules/EncodeDecode/__init__.py
 Source/modules/GuiForUserDefineComponent/BlockDefiner.py
-Source/modules/GuiForUserDefineComponent/LocalGui.py
-Source/modules/GuiForUserDefineComponent/ScriptDefiner.py
-Source/modules/Handler/GuiEngine.py
-Source/modules/Handler/Main.py
-Source/modules/Handler/Variant.py
 Source/modules/Legacy/__init__.py
 Source/modules/Legacy/Display/__init__.py
 Source/modules/Legacy/FlipFlop/__init__.py
@@ -43,11 +45,6 @@ Source/modules/MutanterFile/Init.py
 Source/modules/MutanterFile/Mutanter.py
 Source/modules/MutanterFile/Transformer.py
 Source/modules/SimpleCLIIO/__init__.py
-Source/modules/TVA/Prediction.py
-Source/modules/TVA/Snap.py
-Source/modules/TVA/TimeLine.py
-Source/modules/TVA/XmenDayOfFUTUREPAST.py
-Source/modules/TVA/disabled__init__.py
 Source/modules/Verilog/VerilogGUI.py
 Source/modules/Verilog/__init__.py
 Source/modules/Verilog/parser.py

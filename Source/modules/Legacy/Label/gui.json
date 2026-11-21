@@ -1,5 +1,5 @@
 {
-    "name": "Label\n(Legacy)",
+    "name": "(Legacy)\nLabel",
     "components":{
         "Label":{
             "constructor":"Label",

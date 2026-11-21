@@ -1,5 +1,5 @@
 {
-    "name": "Display\n(Legacy)",
+    "name": "(Legacy)\nDisplay",
     "components":{
         "7 Segment Display":{
             "constructor":"SevenSegment",

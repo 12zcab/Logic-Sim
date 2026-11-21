@@ -234,6 +234,8 @@ class NodeObject:
         self.pins.append(pin)
         self.dirty_graphic = True
         return pin
+    def del_pin(self,name):
+        del self.pins[name]
 
     def contains_point(self, wx: float, wy: float) -> bool:
         cx = self.x + self.width / 2.0
@@ -732,6 +734,9 @@ class NodeEditor(ttk.Frame):
         self.wire_grid_size = 0.5
         self.snap_enabled = True
 
+        self._node_counter = 0
+        self._wire_counter = 0
+
         self.colors = {
             "bg": "#090d16",
             "grid": "#1e293b",
@@ -1169,13 +1174,34 @@ class NodeEditor(ttk.Frame):
                     tags=("node", f"node_{node.id}", pin_tag)
                 )
 
-                font_size = int(8 * (self.zoom / 35.0))
+                has_bar = pin.name.lower().endswith("_bar")
+                display_name = pin.name[:-4] if has_bar else pin.name
+                max_text_width = pr * 1.75  
+                base_font_size = 8 * (self.zoom / 35.0)
+                if len(display_name) > 0:
+                    required_font_size = max_text_width / (len(display_name) * 0.65)
+                    font_size = int(min(base_font_size, required_font_size))
+                else:
+                    font_size = int(base_font_size)
                 if font_size > 0:
                     text_col = "#000000" if is_pin_hovered else "#ffffff"
                     self.canvas.create_text(
-                        psx, psy, text=pin.name, fill=text_col, anchor="center",
+                        psx, psy, text=display_name, fill=text_col, anchor="center",
                         font=("Consolas", font_size, "bold"), tags=("node", f"node_{node.id}")
                     )
+                    if has_bar and display_name:
+                        char_width = font_size * 0.65
+                        text_width = len(display_name) * char_width
+                        line_y = psy - (font_size * 0.5)
+                        x1 = psx - (text_width / 2.0)
+                        x2 = psx + (text_width / 2.0)
+                        line_width = max(1.0, font_size / 8.0)
+                        self.canvas.create_line(
+                            x1, line_y, x2, line_y,
+                            fill=text_col,
+                            width=line_width,
+                            tags=("node", f"node_{node.id}")
+                        )
 
     def _draw_wires(self):
         selected_net = self.get_selected_net()
@@ -1387,11 +1413,13 @@ class NodeEditor(ttk.Frame):
         if is_shift:
             if clicked_wire:
                 branch_pos = self._get_nearest_point_on_wire(clicked_wire, wx, wy)
-                wire_id = f"wire_{len(self.wires) + 1}"
+                self._wire_counter += 1
+                wire_id = f"wire_{self._wire_counter}"
                 self.active_wire = Wire(wire_id, start_pos=branch_pos, color=clicked_wire.color)
                 self.selected_object = None
             elif clicked_pin:
-                wire_id = f"wire_{len(self.wires) + 1}"
+                self._wire_counter += 1
+                wire_id = f"wire_{self._wire_counter}"
                 self.active_wire = Wire(wire_id, start_pin=clicked_pin, color=self.colors["wire_default"])
                 self.selected_object = None
             self.redraw_all()
@@ -1425,7 +1453,8 @@ class NodeEditor(ttk.Frame):
                     self._append_ortho_point(self.active_wire, snap_pos)
         else:
             if clicked_pin:
-                wire_id = f"wire_{len(self.wires) + 1}"
+                self._wire_counter += 1
+                wire_id = f"wire_{self._wire_counter}"
                 self.active_wire = Wire(wire_id, start_pin=clicked_pin, color=self.colors["wire_default"])
                 self.selected_object = None
             elif clicked_node:
@@ -1559,7 +1588,8 @@ class NodeEditor(ttk.Frame):
         path_right = path[seg_idx + 1:]
 
         if len(path_left) >= 2:
-            w1 = Wire(f"wire_{len(self.wires) + 1}", color=wire.color, width=wire.width)
+            self._wire_counter += 1
+            w1 = Wire(f"wire_{self._wire_counter}", color=wire.color, width=wire.width)
             if wire.start_pin:
                 w1.start_pin = wire.start_pin
                 w1.vertices = path_left[1:-1]
@@ -1570,7 +1600,8 @@ class NodeEditor(ttk.Frame):
             self.wires.append(w1)
 
         if len(path_right) >= 2:
-            w2 = Wire(f"wire_{len(self.wires) + 1}", color=wire.color, width=wire.width)
+            self._wire_counter += 1
+            w2 = Wire(f"wire_{self._wire_counter}", color=wire.color, width=wire.width)
             w2.start_pos = path_right[0]
             w2.vertices = path_right[1:-1]
             if wire.end_pin:
@@ -1738,8 +1769,9 @@ class NodeEditor(ttk.Frame):
     ) -> NodeObject:
         sx = self.snap_node_coord(x)
         sy = self.snap_node_coord(y)
+        self._node_counter += 1
         node = NodeObject(
-            f"node_{len(self.nodes)+1}", title, sx, sy, width, height,
+            f"node_{self._node_counter}", title, sx, sy, width, height,
             bg_color=bg_color, border_color=border_color, graphic_code=graphic_code, angle=angle,
             metadata=metadata
         )
