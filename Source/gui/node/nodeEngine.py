@@ -232,11 +232,13 @@ class NodeObject:
         rel_y = float(cell_y) + 0.5
         pin = Pin(self, name, rel_x, rel_y, color, hide_when_wired=hide_when_wired)
         self.pins.append(pin)
-        self.dirty_graphic = True
+        if self.on_changed:
+            self.on_changed()
         return pin
     def del_pin(self,name):
-        del self.pins[name]
-
+        self.pins = [pin for pin in self.pins if pin.name != name]
+        if self.on_changed:
+            self.on_changed()
     def contains_point(self, wx: float, wy: float) -> bool:
         cx = self.x + self.width / 2.0
         cy = self.y + self.height / 2.0
@@ -396,8 +398,20 @@ class NetEngine:
         self.editor = editor
 
     def rebuild_nets(self, wires: List[Wire], nodes: List[NodeObject]):
+        valid_pins = {pin for node in nodes for pin in node.pins}
+        for wire in wires:
+            if wire.start_pin and wire.start_pin not in valid_pins:
+                wire.start_pos = wire.start_pin.abs_pos
+                wire.start_pin = None
+            if wire.end_pin and wire.end_pin not in valid_pins:
+                wire.end_pos = wire.end_pin.abs_pos
+                wire.end_pin = None
+        if self.editor:
+            if isinstance(self.editor.selected_object, Pin) and self.editor.selected_object not in valid_pins:
+                self.editor.selected_object = None
+            if isinstance(self.editor.hovered_object, Pin) and self.editor.hovered_object not in valid_pins:
+                self.editor.hovered_object = None
         old_pin_net_map = {pin: pin.net for node in nodes for pin in node.pins}
-        
         for wire in wires:
             wire.net = None
         for node in nodes:
@@ -743,7 +757,7 @@ class NodeEditor(ttk.Frame):
             "border_hover": "#38bdf8",
             "border_select": "#f59e0b",
             "wire_default": "#38bdf8",
-            "pin_default": "#ef4444",
+            "pin_default": "#222222",
             "pin_connected": "#10b981",
             "pin_hover": "#facc15",
             "instruction_bg": "#131b2e",
@@ -1775,7 +1789,7 @@ class NodeEditor(ttk.Frame):
             bg_color=bg_color, border_color=border_color, graphic_code=graphic_code, angle=angle,
             metadata=metadata
         )
-        node.on_changed = lambda: (self.rebuild_nets(), self.redraw_all())
+        node.on_changed = lambda: self.after_idle(lambda: (self.rebuild_nets(), self.redraw_all()))
         self.nodes.append(node)
         self._emit("node_add", node)
         self.redraw_all()

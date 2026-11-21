@@ -19,7 +19,7 @@ class Switch(Component):
                 name = "Y" + str(len(self.IO.keys()))
                 self.addIO(name)
                 if self.guiNode:
-                    self.guiNode.addP
+                    self.guiNode.add_pin
         if newwidth < _width:
             for _ in range(_width - newwidth):
                 name = "Y" + str(len(self.IO.keys()) - 1)

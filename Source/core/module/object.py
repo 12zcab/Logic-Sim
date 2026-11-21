@@ -308,10 +308,35 @@ class Component:
         for io in self.IO.values():
             io.parent = self
         self._freeze_internal_nets()
-    def addIO(self,IOName):
-        self.IO[IOName] = IO(IOName)
-    def delIO(self,IOName):
-        self.IO[IOName].disconnectNet()
+    def addIO(self, IOName):
+        if isinstance(IOName, IO):
+            io = IOName
+            io.parent = self
+            name = io.Name
+        else:
+            name = IOName
+            io = IO(name, parentComponent=self)
+        if name in self.IO and self.IO[name] is not io:
+            self.delIO(name)
+        self.IO[name] = io
+        if io.Net:
+            io._module_net = io.Net.root
+        return io
+    def delIO(self, IOName):
+        if isinstance(IOName, IO):
+            IOName = IOName.Name
+        if IOName not in self.IO:
+            raise KeyError(f"IO '{IOName}' does not exist on component '{self.Name}'")
+        io = self.IO[IOName]
+        old_net = io.Net
+        io.disconnectNet()
+        if io.Net:
+            io.Net.remove(io)
+        io._module_net = None
+        io.parent = None
+        del self.IO[IOName]
+        if old_net and old_net is not io.Net:
+            old_net.resolve()
     def export(self) -> dict:
         """Base export for all Component subclasses (exports class name, Name, IOs, guiNode, and custom_data)."""
         node_obj = getattr(self, "guiNode", None)
