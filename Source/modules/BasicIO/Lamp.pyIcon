@@ -1,95 +1,111 @@
 import math
 
-value = Logic.ZERO
+state_list = [Logic.ZERO]
+width = 1
 colour = "#38bdf8"
 showNumber = True
+
 if 'node' in globals() and node is not None and hasattr(node, 'metadata') and node.metadata is not None:
+    if hasattr(node.metadata, "width"):
+        width = max(1, int(node.metadata.width))
+    elif hasattr(node.metadata, "_width"):
+        width = max(1, int(node.metadata._width))
+
     if hasattr(node.metadata, "state"):
-        value = node.metadata.state
+        raw_state = node.metadata.state
+        if isinstance(raw_state, list):
+            state_list = raw_state
+        else:
+            state_list = [raw_state]
+
     if hasattr(node.metadata, "colour"):
         colour = node.metadata.colour
     if hasattr(node.metadata, "showNumber"):
         showNumber = node.metadata.showNumber
 
+if len(state_list) < width:
+    state_list = state_list + [Logic.ZERO] * (width - len(state_list))
+
 color_map = {
     Logic.ONE: colour,
     Logic.X: "#f8bd38",
-    Logic.ZERO: "#222222",
+    Logic.ZERO: "#161616",
     Logic.Z: "black"
 }
 
-box_w = w * (6.0 / 5.0)
-box_h = h * (6.0 / 5.0)
-box_x1 = x + (w - box_w) / 2.0
-box_y1 = y + (h - box_h) / 2.0
-box_x2 = box_x1 + box_w
-box_y2 = box_y1 + box_h
+is_selected = 'is_selected' in globals() and is_selected
 
-corners = [
-    (box_x1, box_y1),
-    (box_x2, box_y1),
-    (box_x2, box_y2),
-    (box_x1, box_y2)
+outer_corners = [
+    (x, y),
+    (x + w, y),
+    (x + w, y + h),
+    (x, y + h)
 ]
 
-shadow_offset = box_w * 0.06
+shadow_offset = min(w, h / float(width)) * 0.06
 shadow_corners = [
-    (box_x1 + shadow_offset, box_y1 + shadow_offset),
-    (box_x2 + shadow_offset, box_y1 + shadow_offset),
-    (box_x2 + shadow_offset, box_y2 + shadow_offset),
-    (box_x1 + shadow_offset, box_y2 + shadow_offset)
+    (x + shadow_offset, y + shadow_offset),
+    (x + w + shadow_offset, y + shadow_offset),
+    (x + w + shadow_offset, y + h + shadow_offset),
+    (x + shadow_offset, y + h + shadow_offset)
 ]
-
-rot_corners = [rotatePoint(px, py, cx, cy, angle) for px, py in corners]
-flat_box = [coord for pt in rot_corners for coord in pt]
-flat_shadow = [coord for pt in shadow_corners for coord in pt]
-
-stroke_w = max(2, int(min(box_w, box_h) * 0.05))
-select_w = stroke_w + max(2, int(min(box_w, box_h) * 0.04))
-
-if is_selected:
-    canvas.create_polygon(
-        flat_box,
-        fill="",
-        outline="#38bdf8",
-        width=select_w,
-        smooth=True,
-        splinesteps=32,
-        tags=tags
-    )
+rot_shadow = [rotatePoint(px, py, cx, cy, angle) for px, py in shadow_corners]
+flat_shadow = [coord for pt in rot_shadow for coord in pt]
 
 canvas.create_polygon(
     flat_shadow,
     fill="#000000",
     outline="",
-    smooth=True,
-    splinesteps=32,
     tags=tags
 )
 
-bg_fill = color_map.get(value, "#114C06")
-text_color = "#000000" if value == Logic.ONE else "#777777"
-border_color = "#38bdf8" if value == Logic.ONE else "#444444"
-
-canvas.create_polygon(
-    flat_box,
-    fill=bg_fill,
-    outline=border_color,
-    width=stroke_w,
-    smooth=True,
-    splinesteps=32,
-    tags=tags
-)
-
-text_str = value
-center_pt = rotatePoint(x + w / 2.0, y + h / 2.0, cx, cy, angle)
+row_h = h / float(width)
 font_size = int(12 * (zoom / 35.0))
+stroke_w = max(1, int(min(w, row_h) * 0.04))
 
-if font_size > 0 and showNumber:
-    canvas.create_text(
-        center_pt[0], center_pt[1],
-        text=text_str,
-        fill=text_color,
-        font=("Consolas", font_size, "bold"),
+for r in range(width):
+    value = state_list[r]
+    ry1 = y + (r * row_h)
+    ry2 = ry1 + row_h
+
+    cell_corners = [
+        (x, ry1),
+        (x + w, ry1),
+        (x + w, ry2),
+        (x, ry2)
+    ]
+    rot_cell = [rotatePoint(px, py, cx, cy, angle) for px, py in cell_corners]
+    flat_cell = [coord for pt in rot_cell for coord in pt]
+
+    bg_fill = color_map.get(value, "#114C06")
+    text_color = "#000000" if value == Logic.ONE else "#777777"
+    border_color = colour if value == Logic.ONE else "#333333"
+
+    canvas.create_polygon(
+        flat_cell,
+        fill=bg_fill,
+        outline=border_color,
+        width=stroke_w,
         tags=tags
     )
+
+    if font_size > 0 and showNumber:
+        center_pt = rotatePoint(x + w / 2.0, ry1 + row_h / 2.0, cx, cy, angle)
+        canvas.create_text(
+            center_pt[0], center_pt[1],
+            text=value,
+            fill=text_color,
+            font=("Consolas", font_size, "bold"),
+            tags=tags
+        )
+
+rot_outer = [rotatePoint(px, py, cx, cy, angle) for px, py in outer_corners]
+flat_outer = [coord for pt in rot_outer for coord in pt]
+
+canvas.create_polygon(
+    flat_outer,
+    fill="",
+    outline="#38bdf8" if is_selected else "#444444",
+    width=max(2, int(2 * (zoom / 35.0))) if is_selected else stroke_w,
+    tags=tags
+)

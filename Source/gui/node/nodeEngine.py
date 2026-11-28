@@ -7,6 +7,7 @@ import uuid
 from typing import List, Dict, Set, Optional, Tuple, Callable
 from core import Logic
 
+
 def rotatePoint(px: float, py: float, cx: float, cy: float, angle: float) -> Tuple[float, float]:
     rad = math.radians(angle)
     cos_a, sin_a = math.cos(rad), math.sin(rad)
@@ -235,10 +236,12 @@ class NodeObject:
         if self.on_changed:
             self.on_changed()
         return pin
-    def del_pin(self,name):
+
+    def del_pin(self, name):
         self.pins = [pin for pin in self.pins if pin.name != name]
         if self.on_changed:
             self.on_changed()
+
     def contains_point(self, wx: float, wy: float) -> bool:
         cx = self.x + self.width / 2.0
         cy = self.y + self.height / 2.0
@@ -253,6 +256,168 @@ class NodeObject:
         return None
 
 
+class WireRouter:
+    """Schematic router supporting HV, VH, ZH, ZV orthogonal modes and Parallel bus routing."""
+
+    MODES = ("HV", "VH", "ZH", "ZV")
+
+    @staticmethod
+    def route(
+        start: Tuple[float, float],
+        end: Tuple[float, float],
+        mode: str = "HV",
+        bus_offset: float = 0.0,
+        grid_step: float = 0.5
+    ) -> List[Tuple[float, float]]:
+        x1, y1 = start
+        x2, y2 = end
+
+        if math.hypot(x2 - x1, y2 - y1) < 1e-3:
+            return [start]
+
+        if mode == "HV":
+            if abs(x1 - x2) < 1e-3 or abs(y1 - y2) < 1e-3:
+                return [start, end]
+            return [start, (x2, y1), end]
+
+        if mode == "VH":
+            if abs(x1 - x2) < 1e-3 or abs(y1 - y2) < 1e-3:
+                return [start, end]
+            return [start, (x1, y2), end]
+
+        if mode == "ZH":
+            if abs(y1 - y2) < 1e-3:
+                return [start, end]
+            mid_x = round(((x1 + x2) / 2.0 + bus_offset) / grid_step) * grid_step
+            return [start, (mid_x, y1), (mid_x, y2), end]
+
+        if mode == "ZV":
+            if abs(x1 - x2) < 1e-3:
+                return [start, end]
+            mid_y = round(((y1 + y2) / 2.0 + bus_offset) / grid_step) * grid_step
+            return [start, (x1, mid_y), (x2, mid_y), end]
+
+        return [start, (x2, y1), end]
+
+    @staticmethod
+    def route_parallel_bus(
+        pin_pairs: List[Tuple[Pin, Pin]],
+        spacing: float = 0.5,
+        mode: str = "ZH",
+        grid_step: float = 0.5
+    ) -> List[List[Tuple[float, float]]]:
+        """
+        Routes multiple pin pairs simultaneously with staggered channel offsets
+        matching standard HV, VH, ZH, and ZV geometry without overlapping or crossing segments.
+        """
+        n = len(pin_pairs)
+        if n == 0:
+            return []
+        if n == 1:
+            s, e = pin_pairs[0][0].abs_pos, pin_pairs[0][1].abs_pos
+            return [Wire.simplify_path(WireRouter.route(s, e, mode=mode, grid_step=grid_step))]
+
+        coords = [(p1.abs_pos, p2.abs_pos) for p1, p2 in pin_pairs]
+        mean_dx = sum(e[0] - s[0] for s, e in coords) / n
+        mean_dy = sum(e[1] - s[1] for s, e in coords) / n
+        dir_x = 1.0 if mean_dx >= 0 else -1.0
+        dir_y = 1.0 if mean_dy >= 0 else -1.0
+
+        sx_span = max(s[0] for s, _ in coords) - min(s[0] for s, _ in coords)
+        sy_span = max(s[1] for s, _ in coords) - min(s[1] for s, _ in coords)
+        ex_span = max(e[0] for _, e in coords) - min(e[0] for _, e in coords)
+        ey_span = max(e[1] for _, e in coords) - min(e[1] for _, e in coords)
+
+        indexed = list(enumerate(coords))
+        results: List[List[Tuple[float, float]]] = [[] for _ in range(n)]
+
+        if mode == "ZH":
+            if sy_span >= 1e-3:
+                ordered = sorted(indexed, key=lambda item: (item[1][0][1], item[1][0][0]))
+            else:
+                ordered = sorted(indexed, key=lambda item: item[1][0][0])
+
+            base_mid_x = round((sum((s[0] + e[0]) / 2.0 for s, e in coords) / n) / grid_step) * grid_step
+            start_step = -((n - 1) // 2)
+            sign = 1.0 if (dir_x * dir_y >= 0) else -1.0
+
+            for rank, (orig_idx, ((sx, sy), (ex, ey))) in enumerate(ordered):
+                if abs(sy - ey) < 1e-3 and sy_span >= 1e-3:
+                    results[orig_idx] = Wire.simplify_path([(sx, sy), (ex, ey)])
+                    continue
+                step_idx = (n - 1 - rank) + start_step
+                mid_x = round((base_mid_x + step_idx * spacing * sign) / grid_step) * grid_step
+                results[orig_idx] = Wire.simplify_path([(sx, sy), (mid_x, sy), (mid_x, ey), (ex, ey)])
+
+        elif mode == "ZV":
+            if sx_span >= 1e-3:
+                ordered = sorted(indexed, key=lambda item: (item[1][0][0], item[1][0][1]))
+            else:
+                ordered = sorted(indexed, key=lambda item: item[1][0][1])
+
+            base_mid_y = round((sum((s[1] + e[1]) / 2.0 for s, e in coords) / n) / grid_step) * grid_step
+            start_step = -((n - 1) // 2)
+            sign = 1.0 if (dir_x * dir_y >= 0) else -1.0
+
+            for rank, (orig_idx, ((sx, sy), (ex, ey))) in enumerate(ordered):
+                if abs(sx - ex) < 1e-3 and sx_span >= 1e-3:
+                    results[orig_idx] = Wire.simplify_path([(sx, sy), (ex, ey)])
+                    continue
+                step_idx = (n - 1 - rank) + start_step
+                mid_y = round((base_mid_y + step_idx * spacing * sign) / grid_step) * grid_step
+                results[orig_idx] = Wire.simplify_path([(sx, sy), (sx, mid_y), (ex, mid_y), (ex, ey)])
+
+        elif mode == "HV":
+            if sy_span >= 1e-3:
+                ordered = sorted(indexed, key=lambda item: item[1][0][1])
+                need_stagger = ex_span < (n - 1) * spacing - 1e-3
+                for rank, (orig_idx, ((sx, sy), (ex, ey))) in enumerate(ordered):
+                    if abs(sx - ex) < 1e-3 or abs(sy - ey) < 1e-3:
+                        results[orig_idx] = Wire.simplify_path([(sx, sy), (ex, ey)])
+                        continue
+                    if need_stagger:
+                        inward_rank = rank if dir_y >= 0 else (n - 1 - rank)
+                        corner_x = round((ex - dir_x * inward_rank * spacing) / grid_step) * grid_step
+                    else:
+                        corner_x = ex
+                    results[orig_idx] = Wire.simplify_path([(sx, sy), (corner_x, sy), (corner_x, ey), (ex, ey)])
+            else:
+                ordered = sorted(indexed, key=lambda item: item[1][0][0])
+                for rank, (orig_idx, ((sx, sy), (ex, ey))) in enumerate(ordered):
+                    if abs(sx - ex) < 1e-3:
+                        results[orig_idx] = Wire.simplify_path([(sx, sy), (ex, ey)])
+                        continue
+                    step_rank = (n - rank) if dir_x >= 0 else (rank + 1)
+                    corner_y = round((sy + dir_y * step_rank * spacing) / grid_step) * grid_step
+                    results[orig_idx] = Wire.simplify_path([(sx, sy), (sx, corner_y), (ex, corner_y), (ex, ey)])
+
+        elif mode == "VH":
+            if sx_span >= 1e-3:
+                ordered = sorted(indexed, key=lambda item: item[1][0][0])
+                need_stagger = ey_span < (n - 1) * spacing - 1e-3
+                for rank, (orig_idx, ((sx, sy), (ex, ey))) in enumerate(ordered):
+                    if abs(sx - ex) < 1e-3 or abs(sy - ey) < 1e-3:
+                        results[orig_idx] = Wire.simplify_path([(sx, sy), (ex, ey)])
+                        continue
+                    if need_stagger:
+                        inward_rank = rank if dir_x >= 0 else (n - 1 - rank)
+                        corner_y = round((ey - dir_y * inward_rank * spacing) / grid_step) * grid_step
+                    else:
+                        corner_y = ey
+                    results[orig_idx] = Wire.simplify_path([(sx, sy), (sx, corner_y), (ex, corner_y), (ex, ey)])
+            else:
+                ordered = sorted(indexed, key=lambda item: item[1][0][1])
+                for rank, (orig_idx, ((sx, sy), (ex, ey))) in enumerate(ordered):
+                    if abs(sy - ey) < 1e-3:
+                        results[orig_idx] = Wire.simplify_path([(sx, sy), (ex, ey)])
+                        continue
+                    step_rank = (n - rank) if dir_y >= 0 else (rank + 1)
+                    corner_x = round((sx + dir_x * step_rank * spacing) / grid_step) * grid_step
+                    results[orig_idx] = Wire.simplify_path([(sx, sy), (corner_x, sy), (corner_x, ey), (ex, ey)])
+
+        return results
+
+
 class Wire:
     def __init__(
         self,
@@ -260,7 +425,8 @@ class Wire:
         start_pin: Optional[Pin] = None,
         start_pos: Optional[Tuple[float, float]] = None,
         color: str = "#38bdf8",
-        width: float = 3.5
+        width: float = 3.5,
+        routing_mode: str = "HV"
     ):
         self.id = wire_id
         self.start_pin = start_pin
@@ -270,6 +436,7 @@ class Wire:
         self.vertices: List[Tuple[float, float]] = []
         self.color = color
         self.width = width
+        self.routing_mode = routing_mode
         self.net: Optional['WireNet'] = None
 
     def export(self) -> dict:
@@ -285,7 +452,8 @@ class Wire:
             "end_pos": list(self.end_pos) if self.end_pos else None,
             "vertices": [list(v) for v in self.vertices],
             "color": self.color,
-            "width": self.width
+            "width": self.width,
+            "routing_mode": self.routing_mode
         }
 
     def get_full_path(self) -> List[Tuple[float, float]]:
@@ -597,7 +765,7 @@ class PyIconRecorder:
         w_est = max(10.0, len(str(text)) * font_size * 0.7)
         h_est = max(10.0, font_size * 1.4)
         anchor = kwargs.get("anchor", "center")
-        
+
         x1, y1 = x - w_est / 2.0, y - h_est / 2.0
         x2, y2 = x + w_est / 2.0, y + h_est / 2.0
         if anchor in ("w", "nw", "sw"):
@@ -757,6 +925,7 @@ class NodeEditor(ttk.Frame):
             "border_hover": "#38bdf8",
             "border_select": "#f59e0b",
             "wire_default": "#38bdf8",
+            "bus_select": "#a855f7",
             "pin_default": "#222222",
             "pin_connected": "#10b981",
             "pin_hover": "#facc15",
@@ -785,6 +954,13 @@ class NodeEditor(ttk.Frame):
         self.current_mouse_world: Tuple[float, float] = (0.0, 0.0)
         self.active_wire: Optional[Wire] = None
 
+        self.routing_mode: str = "HV"
+        self.bus_spacing: float = 0.5
+        self.bus_selection_mode: bool = False
+        self.bus_selecting_targets: bool = False
+        self.bus_source_pins: List[Pin] = []
+        self.bus_target_pins: List[Pin] = []
+
         self.drag_wire_initial_path: Optional[List[Tuple[float, float]]] = None
         self.drag_wire_segment_index: Optional[int] = None
 
@@ -806,7 +982,8 @@ class NodeEditor(ttk.Frame):
             "node_delete": [],
             "wire_add": [],
             "wire_delete": [],
-            "node_move": []
+            "node_move": [],
+            "routing_mode_change": []
         }
 
         self.canvas = tk.Canvas(self, bg=self.colors["bg"], highlightthickness=0)
@@ -828,6 +1005,85 @@ class NodeEditor(ttk.Frame):
 
         self.canvas.focus_set()
         self.canvas.bind("<Key>", self._on_key_press)
+
+    def set_routing_mode(self, mode: str):
+        if mode not in WireRouter.MODES:
+            return
+        self.routing_mode = mode
+
+        if isinstance(self.selected_object, Wire):
+            self._reroute_wire_with_mode(self.selected_object, mode)
+
+        self._emit("routing_mode_change", mode)
+        self.redraw_all()
+
+    def _reroute_wire_with_mode(self, wire: Wire, mode: str):
+        start_pt = wire.start_pin.abs_pos if wire.start_pin else wire.start_pos
+        end_pt = wire.end_pin.abs_pos if wire.end_pin else wire.end_pos
+        if not start_pt or not end_pt:
+            return
+
+        new_path = WireRouter.route(
+            start_pt, end_pt,
+            mode=mode,
+            grid_step=self.wire_grid_size
+        )
+        wire.routing_mode = mode
+        wire.sync_vertices_from_path(new_path)
+        self.rebuild_nets()
+
+    def flip_selected_wire(self):
+        """Cycles routing mode (HV -> VH -> ZH -> ZV) for the selected wire, active wire, or default mode."""
+        idx = WireRouter.MODES.index(self.routing_mode)
+        next_mode = WireRouter.MODES[(idx + 1) % len(WireRouter.MODES)]
+        self.set_routing_mode(next_mode)
+
+    def cancel_bus_selection_mode(self):
+        """Cancels and exits interactive Parallel Bus wiring mode."""
+        self.bus_selection_mode = False
+        self.bus_selecting_targets = False
+        self.bus_source_pins.clear()
+        self.bus_target_pins.clear()
+        self.active_wire = None
+        self.redraw_all()
+
+    def toggle_bus_target_phase(self):
+        """Switches between selecting Starting Pins and Target Pins in Parallel Bus mode."""
+        if not self.bus_selection_mode:
+            return
+        if not self.bus_selecting_targets:
+            if self.bus_source_pins:
+                self.bus_selecting_targets = True
+                self.redraw_all()
+        else:
+            self.bus_selecting_targets = False
+            self.redraw_all()
+
+    def confirm_bus_selection_mode(self):
+        """Confirms and routes the parallel bus when source and target pins are selected."""
+        if not self.bus_selection_mode:
+            return
+        count = min(len(self.bus_source_pins), len(self.bus_target_pins))
+        if count > 0:
+            pairs = list(zip(self.bus_source_pins[:count], self.bus_target_pins[:count]))
+            self.create_parallel_bus(pairs, spacing=self.bus_spacing, mode=self.routing_mode)
+            self.cancel_bus_selection_mode()
+
+    def toggle_bus_selection_mode(self):
+        """
+        B-key handler for Parallel Bus wiring:
+        - Not in bus mode -> Enter bus mode (Starting pin selection).
+        - Already in bus mode -> Cancel and exit bus mode.
+        """
+        if not self.bus_selection_mode:
+            self.bus_selection_mode = True
+            self.bus_selecting_targets = False
+            self.bus_source_pins.clear()
+            self.bus_target_pins.clear()
+            self.active_wire = None
+            self.redraw_all()
+        else:
+            self.cancel_bus_selection_mode()
 
     @staticmethod
     def _resolve_attr_path(obj, path: tuple):
@@ -908,12 +1164,18 @@ class NodeEditor(ttk.Frame):
         node._tracked_deps = deps_log
         node._last_meta_ref = node.metadata
         self._hit_test_cache.pop(node.id, None)
+        self.canvas.tag_raise("wire")
+        self.canvas.tag_raise("active_wire")
+        self.canvas.tag_raise("pin")
+        self.canvas.tag_raise("ui")
+        self.canvas.tag_raise("tooltip")
 
     def grepNextPressGridPos(self, returnfunction: Callable[[float, float], None]):
         self._grep_press_callback = returnfunction
 
     def _on_key_press(self, event):
-        if event.keysym.lower() == 'r':
+        key = event.keysym.lower()
+        if key == 'r':
             target_node = None
             if isinstance(self.selected_object, NodeObject):
                 target_node = self.selected_object
@@ -922,6 +1184,23 @@ class NodeEditor(ttk.Frame):
 
             if target_node:
                 self.rotate_node(target_node)
+
+        elif key in ('m', 'f'):
+            self.flip_selected_wire()
+
+        elif key == 'b':
+            self.toggle_bus_selection_mode()
+
+        elif key in ('return', 'kp_enter'):
+            if self.bus_selection_mode:
+                self.confirm_bus_selection_mode()
+
+        elif key == 'escape':
+            if self.bus_selection_mode:
+                self.cancel_bus_selection_mode()
+            elif self.active_wire:
+                self.active_wire = None
+                self.redraw_all()
 
     def rotate_node(self, node: NodeObject, angle_deg: float = 90.0):
         cx = node.width / 2.0
@@ -976,7 +1255,12 @@ class NodeEditor(ttk.Frame):
             for pin in node.pins:
                 if pin.hidden:
                     continue
-                is_pin_active = (pin == self.hovered_object) or (pin == self.selected_object and not self.active_wire)
+                is_pin_active = (
+                    (pin == self.hovered_object)
+                    or (pin == self.selected_object and not self.active_wire)
+                    or (pin in self.bus_source_pins)
+                    or (pin in self.bus_target_pins)
+                )
                 pval = self._get_anim_val(pin, is_pin_active)
                 if 0.0 < pval < 1.0:
                     needs_redraw = True
@@ -1087,12 +1371,13 @@ class NodeEditor(ttk.Frame):
             flat_pts = [c for pt in raw_pts for c in pt]
 
         return self.canvas.create_polygon(flat_pts, smooth=False, **kwargs)
-    
+
     def redraw_all(self):
-        self.canvas.delete("grid", "wire", "active_wire", "node", "ui", "tooltip")
+        self.canvas.delete("grid", "wire", "active_wire", "node", "pin", "ui", "tooltip")
         self._draw_grid()
-        self._draw_wires()
         self._draw_nodes()
+        self._draw_wires()
+        self._draw_pins()
         self._draw_instructions()
         self._draw_hover_tooltip()
 
@@ -1126,7 +1411,6 @@ class NodeEditor(ttk.Frame):
         self.canvas.tag_lower("grid")
 
     def _draw_nodes(self):
-        selected_net = self.get_selected_net()
         corner_r = 0.25 * self.zoom
 
         for node in self.nodes:
@@ -1157,6 +1441,10 @@ class NodeEditor(ttk.Frame):
             if node.compiled_code:
                 self.redraw_node_graphic(node)
 
+    def _draw_pins(self):
+        selected_net = self.get_selected_net()
+
+        for node in self.nodes:
             for pin in node.pins:
                 if pin.hidden:
                     continue
@@ -1164,12 +1452,18 @@ class NodeEditor(ttk.Frame):
                 px, py = pin.abs_pos
                 psx, psy = self.world_to_screen(px, py)
                 is_pin_hovered = (pin == self.hovered_object)
-                is_pin_active = is_pin_hovered or (pin == self.selected_object and not self.active_wire)
+                is_bus_src = (pin in self.bus_source_pins)
+                is_bus_dst = (pin in self.bus_target_pins)
+                is_pin_active = is_pin_hovered or is_bus_src or is_bus_dst or (pin == self.selected_object and not self.active_wire)
 
                 pin_anim = self._get_anim_val(pin, is_pin_active)
                 pr = (0.28 + 0.1 * pin_anim) * self.zoom
 
-                if is_pin_hovered:
+                if is_bus_src:
+                    pin_col = self.colors["bus_select"]
+                elif is_bus_dst:
+                    pin_col = "#10b981"
+                elif is_pin_hovered:
                     pin_col = self.colors["pin_hover"]
                 elif pin.color:
                     pin_col = pin.color
@@ -1185,12 +1479,12 @@ class NodeEditor(ttk.Frame):
                 self._draw_rounded_rect(
                     psx - pr, psy - pr, psx + pr, psy + pr,
                     radius=pin_r, fill=pin_col, outline="#666666", width=1.5 if is_pin_active else 1.0,
-                    tags=("node", f"node_{node.id}", pin_tag)
+                    tags=("pin", "node", f"node_{node.id}", pin_tag)
                 )
 
                 has_bar = pin.name.lower().endswith("_bar")
                 display_name = pin.name[:-4] if has_bar else pin.name
-                max_text_width = pr * 1.75  
+                max_text_width = pr * 1.75
                 base_font_size = 8 * (self.zoom / 35.0)
                 if len(display_name) > 0:
                     required_font_size = max_text_width / (len(display_name) * 0.65)
@@ -1201,7 +1495,7 @@ class NodeEditor(ttk.Frame):
                     text_col = "#000000" if is_pin_hovered else "#ffffff"
                     self.canvas.create_text(
                         psx, psy, text=display_name, fill=text_col, anchor="center",
-                        font=("Consolas", font_size, "bold"), tags=("node", f"node_{node.id}")
+                        font=("Consolas", font_size, "bold"), tags=("pin", "node", f"node_{node.id}")
                     )
                     if has_bar and display_name:
                         char_width = font_size * 0.65
@@ -1214,8 +1508,21 @@ class NodeEditor(ttk.Frame):
                             x1, line_y, x2, line_y,
                             fill=text_col,
                             width=line_width,
-                            tags=("node", f"node_{node.id}")
+                            tags=("pin", "node", f"node_{node.id}")
                         )
+
+                if is_bus_src or is_bus_dst:
+                    badge_idx = (
+                        self.bus_source_pins.index(pin) + 1
+                        if is_bus_src
+                        else self.bus_target_pins.index(pin) + 1
+                    )
+                    self.canvas.create_text(
+                        psx + pr * 0.85, psy - pr * 0.85,
+                        text=str(badge_idx), fill="#facc15",
+                        font=("Consolas", max(7, int(8 * self.zoom / 35.0)), "bold"),
+                        tags=("pin", "node", f"node_{node.id}")
+                    )
 
     def _draw_wires(self):
         selected_net = self.get_selected_net()
@@ -1257,36 +1564,64 @@ class NodeEditor(ttk.Frame):
             if len(path) >= 1:
                 cur_wx, cur_wy = self.current_mouse_world
                 target_pos = self.snap_wire_point(cur_wx, cur_wy)
-
                 last_pt = path[-1]
-                ortho_path = list(path)
-                if last_pt[0] != target_pos[0] and last_pt[1] != target_pos[1]:
-                    elbow = (target_pos[0], last_pt[1])
-                    ortho_path.extend([elbow, target_pos])
-                else:
-                    ortho_path.append(target_pos)
+
+                routed_segment = WireRouter.route(
+                    last_pt, target_pos,
+                    mode=self.routing_mode,
+                    grid_step=self.wire_grid_size
+                )
+                ortho_path = list(path) + routed_segment[1:]
 
                 s_pts = [self.world_to_screen(pt[0], pt[1]) for pt in ortho_path]
                 flat_s = [c for pt in s_pts for c in pt]
                 if len(flat_s) >= 4:
-                    self.canvas.create_line(*flat_s, fill=self.active_wire.color, width=2.5 * (self.zoom / 35.0), dash=(6, 4), tags="active_wire")
+                    self.canvas.create_line(
+                        *flat_s, fill=self.active_wire.color,
+                        width=2.5 * (self.zoom / 35.0), dash=(6, 4), tags="active_wire"
+                    )
+
+        elif self.bus_selection_mode and self.bus_source_pins and self.bus_target_pins:
+            count = min(len(self.bus_source_pins), len(self.bus_target_pins))
+            if count > 0:
+                pairs = list(zip(self.bus_source_pins[:count], self.bus_target_pins[:count]))
+                preview_paths = WireRouter.route_parallel_bus(
+                    pairs, spacing=self.bus_spacing, mode=self.routing_mode,
+                    grid_step=self.wire_grid_size
+                )
+                for p in preview_paths:
+                    s_pts = [self.world_to_screen(pt[0], pt[1]) for pt in p]
+                    flat_s = [c for pt in s_pts for c in pt]
+                    if len(flat_s) >= 4:
+                        self.canvas.create_line(
+                            *flat_s, fill="#c084fc",
+                            width=2.0 * (self.zoom / 35.0), dash=(4, 4), tags="active_wire"
+                        )
 
     def _draw_instructions(self):
         h = self.canvas.winfo_height() or 700
+        if self.bus_selection_mode:
+            phase = "TARGET" if self.bus_selecting_targets else "START"
+            mode_line = (
+                f"• PARALLEL [{self.routing_mode}] ({phase} {len(self.bus_target_pins)}/{len(self.bus_source_pins)}) "
+                f"[M/F: Mode | R-Click: Start/Target | Bg L-Click: Confirm | B: Cancel]"
+            )
+        else:
+            mode_line = f"• Route Mode [M/F]: {self.routing_mode} (HV/VH/ZH/ZV) | Parallel [B]"
+
         text = (
-            "• L-Click: Select / Drag\n"
+            f"{mode_line}\n"
+            "• L-Click: Select / Drag / Route\n"
             "• R-Click: Delete Node or Wire\n"
-            "• Shift + L-Click: Branch Sub-Wire\n"
-            "• Shift + R-Click: Cut Wire Segment\n"
-            "• R: Rotate\n"
-            "• Hover Wire: View Connection Status\n"
+            "• Shift + L-Click: Branch | Shift + R-Click: Cut\n"
+            "• R: Rotate | Hover Wire: Status\n"
             "• M-Click + Drag: Pan Canvas | Scroll: Zoom"
         )
-        x1, y1 = 12, h - 135
-        x2, y2 = 380, h - 12
+        x1, y1 = 12, h - 125
+        x2, y2 = 415, h - 12
         corner_r = 0.25 * self.zoom
         self._draw_rounded_rect(x1, y1, x2, y2, radius=corner_r, angle=0, fill=self.colors["instruction_bg"], outline="#334155", tags="ui")
-        self.canvas.create_text(x1 + 10, y1 + 61, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8), tags="ui")
+        self.canvas.create_text(x1 + 10, y1 + 56, text=text, fill=self.colors["instruction_fg"], anchor="w", font=("Consolas", 8), tags="ui")
 
     def _draw_hover_tooltip(self):
         wire = None
@@ -1303,7 +1638,7 @@ class NodeEditor(ttk.Frame):
             return
 
         msx, msy = self.current_mouse_screen
-        header = f"Wire Net"
+        header = f"Wire Net ({wire.routing_mode})"
         lines = [header, "Connected Pins:"] + [f" • {item}" for item in connected_items]
 
         box_w = max(len(l) for l in lines) * 7.5 + 20
@@ -1324,7 +1659,7 @@ class NodeEditor(ttk.Frame):
         ty2 = ty1 + box_h
 
         corner_r = 0.25 * self.zoom
-        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, angle = 0, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5, tags="tooltip")
+        self._draw_rounded_rect(tx1, ty1, tx2, ty2, radius=corner_r, angle=0, fill=self.colors["tooltip_bg"], outline=self.colors["tooltip_border"], width=1.5, tags="tooltip")
 
         curr_y = ty1 + 14
         self.canvas.create_text(tx1 + 10, curr_y, text=header, fill=self.colors["tooltip_border"], anchor="w", font=("Helvetica", 9, "bold"), tags="tooltip")
@@ -1398,10 +1733,14 @@ class NodeEditor(ttk.Frame):
             return
 
         last_pt = path[-1]
-        if last_pt[0] != target_pos[0] and last_pt[1] != target_pos[1]:
-            elbow = (target_pos[0], last_pt[1])
-            wire.vertices.append(elbow)
-        wire.vertices.append(target_pos)
+        routed = WireRouter.route(
+            last_pt, target_pos,
+            mode=self.routing_mode,
+            grid_step=self.wire_grid_size
+        )
+        wire.routing_mode = self.routing_mode
+        for pt in routed[1:]:
+            wire.vertices.append(pt)
 
     def _on_left_click(self, event):
         self.canvas.focus_set()
@@ -1415,10 +1754,32 @@ class NodeEditor(ttk.Frame):
             callback(grid_x, grid_y)
             return
 
+        clicked_pin = self._hit_test_pin(wx, wy)
+
+        if self.bus_selection_mode:
+            if clicked_pin:
+                if not self.bus_selecting_targets:
+                    if clicked_pin in self.bus_source_pins:
+                        self.bus_source_pins.remove(clicked_pin)
+                        if len(self.bus_target_pins) > len(self.bus_source_pins):
+                            self.bus_target_pins = self.bus_target_pins[:len(self.bus_source_pins)]
+                    elif clicked_pin not in self.bus_target_pins:
+                        self.bus_source_pins.append(clicked_pin)
+                else:
+                    if clicked_pin in self.bus_target_pins:
+                        self.bus_target_pins.remove(clicked_pin)
+                    elif clicked_pin not in self.bus_source_pins:
+                        if len(self.bus_target_pins) < len(self.bus_source_pins):
+                            self.bus_target_pins.append(clicked_pin)
+                self.request_anim()
+                self.redraw_all()
+            else:
+                self.confirm_bus_selection_mode()
+            return
+
         self.drag_start_pos = (event.x, event.y)
         is_shift = bool(event.state & 0x0001)
 
-        clicked_pin = self._hit_test_pin(wx, wy)
         clicked_node = self._hit_test_node(wx, wy)
         clicked_wire, seg_idx = self._hit_test_wire(wx, wy)
 
@@ -1429,12 +1790,12 @@ class NodeEditor(ttk.Frame):
                 branch_pos = self._get_nearest_point_on_wire(clicked_wire, wx, wy)
                 self._wire_counter += 1
                 wire_id = f"wire_{self._wire_counter}"
-                self.active_wire = Wire(wire_id, start_pos=branch_pos, color=clicked_wire.color)
+                self.active_wire = Wire(wire_id, start_pos=branch_pos, color=clicked_wire.color, routing_mode=self.routing_mode)
                 self.selected_object = None
             elif clicked_pin:
                 self._wire_counter += 1
                 wire_id = f"wire_{self._wire_counter}"
-                self.active_wire = Wire(wire_id, start_pin=clicked_pin, color=self.colors["wire_default"])
+                self.active_wire = Wire(wire_id, start_pin=clicked_pin, color=self.colors["wire_default"], routing_mode=self.routing_mode)
                 self.selected_object = None
             self.redraw_all()
             return
@@ -1469,7 +1830,7 @@ class NodeEditor(ttk.Frame):
             if clicked_pin:
                 self._wire_counter += 1
                 wire_id = f"wire_{self._wire_counter}"
-                self.active_wire = Wire(wire_id, start_pin=clicked_pin, color=self.colors["wire_default"])
+                self.active_wire = Wire(wire_id, start_pin=clicked_pin, color=self.colors["wire_default"], routing_mode=self.routing_mode)
                 self.selected_object = None
             elif clicked_node:
                 self.selected_object = clicked_node
@@ -1567,6 +1928,10 @@ class NodeEditor(ttk.Frame):
         wx, wy = self.screen_to_world(event.x, event.y)
         is_shift = bool(event.state & 0x0001)
 
+        if self.bus_selection_mode:
+            self.toggle_bus_target_phase()
+            return
+
         if self.active_wire:
             self.active_wire = None
         else:
@@ -1603,7 +1968,7 @@ class NodeEditor(ttk.Frame):
 
         if len(path_left) >= 2:
             self._wire_counter += 1
-            w1 = Wire(f"wire_{self._wire_counter}", color=wire.color, width=wire.width)
+            w1 = Wire(f"wire_{self._wire_counter}", color=wire.color, width=wire.width, routing_mode=wire.routing_mode)
             if wire.start_pin:
                 w1.start_pin = wire.start_pin
                 w1.vertices = path_left[1:-1]
@@ -1615,7 +1980,7 @@ class NodeEditor(ttk.Frame):
 
         if len(path_right) >= 2:
             self._wire_counter += 1
-            w2 = Wire(f"wire_{self._wire_counter}", color=wire.color, width=wire.width)
+            w2 = Wire(f"wire_{self._wire_counter}", color=wire.color, width=wire.width, routing_mode=wire.routing_mode)
             w2.start_pos = path_right[0]
             w2.vertices = path_right[1:-1]
             if wire.end_pin:
@@ -1712,7 +2077,7 @@ class NodeEditor(ttk.Frame):
                         "math": math,
                         "node": node_proxy,
                         "metadata": tracked_metadata,
-                        "Logic":Logic
+                        "Logic": Logic
                     }
                     try:
                         exec(node.compiled_code, exec_scope)
@@ -1815,6 +2180,71 @@ class NodeEditor(ttk.Frame):
                 self.selected_object = None
             self._emit("wire_delete", wire)
 
+    def create_parallel_bus(
+        self,
+        pin_pairs: List[Tuple[Pin, Pin]],
+        spacing: Optional[float] = None,
+        mode: str = "ZH",
+        color: Optional[str] = None,
+        width: float = 3.5
+    ) -> List[Wire]:
+        """
+        Routes a list of (start_pin, end_pin) pairs as a staggered parallel bus
+        with zero wire overlap.
+        """
+        bus_spacing = spacing if spacing is not None else self.bus_spacing
+        routed_paths = WireRouter.route_parallel_bus(
+            pin_pairs, spacing=bus_spacing, mode=mode, grid_step=self.wire_grid_size
+        )
+
+        created_wires = []
+        for (p_start, p_end), path in zip(pin_pairs, routed_paths):
+            self._wire_counter += 1
+            wire = Wire(
+                f"wire_{self._wire_counter}",
+                start_pin=p_start,
+                color=color or self.colors["wire_default"],
+                width=width,
+                routing_mode=f"PARALLEL:{mode}"
+            )
+            wire.end_pin = p_end
+            wire.sync_vertices_from_path(path)
+            self.wires.append(wire)
+            created_wires.append(wire)
+            self._emit("wire_add", wire)
+
+        self.rebuild_nets()
+        self.redraw_all()
+        return created_wires
+
+    def auto_route_nodes(
+        self,
+        node_a: NodeObject,
+        node_b: NodeObject,
+        pin_map: Optional[Dict[str, str]] = None,
+        spacing: Optional[float] = None,
+        mode: str = "ZH",
+        color: Optional[str] = None
+    ) -> List[Wire]:
+        """
+        Automatically connects matching pins between two nodes as a parallel bus.
+        If pin_map is None, matches pins with identical names (e.g., D0->D0, D1->D1).
+        """
+        pins_a = {p.name: p for p in node_a.pins}
+        pins_b = {p.name: p for p in node_b.pins}
+        pairs = []
+
+        if pin_map:
+            for name_a, name_b in pin_map.items():
+                if name_a in pins_a and name_b in pins_b:
+                    pairs.append((pins_a[name_a], pins_b[name_b]))
+        else:
+            for name, p_a in pins_a.items():
+                if name in pins_b:
+                    pairs.append((p_a, pins_b[name]))
+
+        return self.create_parallel_bus(pairs, spacing=spacing, mode=mode, color=color)
+
     def clear(self):
         for net_id, net in list(self.engine.nets.items()):
             self.engine._notify_event("NET_DESTROY", net, None)
@@ -1826,6 +2256,10 @@ class NodeEditor(ttk.Frame):
         self.selected_object = None
         self.hovered_object = None
         self.active_wire = None
+        self.bus_selection_mode = False
+        self.bus_selecting_targets = False
+        self.bus_source_pins.clear()
+        self.bus_target_pins.clear()
         self._hit_test_cache.clear()
         self.rebuild_nets()
         self.redraw_all()

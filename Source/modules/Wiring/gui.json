@@ -1,7 +1,7 @@
 {
-    "name": "En/Decoder",
+    "name": "Wiring",
     "components":{
-        "Encoder":{
+        "Encode":{
             "constructor":"Encoder",
             "size": [1,8],
             "color": "black",
@@ -33,7 +33,7 @@
                 }
             }
         },
-        "Decoder":{
+        "Decode":{
             "constructor":"Decoder",
             "size": [1,8],
             "color": "black",
@@ -54,6 +54,31 @@
                     "path":"Decoder.pyIcon",
                     "size": [1,8]
                 }
+            },
+            "attributes": {
+                "Settings": {
+                    "Width": {
+                        "attribute":"width",
+                        "type":"integer",
+                        "callFunc": "update"
+                    }
+                }
+            }
+        },
+        "Arranging Buses":{
+            "constructor":"Arrange",
+            "size": [2,9],
+            "color": "black",
+            "bcolor": "white",
+            "pins": {
+                "0": {"position":[0.5,0.5]},
+                "1": {"position":[0.5,1.5]},
+                "2": {"position":[0.5,2.5]},
+                "3": {"position":[0.5,3.5]},
+                "4": {"position":[0.5,4.5]},
+                "5": {"position":[0.5,5.5]},
+                "6": {"position":[0.5,6.5]},
+                "7": {"position":[0.5,7.5]}
             },
             "attributes": {
                 "Settings": {

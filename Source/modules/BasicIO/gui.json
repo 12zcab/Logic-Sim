@@ -1,0 +1,51 @@
+{
+    "name": "BasicIO",
+    "components":{
+        "Switchs":{
+            "constructor":"WidthableSwitch",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "Y0": {"position":[1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Switch.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Width": {
+                        "attribute":"width",
+                        "type":"integer"
+                    }
+                }
+            }
+        },
+        "Lamps":{
+            "constructor":"WidthableLamp",
+            "size": [1,1],
+            "color": "transparent",
+            "bcolor": "transparent",
+            "pins": {
+                "A0": {"position":[1,0]}
+            },
+            "children": {
+                "pyIcon": {
+                    "path":"Lamp.pyIcon",
+                    "size": [1,1]
+                }
+            },
+            "attributes": {
+                "Settings": {
+                    "Width": {
+                        "attribute":"width",
+                        "type":"integer"
+                    }
+                }
+            }
+        }
+    }
+}

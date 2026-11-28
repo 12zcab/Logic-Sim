@@ -383,7 +383,15 @@ class Component:
             if io.Net is not None and io.Net.root not in NetArray:
                 NetArray.append(io.Net.root) 
         return NetArray
-
+    def togglePin(self,name):
+        for phase_val in ((Logic.ONE,Strength.STRONG), (Logic.ZERO, Strength.STRONG) ,(Logic.Z,Strength.HIGHZ)):
+            self.setPin(name,phase_val[0],phase_val[1])
+    def setPin(self, name, val, strength=Strength.STRONG, passes=2):
+        self.IO[name].setPower(val, strength, Delay=0)
+        for _ in range(passes):
+            for net in self.getNet():
+                net.resolve()
+            self.update()
 
 class Module(Component):
     def __init__(self, Name, ModuleIO=None, InnerBlock=None):

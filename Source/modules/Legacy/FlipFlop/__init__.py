@@ -61,7 +61,7 @@ class BasicDLatch(Module):
         Pin_D >> NandS.IO.B >> NotD.IO.A
         NotD.IO.Y >> NandR.IO.B
         super().__init__(Name, ModuleIO, Blocks)
-        
+        self.togglePin("C")
 class SRDLatch(Module):
     def __init__(self, Name):
         Pin_D = IO("D")
@@ -164,39 +164,42 @@ class PP0_DFF_behave(Component):
             updateFunction=dff_behavioral_update 
         )
 
+
+
+
 class TFF(Module):
     def __init__(self, Name):
         clk = IO("C")
-        t   = IO("T")
-        q   = IO("Q")
-        qm  = IO("QM")
-        ModuleIO = [clk, t, q,qm]
+        t = IO("T")
+        q = IO("Q")
+        qm = IO("QM")
+        ModuleIO = [clk, t, q, qm]
         dff = MSDFF("MSDFF")
         xor = XorGate("XOR")
-        Blocks    = [dff, xor]
+        Blocks = [dff, xor]
         super().__init__(Name, ModuleIO, Blocks)
         clk >> dff.IO.C
         t >> xor.IO.A
         xor.IO.Y >> dff.IO.D
         dff.IO.Q >> xor.IO.B >> q
         dff.IO.QM >> qm
-        
+        self.togglePin("C")
+
 class MSDFF(Module):
     def __init__(self, Name):
         clk = IO("C")
         d = IO("D")
-        q   = IO("Q")
-        qm  = IO("QM")
-        ModuleIO = [clk,d, q, qm]
-        firstDLatch  = BasicDLatch("First_DFF")
+        q = IO("Q")
+        qm = IO("QM")
+        ModuleIO = [clk, d, q, qm]
+        firstDLatch = BasicDLatch("First_DFF")
         secondDLatch = BasicDLatch("Second_DFF")
-        notGate   = NotGate("Not")
-        notCGate  = NotGate("C_Not")
-        Blocks    = [firstDLatch, secondDLatch, notGate,notCGate]
+        notGate = NotGate("Not")
+        notCGate = NotGate("C_Not")
+        Blocks = [firstDLatch, secondDLatch, notGate, notCGate]
         super().__init__(Name, ModuleIO, Blocks)
         d >> firstDLatch.IO.D
         firstDLatch.IO.Q >> secondDLatch.IO.D
-        
         secondDLatch.IO.Q >> q
         secondDLatch.IO.QM >> qm
         notGate.IO.Y >> secondDLatch.IO.C
@@ -211,8 +214,12 @@ class MSDFF(Module):
         notGate.update()
         if notGate.IO.Y.Net:
             notGate.IO.Y.Net.resolve()
+        self.togglePin("C")
         
         
+        
+        
+
 class SRMSDFF(Module):
     def __init__(self, Name):
         clk = IO("C")
